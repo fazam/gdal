@@ -1,6 +1,6 @@
 # We get a full absolute path to the tree in this case so that when we
 # generate the various paths in the local gdal-config file they will work
-# from anywhere in the filesystem. 
+# from anywhere in the filesystem.
 
 include ../GDALmake.opt
 
@@ -11,7 +11,7 @@ DEP_LIBS =	$(EXE_DEP_LIBS) $(XTRAOBJ)
 BIN_LIST =	gdalinfo$(EXE) gdalserver$(EXE) gdal_translate$(EXE) \
 		gdaladdo$(EXE) gdalwarp$(EXE) nearblack$(EXE) gdalmanage$(EXE) \
 		gdalenhance$(EXE) gdaltransform$(EXE) gdaldem$(EXE) \
-		gdallocationinfo$(EXE) gdalsrsinfo$(EXE) 
+		gdallocationinfo$(EXE) gdalsrsinfo$(EXE) gdaltranslate$(EXE)
 
 ifeq ($(OGR_ENABLED),yes)
 BIN_LIST += 	gdal_contour$(EXE) \
@@ -50,6 +50,9 @@ gdalserver$(EXE):	gdalserver.$(OBJ_EXT) $(DEP_LIBS)
 	$(LD) $(LNK_FLAGS) $< $(XTRAOBJ) $(CONFIG_LIBS) -o $@
 
 gdal_translate$(EXE):	gdal_translate.$(OBJ_EXT) commonutils.$(OBJ_EXT) $(DEP_LIBS)
+	$(LD) $(LNK_FLAGS) $< commonutils.$(OBJ_EXT) $(XTRAOBJ) $(CONFIG_LIBS) -o $@
+
+gdaltranslate$(EXE):	gdaltranslate.$(OBJ_EXT) commonutils.$(OBJ_EXT) $(DEP_LIBS)
 	$(LD) $(LNK_FLAGS) $< commonutils.$(OBJ_EXT) $(XTRAOBJ) $(CONFIG_LIBS) -o $@
 
 gdaladdo$(EXE):	gdaladdo.$(OBJ_EXT)  $(DEP_LIBS)
@@ -174,4 +177,3 @@ gdal-config-inst:	gdal-config.in ../GDALmake.opt ./GNUmakefile ../VERSION
 install: default
 	for f in $(BIN_LIST) ; do $(INSTALL) $$f $(DESTDIR)$(INST_BIN) ; done
 	$(INSTALL) gdal-config-inst $(DESTDIR)$(INST_BIN)/gdal-config
-
