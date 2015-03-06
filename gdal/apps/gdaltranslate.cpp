@@ -272,7 +272,7 @@ typedef struct
     double  dfScaleDstMin, dfScaleDstMax;
 } ScaleParams;
 
-CPLErr GDALTranslate( GDALDatasetH hDataset, GDALDatasetH *phOutDataset, const char* pszArguments )
+CPLErr GDALTranslate( GDALDatasetH hDataset, GDALDatasetH *phOutDataset, const char* pszArguments, GDALProgressFunc pfnProgress, void *pProgressArg )
 
 {
     GDALDatasetH hOutDS;
@@ -303,7 +303,6 @@ CPLErr GDALTranslate( GDALDatasetH hDataset, GDALDatasetH *phOutDataset, const c
     char                **papszMetadataOptions = NULL;
     char                *pszOutputSRS = NULL;
     int                 bQuiet = FALSE, bGotBounds = FALSE;
-    GDALProgressFunc    pfnProgress = GDALTermProgress;
     int                 nGCPCount = 0;
     GDAL_GCP            *pasGCPs = NULL;
     int                 iSrcFileArg = -1, iDstFileArg = -1;
@@ -330,6 +329,9 @@ CPLErr GDALTranslate( GDALDatasetH hDataset, GDALDatasetH *phOutDataset, const c
       *phOutDataset = NULL;
       return CE_Failure;
     }
+
+    if ( pfnProgress == NULL )
+      pfnProgress = GDALTermProgress;
 
     anSrcWin[0] = 0;
     anSrcWin[1] = 0;
@@ -893,7 +895,7 @@ CPLErr GDALTranslate( GDALDatasetH hDataset, GDALDatasetH *phOutDataset, const c
                 *phOutDataset = NULL;
                 return CE_Failure;
             }
-            nRet = GDALTranslate( hSubDataset, phOutDataset, pszArguments );
+            nRet = GDALTranslate( hSubDataset, phOutDataset, pszArguments, pfnProgress, pProgressArg );
             if (nRet != 0)
                 break;
         }
@@ -1131,7 +1133,7 @@ CPLErr GDALTranslate( GDALDatasetH hDataset, GDALDatasetH *phOutDataset, const c
 
         hOutDS = GDALCreateCopy( hDriver, "out.png", hDataset,
                                  bStrict, papszCreateOptions,
-                                 pfnProgress, NULL );
+                                 pfnProgress, pProgressArg );
 
         if( hOutDS != NULL )
             GDALClose( hOutDS );
@@ -1789,7 +1791,7 @@ CPLErr GDALTranslate( GDALDatasetH hDataset, GDALDatasetH *phOutDataset, const c
 /* -------------------------------------------------------------------- */
     hOutDS = GDALCreateCopy( hDriver, "out.png", (GDALDatasetH) poVDS,
                              bStrict, papszCreateOptions,
-                             pfnProgress, NULL );
+                             pfnProgress, pProgressArg );
     if( hOutDS != NULL )
     {
         int bHasGotErr = FALSE;
@@ -1927,7 +1929,7 @@ int main( int argc, char ** argv )
     GDALAllRegister();
     GDALDatasetH hDataset, hOutDataset;
     hDataset = GDALOpenEx( "cea.tif", GDAL_OF_RASTER, NULL, NULL, NULL );
-    if( GDALTranslate( hDataset, &hOutDataset, "gdaltranslate in.tif out.png -of PNG" )
+    if( GDALTranslate( hDataset, &hOutDataset, "gdaltranslate in.tif out.png -of PNG", NULL, NULL )
       == CE_Failure )
     {
       printf("\n error");
