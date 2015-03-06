@@ -249,7 +249,7 @@ static int FixSrcDstWindow( int* panSrcWin, int* panDstWin,
 }
 
 /************************************************************************/
-/*                             ProxyMain()                              */
+/*                             GDALTranslate()                              */
 /************************************************************************/
 
 enum
@@ -272,13 +272,13 @@ typedef struct
     double  dfScaleDstMin, dfScaleDstMax;
 } ScaleParams;
 
-GDALDatasetH GDALTranslate( GDALDatasetH hDataset, const char* pszArguments )
+CPLErr GDALTranslate( GDALDatasetH hDataset, GDALDatasetH *phOutDataset, const char* pszArguments )
 
 {
-    GDALDatasetH	hOutDS;
+    GDALDatasetH hOutDS;
     int			i;
     int			nRasterXSize, nRasterYSize;
-    const char		*pszSource="in.img", *pszDest=NULL, *pszFormat = "GTiff";
+    const char		*pszSource=NULL, *pszDest=NULL, *pszFormat = "GTiff";
     int bFormatExplicitlySet = FALSE;
     GDALDriverH		hDriver;
     int			*panBandList = NULL; /* negative value of panBandList[i] means mask band of ABS(panBandList[i]) */
@@ -333,24 +333,23 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, const char* pszArguments )
 
     char **papszTokens;
     int nTokens;
-    //*papszTokens = "gdal_translate";
+
     papszTokens = CSLTokenizeString(pszArguments);
     nTokens = CSLCount(papszTokens);
 
     /* Check strict compilation and runtime library version as we use C++ API */
     if (! GDAL_CHECK_VERSION(papszTokens[0]))
-        return NULL;
+        return CE_Failure;
 
     EarlySetConfigOptions(nTokens, papszTokens);
 
 /* -------------------------------------------------------------------- */
-/*      Register standard GDAL drivers, and process generic GDAL        */
-/*      command options.                                                */
+/*      Process generic GDAL command options.                           */
 /* -------------------------------------------------------------------- */
-    // GDALAllRegister();
+
     nTokens = GDALGeneralCmdLineProcessor( nTokens, &papszTokens, 0 );
     if( nTokens < 1 )
-        return NULL;
+        return CE_Failure;
 
 /* -------------------------------------------------------------------- */
 /*      Set optimal setting for best performance with huge input VRT.   */
@@ -374,7 +373,7 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, const char* pszArguments )
         {
             printf("%s was compiled against GDAL %s and is running against GDAL %s\n",
                    papszTokens[0], GDAL_RELEASE_NAME, GDALVersionInfo("RELEASE_NAME"));
-            return 0;
+            return CE_None;
         }
         else if( EQUAL(papszTokens[i],"--help") )
             Usage();
@@ -813,104 +812,89 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, const char* pszArguments )
     }
 
 /* -------------------------------------------------------------------- */
-/*      Attempt to open source file.                                    */
-/* -------------------------------------------------------------------- */
-
-    // hDataset = GDALOpenEx( pszSource, GDAL_OF_RASTER, NULL,
-    //                        (const char* const* )papszOpenOptions, NULL );
-    //
-    // if( hDataset == NULL )
-    // {
-    //     fprintf( stderr,
-    //              "GDALOpen failed - %d\n%s\n",
-    //              CPLGetLastErrorNo(), CPLGetLastErrorMsg() );
-    //     GDALDestroyDriverManager();
-    //     exit( 1 );
-    // }
-
-/* -------------------------------------------------------------------- */
 /*      Handle subdatasets.                                             */
 /* -------------------------------------------------------------------- */
-    // if( !bCopySubDatasets
-    //     && CSLCount(GDALGetMetadata( hDataset, "SUBDATASETS" )) > 0
-    //     && GDALGetRasterCount(hDataset) == 0 )
-    // {
-    //     CPLError( CE_Failure, CPLE_AppDefined,
-    //              "Input file contains subdatasets. Please, select one of them for reading.\n" );
-    //     GDALClose( hDataset );
-    //     GDALDestroyDriverManager();
-    //     return NULL;
-    // }
-    //
-    // if( CSLCount(GDALGetMetadata( hDataset, "SUBDATASETS" )) > 0
-    //     && bCopySubDatasets )
-    // {
-    //     char **papszSubdatasets = GDALGetMetadata(hDataset,"SUBDATASETS");
-    //     char *pszSubDest = (char *) CPLMalloc(strlen(pszDest)+32);
-    //     int i;
-    //     int bOldSubCall = bSubCall;
-    //     char** papszDupArgv = CSLDuplicate(papszTokens);
-    //     GDALDatasetH hRet = NULL, hSubDataset;
-    //
-    //     CPLString osPath = CPLGetPath(pszDest);
-    //     CPLString osBasename = CPLGetBasename(pszDest);
-    //     CPLString osExtension = CPLGetExtension(pszDest);
-    //     CPLString osTemp;
-    //
-    //     const char* pszFormat = NULL;
-    //     if ( CSLCount(papszSubdatasets)/2 < 10 )
-    //     {
-    //         pszFormat = "%s_%d";
-    //     }
-    //     else if ( CSLCount(papszSubdatasets)/2 < 100 )
-    //     {
-    //         pszFormat = "%s_%002d";
-    //     }
-    //     else
-    //     {
-    //         pszFormat = "%s_%003d";
-    //     }
-    //
-    //     CPLFree(papszDupArgv[iDstFileArg]);
-    //     papszDupArgv[iDstFileArg] = pszSubDest;
-    //     bSubCall = TRUE;
-    //     for( i = 0; papszSubdatasets[i] != NULL; i += 2 )
-    //     {
-    //         CPLFree(papszDupArgv[iSrcFileArg]);
-    //         papszDupArgv[iSrcFileArg] = CPLStrdup(strstr(papszSubdatasets[i],"=")+1);
-    //         osTemp = CPLSPrintf( pszFormat, osBasename.c_str(), i/2 + 1 );
-    //         osTemp = CPLFormFilename( osPath, osTemp, osExtension );
-    //         strcpy( pszSubDest, osTemp.c_str() );
-    //
-    //         hSubDataset = GDALOpenEx( papszDupArgv[iSrcFileArg], GDAL_OF_RASTER, NULL,
-    //                                (const char* const* )papszOpenOptions, NULL );
-    //
-    //         if( hSubDataset == NULL )
-    //         {
-    //             CPLError( CE_Failure, CPLE_AppDefined,
-    //                      "GDALOpen failed - %d\n%s\n",
-    //                      CPLGetLastErrorNo(), CPLGetLastErrorMsg() );
-    //             GDALDestroyDriverManager();
-    //             return NULL;
-    //         }
-    //         hRet = GDALTranslate( hSubDataset, papszDupArgv );
-    //         if (hRet == NULL)
-    //             break;
-    //     }
-    //     CSLDestroy(papszDupArgv);
-    //
-    //     bSubCall = bOldSubCall;
-    //     CSLDestroy(papszTokens);
-    //
-    //     GDALClose( hDataset );
-    //
-    //     if( !bSubCall )
-    //     {
-    //         GDALDumpOpenDatasets( stderr );
-    //         GDALDestroyDriverManager();
-    //     }
-    //     return hRet;
-    // }
+    if( !bCopySubDatasets
+        && CSLCount(GDALGetMetadata( hDataset, "SUBDATASETS" )) > 0
+        && GDALGetRasterCount(hDataset) == 0 )
+    {
+        CPLError( CE_Failure, CPLE_AppDefined,
+                 "Input file contains subdatasets. Please, select one of them for reading.\n" );
+        GDALClose( hDataset );
+        GDALDestroyDriverManager();
+        return CE_Failure;
+    }
+
+    if( CSLCount(GDALGetMetadata( hDataset, "SUBDATASETS" )) > 0
+        && bCopySubDatasets )
+    {
+        char **papszSubdatasets = GDALGetMetadata(hDataset,"SUBDATASETS");
+        char *pszSubDest = (char *) CPLMalloc(strlen(pszDest)+32);
+        int i;
+        int bOldSubCall = bSubCall;
+        char** papszDupArgv = CSLDuplicate(papszTokens);
+        int nRet = 0;
+        GDALDatasetH hSubDataset;
+
+        CPLString osPath = CPLGetPath(pszDest);
+        CPLString osBasename = CPLGetBasename(pszDest);
+        CPLString osExtension = CPLGetExtension(pszDest);
+        CPLString osTemp;
+
+        const char* pszFormat = NULL;
+        if ( CSLCount(papszSubdatasets)/2 < 10 )
+        {
+            pszFormat = "%s_%d";
+        }
+        else if ( CSLCount(papszSubdatasets)/2 < 100 )
+        {
+            pszFormat = "%s_%002d";
+        }
+        else
+        {
+            pszFormat = "%s_%003d";
+        }
+
+        CPLFree(papszDupArgv[iDstFileArg]);
+        papszDupArgv[iDstFileArg] = pszSubDest;
+        bSubCall = TRUE;
+        for( i = 0; papszSubdatasets[i] != NULL; i += 2 )
+        {
+            CPLFree(papszDupArgv[iSrcFileArg]);
+            papszDupArgv[iSrcFileArg] = CPLStrdup(strstr(papszSubdatasets[i],"=")+1);
+            osTemp = CPLSPrintf( pszFormat, osBasename.c_str(), i/2 + 1 );
+            osTemp = CPLFormFilename( osPath, osTemp, osExtension );
+            strcpy( pszSubDest, osTemp.c_str() );
+
+            hSubDataset = GDALOpenEx( papszDupArgv[iSrcFileArg], GDAL_OF_RASTER, NULL,
+                                   (const char* const* )papszOpenOptions, NULL );
+
+            if( hSubDataset == NULL )
+            {
+                CPLError( CE_Failure, CPLE_AppDefined,
+                         "GDALOpen failed - %d\n%s\n",
+                         CPLGetLastErrorNo(), CPLGetLastErrorMsg() );
+                GDALDestroyDriverManager();
+                return CE_Failure;
+            }
+            nRet = GDALTranslate( hSubDataset, phOutDataset, pszArguments );
+            if (nRet != 0)
+                break;
+        }
+        CSLDestroy(papszDupArgv);
+
+        bSubCall = bOldSubCall;
+        CSLDestroy(papszTokens);
+
+        GDALClose( hDataset );
+
+        if( !bSubCall )
+        {
+            GDALDumpOpenDatasets( stderr );
+            GDALDestroyDriverManager();
+        }
+        return nRet == 0 ? CE_None : CE_Failure;
+    }
 
 /* -------------------------------------------------------------------- */
 /*      Collect some information from the source file.                  */
@@ -937,7 +921,7 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, const char* pszArguments )
         {
             CPLError( CE_Failure, CPLE_AppDefined, "Input file has no bands, and so cannot be translated.\n" );
             GDALDestroyDriverManager();
-            return NULL;
+            return CE_Failure;
         }
 
         panBandList = (int *) CPLMalloc(sizeof(int)*nBandCount);
@@ -954,7 +938,7 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, const char* pszArguments )
                          "Band %d requested, but only bands 1 to %d available.\n",
                          ABS(panBandList[i]), GDALGetRasterCount(hDataset) );
                 GDALDestroyDriverManager();
-                return NULL;
+                return CE_Failure;
             }
         }
 
@@ -999,7 +983,7 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, const char* pszArguments )
             GDALClose( hDataset );
             CPLFree( panBandList );
             GDALDestroyDriverManager();
-            return NULL;
+            return CE_Failure;
         }
 
         anSrcWin[0] = (int)
@@ -1030,7 +1014,7 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, const char* pszArguments )
                  anSrcWin[1],
                  anSrcWin[2],
                  anSrcWin[3] );
-        return NULL;
+        return CE_Failure;
     }
 
 /* -------------------------------------------------------------------- */
@@ -1059,7 +1043,7 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, const char* pszArguments )
                  (bIsError) ? "" : " Going on however." );
         }
         if( bIsError )
-            return NULL;
+            return CE_Failure;
     }
 
 /* -------------------------------------------------------------------- */
@@ -1094,7 +1078,7 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, const char* pszArguments )
         CSLDestroy( papszTokens );
         CSLDestroy( papszCreateOptions );
         CSLDestroy( papszOpenOptions );
-        return NULL;
+        return CE_Failure;
     }
 
 /* -------------------------------------------------------------------- */
@@ -1142,7 +1126,9 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, const char* pszArguments )
         CSLDestroy( papszCreateOptions );
         CSLDestroy( papszOpenOptions );
 
-        return hOutDS;
+        phOutDataset = &hOutDS;
+
+        return hOutDS == NULL ? CE_Failure : CE_None;
     }
 
 /* -------------------------------------------------------------------- */
@@ -1160,7 +1146,7 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, const char* pszArguments )
             GDALClose( hDataset );
             CPLFree( panBandList );
             GDALDestroyDriverManager();
-            return NULL;
+            return CE_Failure;
         }
         nOXSize = int(anSrcWin[2] / dfXRes * adfGeoTransform[1] + 0.5);
         nOYSize = int(anSrcWin[3] / dfYRes * fabs(adfGeoTransform[5]) + 0.5);
@@ -1184,7 +1170,7 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, const char* pszArguments )
         GDALClose( hDataset );
         CPLFree( panBandList );
         GDALDestroyDriverManager();
-        return NULL;
+        return CE_Failure;
     }
 
 /* ==================================================================== */
@@ -1361,7 +1347,7 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, const char* pszArguments )
             CSLDestroy( papszTokens );
             CSLDestroy( papszCreateOptions );
             CSLDestroy( papszOpenOptions );
-            return NULL;
+            return CE_Failure;
         }
 
         /* Check that the color table only contains gray levels */
@@ -1388,7 +1374,7 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, const char* pszArguments )
         else
         {
             CPLError( CE_Failure, CPLE_AppDefined, "Error : invalid use of -expand option.\n");
-            return NULL;
+            return CE_Failure;
         }
     }
 
@@ -1808,7 +1794,9 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, const char* pszArguments )
     CSLDestroy( papszCreateOptions );
     CSLDestroy( papszOpenOptions );
 
-    return hOutDS;
+    phOutDataset = &hOutDS;
+
+    return hOutDS == NULL ? CE_Failure : CE_None;
 }
 
 
@@ -1909,7 +1897,7 @@ int main( int argc, char ** argv )
 
 {
     GDALAllRegister();
-    GDALDatasetH hDataset, hDataset1;
+    GDALDatasetH hDataset, *hOutDataset;
     hDataset = GDALOpenEx( "cea.tif", GDAL_OF_RASTER, NULL, NULL, NULL );
-    hDataset1 = GDALTranslate( hDataset, "-of PNG" );
+    GDALTranslate( hDataset, hOutDataset, "gdaltranslate in.tif out.png -of PNG" );
 }
