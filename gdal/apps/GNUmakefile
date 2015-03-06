@@ -11,7 +11,7 @@ DEP_LIBS =	$(EXE_DEP_LIBS) $(XTRAOBJ)
 BIN_LIST =	gdalinfo$(EXE) gdalserver$(EXE) gdal_translate$(EXE) \
 		gdaladdo$(EXE) gdalwarp$(EXE) nearblack$(EXE) gdalmanage$(EXE) \
 		gdalenhance$(EXE) gdaltransform$(EXE) gdaldem$(EXE) \
-		gdallocationinfo$(EXE) gdalsrsinfo$(EXE) gdaltranslate$(EXE)
+		gdallocationinfo$(EXE) gdalsrsinfo$(EXE)
 
 ifeq ($(OGR_ENABLED),yes)
 BIN_LIST += 	gdal_contour$(EXE) \
@@ -50,9 +50,6 @@ gdalserver$(EXE):	gdalserver.$(OBJ_EXT) $(DEP_LIBS)
 	$(LD) $(LNK_FLAGS) $< $(XTRAOBJ) $(CONFIG_LIBS) -o $@
 
 gdal_translate$(EXE):	gdal_translate.$(OBJ_EXT) commonutils.$(OBJ_EXT) $(DEP_LIBS)
-	$(LD) $(LNK_FLAGS) $< commonutils.$(OBJ_EXT) $(XTRAOBJ) $(CONFIG_LIBS) -o $@
-
-gdaltranslate$(EXE):	gdaltranslate.$(OBJ_EXT) commonutils.$(OBJ_EXT) $(DEP_LIBS)
 	$(LD) $(LNK_FLAGS) $< commonutils.$(OBJ_EXT) $(XTRAOBJ) $(CONFIG_LIBS) -o $@
 
 gdaladdo$(EXE):	gdaladdo.$(OBJ_EXT)  $(DEP_LIBS)

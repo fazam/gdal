@@ -42,7 +42,6 @@ static int ArgIsNumeric( const char * );
 static void AttachMetadata( GDALDatasetH, char ** );
 static void CopyBandInfo( GDALRasterBand * poSrcBand, GDALRasterBand * poDstBand,
                             int bCanCopyStatsMetadata, int bCopyScale, int bCopyNoData );
-static int bSubCall = FALSE;
 
 /*  ******************************************************************* */
 /*                               Usage()                                */
@@ -52,7 +51,7 @@ static void Usage(const char* pszErrorMsg = NULL, int bShort = TRUE)
 
 {
     int	iDr;
-        
+
     printf( "Usage: gdal_translate [--help-general] [--long-usage]\n"
             "       [-ot {Byte/Int16/UInt16/UInt32/Int32/Float32/Float64/\n"
             "             CInt16/CInt32/CFloat32/CFloat64}] [-strict]\n"
@@ -62,7 +61,7 @@ static void Usage(const char* pszErrorMsg = NULL, int bShort = TRUE)
             "       [-unscale] [-scale[_bn] [src_min src_max [dst_min dst_max]]]* [-exponent[_bn] exp_val]*\n"
             "       [-srcwin xoff yoff xsize ysize] [-projwin ulx uly lrx lry] [-epo] [-eco]\n"
             "       [-a_srs srs_def] [-a_ullr ulx uly lrx lry] [-a_nodata value]\n"
-            "       [-gcp pixel line easting northing [elevation]]*\n" 
+            "       [-gcp pixel line easting northing [elevation]]*\n"
             "       [-mo \"META-TAG=VALUE\"]* [-q] [-sds]\n"
             "       [-co \"NAME=VALUE\"]* [-stats] [-norat]\n"
             "       [-oo NAME=VALUE]*\n"
@@ -75,7 +74,7 @@ static void Usage(const char* pszErrorMsg = NULL, int bShort = TRUE)
         for( iDr = 0; iDr < GDALGetDriverCount(); iDr++ )
         {
             GDALDriverH hDriver = GDALGetDriver(iDr);
-            
+
             if( GDALGetMetadataItem( hDriver, GDAL_DCAP_RASTER, NULL) != NULL &&
                 (GDALGetMetadataItem( hDriver, GDAL_DCAP_CREATE, NULL ) != NULL
                 || GDALGetMetadataItem( hDriver, GDAL_DCAP_CREATECOPY, NULL ) != NULL) )
@@ -88,9 +87,8 @@ static void Usage(const char* pszErrorMsg = NULL, int bShort = TRUE)
     }
 
     if( pszErrorMsg != NULL )
-        fprintf(stderr, "\nFAILURE: %s\n", pszErrorMsg);
+        CPLError( CE_Failure, CPLE_AppDefined, pszErrorMsg );
 
-    exit(1);
 }
 
 /************************************************************************/
@@ -250,7 +248,7 @@ static int FixSrcDstWindow( int* panSrcWin, int* panDstWin,
 }
 
 /************************************************************************/
-/*                             ProxyMain()                              */
+/*                             GDALTranslate()                              */
 /************************************************************************/
 
 enum
@@ -261,8 +259,12 @@ enum
 };
 
 #define CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(nExtraArg) \
-    do { if (i + nExtraArg >= argc) \
-        Usage(CPLSPrintf("%s option requires %d argument(s)", argv[i], nExtraArg)); } while(0)
+    do { if (i + nExtraArg >= nTokens) \
+          { \
+            Usage(CPLSPrintf("%s option requires %d argument(s)", papszTokens[i], nExtraArg)); \
+            return CE_Failure; \
+          } \
+        } while(0)
 
 
 typedef struct
@@ -273,10 +275,13 @@ typedef struct
     double  dfScaleDstMin, dfScaleDstMax;
 } ScaleParams;
 
-static int ProxyMain( int argc, char ** argv )
+CPLErr GDALTranslate( GDALDatasetH hDataset, GDALDatasetH *phOutDataset,
+    const char* pszArguments, GDALProgressFunc pfnProgress, void *pProgressArg )
 
 {
-    GDALDatasetH	hDataset, hOutDS;
+    static int bSubCall = FALSE;
+
+    GDALDatasetH hOutDS;
     int			i;
     int			nRasterXSize, nRasterYSize;
     const char		*pszSource=NULL, *pszDest=NULL, *pszFormat = "GTiff";
@@ -304,7 +309,6 @@ static int ProxyMain( int argc, char ** argv )
     char                **papszMetadataOptions = NULL;
     char                *pszOutputSRS = NULL;
     int                 bQuiet = FALSE, bGotBounds = FALSE;
-    GDALProgressFunc    pfnProgress = GDALTermProgress;
     int                 nGCPCount = 0;
     GDAL_GCP            *pasGCPs = NULL;
     int                 iSrcFileArg = -1, iDstFileArg = -1;
@@ -325,27 +329,34 @@ static int ProxyMain( int argc, char ** argv )
     const char         *pszResampling = NULL;
     double              dfXRes = 0.0, dfYRes = 0.0;
 
+    if ( pfnProgress == NULL )
+      pfnProgress = GDALTermProgress;
+
     anSrcWin[0] = 0;
     anSrcWin[1] = 0;
     anSrcWin[2] = 0;
     anSrcWin[3] = 0;
 
     dfULX = dfULY = dfLRX = dfLRY = 0.0;
-    
-    /* Check strict compilation and runtime library version as we use C++ API */
-    if (! GDAL_CHECK_VERSION(argv[0]))
-        exit(1);
 
-    EarlySetConfigOptions(argc, argv);
+    char **papszTokens;
+    int nTokens;
+
+    papszTokens = CSLTokenizeString(pszArguments);
+    nTokens = CSLCount(papszTokens);
+
+    EarlySetConfigOptions(nTokens, papszTokens);
 
 /* -------------------------------------------------------------------- */
-/*      Register standard GDAL drivers, and process generic GDAL        */
-/*      command options.                                                */
+/*      Process generic GDAL command options.                           */
 /* -------------------------------------------------------------------- */
-    GDALAllRegister();
-    argc = GDALGeneralCmdLineProcessor( argc, &argv, 0 );
-    if( argc < 1 )
-        exit( -argc );
+
+    nTokens = GDALGeneralCmdLineProcessor( nTokens, &papszTokens, 0 );
+    if( nTokens < 1 )
+    {
+      *phOutDataset = NULL;
+      return CE_Failure;
+    }
 
 /* -------------------------------------------------------------------- */
 /*      Set optimal setting for best performance with huge input VRT.   */
@@ -363,42 +374,47 @@ static int ProxyMain( int argc, char ** argv )
 /* -------------------------------------------------------------------- */
 /*      Handle command line arguments.                                  */
 /* -------------------------------------------------------------------- */
-    for( i = 1; i < argc; i++ )
+    for( i = 1; i < nTokens; i++ )
     {
-        if( EQUAL(argv[i], "--utility_version") )
+        if( EQUAL(papszTokens[i], "--utility_version") )
         {
             printf("%s was compiled against GDAL %s and is running against GDAL %s\n",
-                   argv[0], GDAL_RELEASE_NAME, GDALVersionInfo("RELEASE_NAME"));
-            return 0;
+                   papszTokens[0], GDAL_RELEASE_NAME, GDALVersionInfo("RELEASE_NAME"));
+            *phOutDataset = NULL;
+            return CE_Failure;
         }
-        else if( EQUAL(argv[i],"--help") )
+        else if( EQUAL(papszTokens[i],"--help") )
+        {
             Usage();
-        else if ( EQUAL(argv[i], "--long-usage") )
+            return CE_Failure;
+        }
+        else if ( EQUAL(papszTokens[i], "--long-usage") )
         {
             Usage(NULL, FALSE);
+            return CE_Failure;
         }
-        else if( EQUAL(argv[i],"-of") && i < argc-1 )
+        else if( EQUAL(papszTokens[i],"-of") && i < nTokens-1 )
         {
-            pszFormat = argv[++i];
+            pszFormat = papszTokens[++i];
             bFormatExplicitlySet = TRUE;
         }
 
-        else if( EQUAL(argv[i],"-q") || EQUAL(argv[i],"-quiet") )
+        else if( EQUAL(papszTokens[i],"-q") || EQUAL(papszTokens[i],"-quiet") )
         {
             bQuiet = TRUE;
             pfnProgress = GDALDummyProgress;
         }
 
-        else if( EQUAL(argv[i],"-ot") )
+        else if( EQUAL(papszTokens[i],"-ot") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
             int	iType;
-            
+
             for( iType = 1; iType < GDT_TypeCount; iType++ )
             {
                 if( GDALGetDataTypeName((GDALDataType)iType) != NULL
                     && EQUAL(GDALGetDataTypeName((GDALDataType)iType),
-                             argv[i+1]) )
+                             papszTokens[i+1]) )
                 {
                     eOutputType = (GDALDataType) iType;
                 }
@@ -406,14 +422,15 @@ static int ProxyMain( int argc, char ** argv )
 
             if( eOutputType == GDT_Unknown )
             {
-                Usage(CPLSPrintf("Unknown output pixel type: %s.", argv[i+1] ));
+                Usage(CPLSPrintf("Unknown output pixel type: %s.", papszTokens[i+1] ));
+                return CE_Failure;
             }
             i++;
         }
-        else if( EQUAL(argv[i],"-b") )
+        else if( EQUAL(papszTokens[i],"-b") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
-            const char* pszBand = argv[i+1];
+            const char* pszBand = papszTokens[i+1];
             int bMask = FALSE;
             if (EQUAL(pszBand, "mask"))
                 pszBand = "mask,1";
@@ -429,12 +446,13 @@ static int ProxyMain( int argc, char ** argv )
             int nBand = atoi(pszBand);
             if( nBand < 1 )
             {
-                Usage(CPLSPrintf( "Unrecognizable band number (%s).", argv[i+1] ));
+                Usage(CPLSPrintf( "Unrecognizable band number (%s).", papszTokens[i+1] ));
+                return CE_Failure;
             }
             i++;
 
             nBandCount++;
-            panBandList = (int *) 
+            panBandList = (int *)
                 CPLRealloc(panBandList, sizeof(int) * nBandCount);
             panBandList[nBandCount-1] = nBand;
             if (bMask)
@@ -443,11 +461,11 @@ static int ProxyMain( int argc, char ** argv )
             if( panBandList[nBandCount-1] != nBandCount )
                 bDefBands = FALSE;
         }
-        else if( EQUAL(argv[i],"-mask") )
+        else if( EQUAL(papszTokens[i],"-mask") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
             bParsedMaskArgument = TRUE;
-            const char* pszBand = argv[i+1];
+            const char* pszBand = papszTokens[i+1];
             if (EQUAL(pszBand, "none"))
             {
                 eMaskMode = MASK_DISABLED;
@@ -469,9 +487,10 @@ static int ProxyMain( int argc, char ** argv )
                 int nBand = atoi(pszBand);
                 if( nBand < 1 )
                 {
-                    Usage(CPLSPrintf( "Unrecognizable band number (%s).", argv[i+1] ));
+                    Usage(CPLSPrintf( "Unrecognizable band number (%s).", papszTokens[i+1] ));
+                    return CE_Failure;
                 }
-                
+
                 eMaskMode = MASK_USER;
                 nMaskBand = nBand;
                 if (bMask)
@@ -479,93 +498,102 @@ static int ProxyMain( int argc, char ** argv )
             }
             i ++;
         }
-        else if( EQUAL(argv[i],"-not_strict")  )
+        else if( EQUAL(papszTokens[i],"-not_strict")  )
             bStrict = FALSE;
-            
-        else if( EQUAL(argv[i],"-strict")  )
+
+        else if( EQUAL(papszTokens[i],"-strict")  )
             bStrict = TRUE;
-            
-        else if( EQUAL(argv[i],"-sds")  )
+
+        else if( EQUAL(papszTokens[i],"-sds")  )
             bCopySubDatasets = TRUE;
-            
-        else if( EQUAL(argv[i],"-gcp") )
+
+        else if( EQUAL(papszTokens[i],"-gcp") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(4);
             char* endptr = NULL;
             /* -gcp pixel line easting northing [elev] */
 
             nGCPCount++;
-            pasGCPs = (GDAL_GCP *) 
+            pasGCPs = (GDAL_GCP *)
                 CPLRealloc( pasGCPs, sizeof(GDAL_GCP) * nGCPCount );
             GDALInitGCPs( 1, pasGCPs + nGCPCount - 1 );
 
-            pasGCPs[nGCPCount-1].dfGCPPixel = CPLAtofM(argv[++i]);
-            pasGCPs[nGCPCount-1].dfGCPLine = CPLAtofM(argv[++i]);
-            pasGCPs[nGCPCount-1].dfGCPX = CPLAtofM(argv[++i]);
-            pasGCPs[nGCPCount-1].dfGCPY = CPLAtofM(argv[++i]);
-            if( argv[i+1] != NULL 
-                && (CPLStrtod(argv[i+1], &endptr) != 0.0 || argv[i+1][0] == '0') )
+            pasGCPs[nGCPCount-1].dfGCPPixel = CPLAtofM(papszTokens[++i]);
+            pasGCPs[nGCPCount-1].dfGCPLine = CPLAtofM(papszTokens[++i]);
+            pasGCPs[nGCPCount-1].dfGCPX = CPLAtofM(papszTokens[++i]);
+            pasGCPs[nGCPCount-1].dfGCPY = CPLAtofM(papszTokens[++i]);
+            if( papszTokens[i+1] != NULL
+                && (CPLStrtod(papszTokens[i+1], &endptr) != 0.0 || papszTokens[i+1][0] == '0') )
             {
                 /* Check that last argument is really a number and not a filename */
                 /* looking like a number (see ticket #863) */
                 if (endptr && *endptr == 0)
-                    pasGCPs[nGCPCount-1].dfGCPZ = CPLAtofM(argv[++i]);
+                    pasGCPs[nGCPCount-1].dfGCPZ = CPLAtofM(papszTokens[++i]);
             }
 
             /* should set id and info? */
-        }   
+        }
 
-        else if( EQUAL(argv[i],"-a_nodata") )
+        else if( EQUAL(papszTokens[i],"-a_nodata") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
-            if (EQUAL(argv[i+1], "none"))
+            if (EQUAL(papszTokens[i+1], "none"))
             {
                 bUnsetNoData = TRUE;
             }
             else
             {
                 bSetNoData = TRUE;
-                dfNoDataReal = CPLAtofM(argv[i+1]);
+                dfNoDataReal = CPLAtofM(papszTokens[i+1]);
             }
             i += 1;
-        }   
+        }
 
-        else if( EQUAL(argv[i],"-a_ullr") )
+        else if( EQUAL(papszTokens[i],"-a_ullr") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(4);
-            adfULLR[0] = CPLAtofM(argv[i+1]);
-            adfULLR[1] = CPLAtofM(argv[i+2]);
-            adfULLR[2] = CPLAtofM(argv[i+3]);
-            adfULLR[3] = CPLAtofM(argv[i+4]);
+            adfULLR[0] = CPLAtofM(papszTokens[i+1]);
+            adfULLR[1] = CPLAtofM(papszTokens[i+2]);
+            adfULLR[2] = CPLAtofM(papszTokens[i+3]);
+            adfULLR[3] = CPLAtofM(papszTokens[i+4]);
 
             bGotBounds = TRUE;
-            
-            i += 4;
-        }   
 
-        else if( EQUAL(argv[i],"-co") )
+            i += 4;
+        }
+
+        else if( EQUAL(papszTokens[i],"-co") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
-            papszCreateOptions = CSLAddString( papszCreateOptions, argv[++i] );
-        }   
+            papszCreateOptions = CSLAddString( papszCreateOptions, papszTokens[++i] );
+        }
 
-        else if( EQUAL(argv[i],"-scale") || EQUALN(argv[i],"-scale_", 7) )
+        else if( EQUAL(papszTokens[i],"-scale") || EQUALN(papszTokens[i],"-scale_", 7) )
         {
             int nIndex = 0;
-            if( EQUALN(argv[i],"-scale_", 7) )
+            if( EQUALN(papszTokens[i],"-scale_", 7) )
             {
                 if( !bHasUsedExplictScaleBand && nScaleRepeat != 0 )
+                {
                     Usage("Cannot mix -scale and -scale_XX syntax");
+                    return CE_Failure;
+                }
                 bHasUsedExplictScaleBand = TRUE;
-                nIndex = atoi(argv[i] + 7);
+                nIndex = atoi(papszTokens[i] + 7);
                 if( nIndex <= 0 || nIndex > 65535 )
-                    Usage(CPLSPrintf( "Invalid parameter name: %s", argv[i] ));
+                {
+                    Usage(CPLSPrintf( "Invalid parameter name: %s", papszTokens[i] ));
+                    return CE_Failure;
+                }
                 nIndex --;
             }
             else
             {
                 if( bHasUsedExplictScaleBand )
+                {
                     Usage("Cannot mix -scale and -scale_XX syntax");
+                    return CE_Failure;
+                }
                 nIndex = nScaleRepeat;
             }
 
@@ -579,17 +607,17 @@ static int ProxyMain( int argc, char ** argv )
                 nScaleRepeat = nIndex + 1;
             }
             pasScaleParams[nIndex].bScale = TRUE;
-            if( i < argc-2 && ArgIsNumeric(argv[i+1]) )
+            if( i < nTokens-2 && ArgIsNumeric(papszTokens[i+1]) )
             {
                 pasScaleParams[nIndex].bHaveScaleSrc = TRUE;
-                pasScaleParams[nIndex].dfScaleSrcMin = CPLAtofM(argv[i+1]);
-                pasScaleParams[nIndex].dfScaleSrcMax = CPLAtofM(argv[i+2]);
+                pasScaleParams[nIndex].dfScaleSrcMin = CPLAtofM(papszTokens[i+1]);
+                pasScaleParams[nIndex].dfScaleSrcMax = CPLAtofM(papszTokens[i+2]);
                 i += 2;
             }
-            if( i < argc-2 && pasScaleParams[nIndex].bHaveScaleSrc && ArgIsNumeric(argv[i+1]) )
+            if( i < nTokens-2 && pasScaleParams[nIndex].bHaveScaleSrc && ArgIsNumeric(papszTokens[i+1]) )
             {
-                pasScaleParams[nIndex].dfScaleDstMin = CPLAtofM(argv[i+1]);
-                pasScaleParams[nIndex].dfScaleDstMax = CPLAtofM(argv[i+2]);
+                pasScaleParams[nIndex].dfScaleDstMin = CPLAtofM(papszTokens[i+1]);
+                pasScaleParams[nIndex].dfScaleDstMax = CPLAtofM(papszTokens[i+2]);
                 i += 2;
             }
             else
@@ -599,25 +627,34 @@ static int ProxyMain( int argc, char ** argv )
             }
         }
 
-        else if( EQUAL(argv[i],"-exponent") || EQUALN(argv[i],"-exponent_",10) )
+        else if( EQUAL(papszTokens[i],"-exponent") || EQUALN(papszTokens[i],"-exponent_",10) )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
 
             int nIndex = 0;
-            if( EQUALN(argv[i],"-exponent_", 10) )
+            if( EQUALN(papszTokens[i],"-exponent_", 10) )
             {
                 if( !bHasUsedExplictExponentBand && nExponentRepeat != 0 )
+                {
                     Usage("Cannot mix -exponent and -exponent_XX syntax");
+                    return CE_Failure;
+                }
                 bHasUsedExplictExponentBand = TRUE;
-                nIndex = atoi(argv[i] + 10);
+                nIndex = atoi(papszTokens[i] + 10);
                 if( nIndex <= 0 || nIndex > 65535 )
-                    Usage(CPLSPrintf( "Invalid parameter name: %s", argv[i] ));
+                {
+                    Usage(CPLSPrintf( "Invalid parameter name: %s", papszTokens[i] ));
+                    return CE_Failure;
+                }
                 nIndex --;
             }
             else
             {
                 if( bHasUsedExplictExponentBand )
+                {
                     Usage("Cannot mix -exponent and -exponent_XX syntax");
+                    return CE_Failure;
+                }
                 nIndex = nExponentRepeat;
             }
 
@@ -630,160 +667,172 @@ static int ProxyMain( int argc, char ** argv )
                         sizeof(double) * (nIndex - nExponentRepeat));
                 nExponentRepeat = nIndex + 1;
             }
-            double dfExponent = CPLAtofM(argv[++i]);
+            double dfExponent = CPLAtofM(papszTokens[++i]);
             padfExponent[nIndex] = dfExponent;
         }
 
-        else if( EQUAL(argv[i], "-unscale") )
+        else if( EQUAL(papszTokens[i], "-unscale") )
         {
             bUnscale = TRUE;
         }
 
-        else if( EQUAL(argv[i],"-mo") )
+        else if( EQUAL(papszTokens[i],"-mo") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
             papszMetadataOptions = CSLAddString( papszMetadataOptions,
-                                                 argv[++i] );
+                                                 papszTokens[++i] );
         }
 
-        else if( EQUAL(argv[i],"-outsize") )
+        else if( EQUAL(papszTokens[i],"-outsize") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(2);
-            pszOXSize = argv[++i];
-            pszOYSize = argv[++i];
+            pszOXSize = papszTokens[++i];
+            pszOYSize = papszTokens[++i];
         }
-        
-        else if( EQUAL(argv[i],"-tr") )
+
+        else if( EQUAL(papszTokens[i],"-tr") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(2);
-            dfXRes = CPLAtofM(argv[++i]);
-            dfYRes = fabs(CPLAtofM(argv[++i]));
+            dfXRes = CPLAtofM(papszTokens[++i]);
+            dfYRes = fabs(CPLAtofM(papszTokens[++i]));
             if( dfXRes == 0 || dfYRes == 0 )
             {
                 Usage("Wrong value for -tr parameters.");
+                return CE_Failure;
             }
         }
 
-        else if( EQUAL(argv[i],"-srcwin") )
+        else if( EQUAL(papszTokens[i],"-srcwin") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(4);
-            anSrcWin[0] = atoi(argv[++i]);
-            anSrcWin[1] = atoi(argv[++i]);
-            anSrcWin[2] = atoi(argv[++i]);
-            anSrcWin[3] = atoi(argv[++i]);
-        }   
+            anSrcWin[0] = atoi(papszTokens[++i]);
+            anSrcWin[1] = atoi(papszTokens[++i]);
+            anSrcWin[2] = atoi(papszTokens[++i]);
+            anSrcWin[3] = atoi(papszTokens[++i]);
+        }
 
-        else if( EQUAL(argv[i],"-projwin") )
+        else if( EQUAL(papszTokens[i],"-projwin") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(4);
-            dfULX = CPLAtofM(argv[++i]);
-            dfULY = CPLAtofM(argv[++i]);
-            dfLRX = CPLAtofM(argv[++i]);
-            dfLRY = CPLAtofM(argv[++i]);
-        }   
+            dfULX = CPLAtofM(papszTokens[++i]);
+            dfULY = CPLAtofM(papszTokens[++i]);
+            dfLRX = CPLAtofM(papszTokens[++i]);
+            dfLRY = CPLAtofM(papszTokens[++i]);
+        }
 
-        else if( EQUAL(argv[i],"-epo") )
+        else if( EQUAL(papszTokens[i],"-epo") )
         {
             bErrorOnPartiallyOutside = TRUE;
             bErrorOnCompletelyOutside = TRUE;
         }
 
-        else  if( EQUAL(argv[i],"-eco") )
+        else  if( EQUAL(papszTokens[i],"-eco") )
         {
             bErrorOnCompletelyOutside = TRUE;
         }
-    
-        else if( EQUAL(argv[i],"-a_srs") )
+
+        else if( EQUAL(papszTokens[i],"-a_srs") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
             OGRSpatialReference oOutputSRS;
 
-            if( oOutputSRS.SetFromUserInput( argv[i+1] ) != OGRERR_NONE )
+            if( oOutputSRS.SetFromUserInput( papszTokens[i+1] ) != OGRERR_NONE )
             {
-                fprintf( stderr, "Failed to process SRS definition: %s\n", 
-                         argv[i+1] );
-                GDALDestroyDriverManager();
-                exit( 1 );
+                CPLError( CE_Failure, CPLE_AppDefined, "Failed to process SRS definition: %s\n",
+                         papszTokens[i+1] );
+
+                *phOutDataset = NULL;
+                return CE_Failure;
             }
 
             oOutputSRS.exportToWkt( &pszOutputSRS );
             i++;
-        }   
+        }
 
-        else if( EQUAL(argv[i],"-expand") )
+        else if( EQUAL(papszTokens[i],"-expand") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
-            if (EQUAL(argv[i+1], "gray"))
+            if (EQUAL(papszTokens[i+1], "gray"))
                 nRGBExpand = 1;
-            else if (EQUAL(argv[i+1], "rgb"))
+            else if (EQUAL(papszTokens[i+1], "rgb"))
                 nRGBExpand = 3;
-            else if (EQUAL(argv[i+1], "rgba"))
+            else if (EQUAL(papszTokens[i+1], "rgba"))
                 nRGBExpand = 4;
             else
             {
-                Usage(CPLSPrintf( "Value %s unsupported. Only gray, rgb or rgba are supported.", 
-                    argv[i] ));
+                Usage(CPLSPrintf( "Value %s unsupported. Only gray, rgb or rgba are supported.",
+                    papszTokens[i] ));
+                return CE_Failure;
             }
             i++;
         }
 
-        else if( EQUAL(argv[i], "-stats") )
+        else if( EQUAL(papszTokens[i], "-stats") )
         {
             bStats = TRUE;
             bApproxStats = FALSE;
         }
-        else if( EQUAL(argv[i], "-approx_stats") )
+        else if( EQUAL(papszTokens[i], "-approx_stats") )
         {
             bStats = TRUE;
             bApproxStats = TRUE;
         }
-        else if( EQUAL(argv[i], "-norat") )
+        else if( EQUAL(papszTokens[i], "-norat") )
         {
             bNoRAT = TRUE;
         }
-        else if( EQUAL(argv[i], "-oo") )
+        else if( EQUAL(papszTokens[i], "-oo") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
             papszOpenOptions = CSLAddString( papszOpenOptions,
-                                                argv[++i] );
+                                                papszTokens[++i] );
         }
-        else if( EQUAL(argv[i],"-r") )
+        else if( EQUAL(papszTokens[i],"-r") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
-            pszResampling = argv[++i];
-        }  
-        else if( argv[i][0] == '-' )
+            pszResampling = papszTokens[++i];
+        }
+        else if( papszTokens[i][0] == '-' )
         {
-            Usage(CPLSPrintf("Unknown option name '%s'", argv[i]));
+            Usage(CPLSPrintf("Unknown option name '%s'", papszTokens[i]));
+            return CE_Failure;
         }
         else if( pszSource == NULL )
         {
             iSrcFileArg = i;
-            pszSource = argv[i];
+            pszSource = papszTokens[i];
         }
         else if( pszDest == NULL )
         {
-            pszDest = argv[i];
+            pszDest = papszTokens[i];
             iDstFileArg = i;
         }
 
         else
         {
             Usage("Too many command options.");
+            return CE_Failure;
         }
     }
 
     if( pszDest == NULL )
     {
         if( pszSource == NULL )
+        {
             Usage("No source dataset specified.");
+            return CE_Failure;
+        }
         else
+        {
             Usage("No target dataset specified.");
+            return CE_Failure;
+        }
     }
 
     if ( strcmp(pszSource, pszDest) == 0)
     {
         Usage("Source and destination datasets must be different.");
+        return CE_Failure;
     }
 
     if( strcmp(pszDest, "/vsistdout/") == 0)
@@ -801,51 +850,56 @@ static int ProxyMain( int argc, char ** argv )
     if( pszOXSize != NULL && (dfXRes != 0 && dfYRes != 0) )
     {
         Usage("-outsize and -tr options cannot be used at the same time.");
+        return CE_Failure;
     }
     if( bGotBounds &&  (dfXRes != 0 && dfYRes != 0) )
     {
         Usage("-a_ullr and -tr options cannot be used at the same time.");
+        return CE_Failure;
     }
 
 /* -------------------------------------------------------------------- */
 /*      Attempt to open source file.                                    */
 /* -------------------------------------------------------------------- */
-
-    hDataset = GDALOpenEx( pszSource, GDAL_OF_RASTER, NULL,
-                           (const char* const* )papszOpenOptions, NULL );
-    
     if( hDataset == NULL )
     {
-        fprintf( stderr,
+      hDataset = GDALOpenEx( pszSource, GDAL_OF_RASTER, NULL,(const char* const* )papszOpenOptions, NULL );
+
+      if( hDataset == NULL )
+      {
+        CPLError( CE_Failure, CPLE_OpenFailed,
                  "GDALOpen failed - %d\n%s\n",
                  CPLGetLastErrorNo(), CPLGetLastErrorMsg() );
-        GDALDestroyDriverManager();
-        exit( 1 );
+        *phOutDataset = NULL;
+        return CE_Failure;
+      }
     }
 
 /* -------------------------------------------------------------------- */
 /*      Handle subdatasets.                                             */
 /* -------------------------------------------------------------------- */
-    if( !bCopySubDatasets 
-        && CSLCount(GDALGetMetadata( hDataset, "SUBDATASETS" )) > 0 
+    if( !bCopySubDatasets
+        && CSLCount(GDALGetMetadata( hDataset, "SUBDATASETS" )) > 0
         && GDALGetRasterCount(hDataset) == 0 )
     {
-        fprintf( stderr,
+        CPLError( CE_Failure, CPLE_AppDefined,
                  "Input file contains subdatasets. Please, select one of them for reading.\n" );
         GDALClose( hDataset );
-        GDALDestroyDriverManager();
-        exit( 1 );
+
+        *phOutDataset = NULL;
+        return CE_Failure;
     }
 
-    if( CSLCount(GDALGetMetadata( hDataset, "SUBDATASETS" )) > 0 
+    if( CSLCount(GDALGetMetadata( hDataset, "SUBDATASETS" )) > 0
         && bCopySubDatasets )
     {
         char **papszSubdatasets = GDALGetMetadata(hDataset,"SUBDATASETS");
         char *pszSubDest = (char *) CPLMalloc(strlen(pszDest)+32);
         int i;
         int bOldSubCall = bSubCall;
-        char** papszDupArgv = CSLDuplicate(argv);
+        char** papszDupArgv = CSLDuplicate(papszTokens);
         int nRet = 0;
+        GDALDatasetH hSubDataset;
 
         CPLString osPath = CPLGetPath(pszDest);
         CPLString osBasename = CPLGetBasename(pszDest);
@@ -874,25 +928,33 @@ static int ProxyMain( int argc, char ** argv )
             CPLFree(papszDupArgv[iSrcFileArg]);
             papszDupArgv[iSrcFileArg] = CPLStrdup(strstr(papszSubdatasets[i],"=")+1);
             osTemp = CPLSPrintf( pszFormat, osBasename.c_str(), i/2 + 1 );
-            osTemp = CPLFormFilename( osPath, osTemp, osExtension ); 
+            osTemp = CPLFormFilename( osPath, osTemp, osExtension );
             strcpy( pszSubDest, osTemp.c_str() );
-            nRet = ProxyMain( argc, papszDupArgv );
+
+            hSubDataset = GDALOpenEx( papszDupArgv[iSrcFileArg], GDAL_OF_RASTER, NULL,
+                                   (const char* const* )papszOpenOptions, NULL );
+
+            if( hSubDataset == NULL )
+            {
+                CPLError( CE_Failure, CPLE_OpenFailed,
+                         "GDALOpen failed - %d\n%s\n",
+                         CPLGetLastErrorNo(), CPLGetLastErrorMsg() );
+
+                *phOutDataset = NULL;
+                return CE_Failure;
+            }
+            nRet = GDALTranslate( hSubDataset, phOutDataset, pszArguments, pfnProgress, pProgressArg );
             if (nRet != 0)
                 break;
         }
         CSLDestroy(papszDupArgv);
 
         bSubCall = bOldSubCall;
-        CSLDestroy(argv);
+        CSLDestroy(papszTokens);
 
         GDALClose( hDataset );
 
-        if( !bSubCall )
-        {
-            GDALDumpOpenDatasets( stderr );
-            GDALDestroyDriverManager();
-        }
-        return nRet;
+        return nRet == 0 ? CE_None : CE_Failure;
     }
 
 /* -------------------------------------------------------------------- */
@@ -918,9 +980,10 @@ static int ProxyMain( int argc, char ** argv )
         nBandCount = GDALGetRasterCount( hDataset );
         if( nBandCount == 0 )
         {
-            fprintf( stderr, "Input file has no bands, and so cannot be translated.\n" );
-            GDALDestroyDriverManager();
-            exit(1 );
+            CPLError( CE_Failure, CPLE_AppDefined, "Input file has no bands, and so cannot be translated.\n" );
+
+            *phOutDataset = NULL;
+            return CE_Failure;
         }
 
         panBandList = (int *) CPLMalloc(sizeof(int)*nBandCount);
@@ -933,11 +996,12 @@ static int ProxyMain( int argc, char ** argv )
         {
             if( ABS(panBandList[i]) > GDALGetRasterCount(hDataset) )
             {
-                fprintf( stderr, 
+                CPLError( CE_Failure, CPLE_AppDefined,
                          "Band %d requested, but only bands 1 to %d available.\n",
                          ABS(panBandList[i]), GDALGetRasterCount(hDataset) );
-                GDALDestroyDriverManager();
-                exit( 2 );
+
+                *phOutDataset = NULL;
+                return CE_Failure;
             }
         }
 
@@ -948,17 +1012,29 @@ static int ProxyMain( int argc, char ** argv )
     if( nScaleRepeat > nBandCount )
     {
         if( !bHasUsedExplictScaleBand )
+        {
             Usage("-scale has been specified more times than the number of output bands");
+            return CE_Failure;
+        }
         else
+        {
             Usage("-scale_XX has been specified with XX greater than the number of output bands");
+            return CE_Failure;
+        }
     }
 
     if( nExponentRepeat > nBandCount )
     {
         if( !bHasUsedExplictExponentBand )
+        {
             Usage("-exponent has been specified more times than the number of output bands");
+            return CE_Failure;
+        }
         else
+        {
             Usage("-exponent_XX has been specified with XX greater than the number of output bands");
+            return CE_Failure;
+        }
     }
 /* -------------------------------------------------------------------- */
 /*      Compute the source window from the projected source window      */
@@ -967,7 +1043,7 @@ static int ProxyMain( int argc, char ** argv )
 /*      while the anSrcWin is xoff, yoff, xsize, ysize with the         */
 /*      xoff,yoff being the ulx, uly in pixel/line.                     */
 /* -------------------------------------------------------------------- */
-    if( dfULX != 0.0 || dfULY != 0.0 
+    if( dfULX != 0.0 || dfULY != 0.0
         || dfLRX != 0.0 || dfLRY != 0.0 )
     {
         double	adfGeoTransform[6];
@@ -976,29 +1052,29 @@ static int ProxyMain( int argc, char ** argv )
 
         if( adfGeoTransform[2] != 0.0 || adfGeoTransform[4] != 0.0 )
         {
-            fprintf( stderr, 
+            CPLError( CE_Failure, CPLE_AppDefined,
                      "The -projwin option was used, but the geotransform is\n"
                      "rotated.  This configuration is not supported.\n" );
             GDALClose( hDataset );
             CPLFree( panBandList );
-            GDALDestroyDriverManager();
-            exit( 1 );
+
+            *phOutDataset = NULL;
+            return CE_Failure;
         }
 
-        anSrcWin[0] = (int) 
+        anSrcWin[0] = (int)
             floor((dfULX - adfGeoTransform[0]) / adfGeoTransform[1] + 0.001);
-        anSrcWin[1] = (int) 
+        anSrcWin[1] = (int)
             floor((dfULY - adfGeoTransform[3]) / adfGeoTransform[5] + 0.001);
 
         anSrcWin[2] = (int) ((dfLRX - dfULX) / adfGeoTransform[1] + 0.5);
         anSrcWin[3] = (int) ((dfLRY - dfULY) / adfGeoTransform[5] + 0.5);
 
         if( !bQuiet )
-            fprintf( stdout, 
-                     "Computed -srcwin %d %d %d %d from projected window.\n",
-                     anSrcWin[0], 
-                     anSrcWin[1], 
-                     anSrcWin[2], 
+            printf( "Computed -srcwin %d %d %d %d from projected window.\n",
+                     anSrcWin[0],
+                     anSrcWin[1],
+                     anSrcWin[2],
                      anSrcWin[3] );
     }
 
@@ -1007,20 +1083,21 @@ static int ProxyMain( int argc, char ** argv )
 /* -------------------------------------------------------------------- */
     if( anSrcWin[2] <= 0 || anSrcWin[3] <= 0 )
     {
-        fprintf( stderr,
+        CPLError( CE_Failure, CPLE_AppDefined,
                  "Error: %s-srcwin %d %d %d %d has negative width and/or height.\n",
                  ( dfULX != 0.0 || dfULY != 0.0 || dfLRX != 0.0 || dfLRY != 0.0 ) ? "Computed " : "",
                  anSrcWin[0],
                  anSrcWin[1],
                  anSrcWin[2],
                  anSrcWin[3] );
-        exit( 1 );
+        *phOutDataset = NULL;
+        return CE_Failure;
     }
 
 /* -------------------------------------------------------------------- */
 /*      Verify source window dimensions.                                */
 /* -------------------------------------------------------------------- */
-    else if( anSrcWin[0] < 0 || anSrcWin[1] < 0 
+    else if( anSrcWin[0] < 0 || anSrcWin[1] < 0
         || anSrcWin[0] + anSrcWin[2] > GDALGetRasterXSize(hDataset)
         || anSrcWin[1] + anSrcWin[3] > GDALGetRasterYSize(hDataset) )
     {
@@ -1031,7 +1108,7 @@ static int ProxyMain( int argc, char ** argv )
         int bIsError = bErrorOnPartiallyOutside || (bCompletelyOutside && bErrorOnCompletelyOutside);
         if( !bQuiet || bIsError )
         {
-            fprintf( stderr,
+            CPLError( CE_Failure, CPLE_AppDefined,
                  "%s: %s-srcwin %d %d %d %d falls %s outside raster extent.%s\n",
                  (bIsError) ? "Error" : "Warning",
                  ( dfULX != 0.0 || dfULY != 0.0 || dfLRX != 0.0 || dfLRY != 0.0 ) ? "Computed " : "",
@@ -1043,7 +1120,10 @@ static int ProxyMain( int argc, char ** argv )
                  (bIsError) ? "" : " Going on however." );
         }
         if( bIsError )
-            exit(1);
+        {
+          *phOutDataset = NULL;
+          return CE_Failure;
+        }
     }
 
 /* -------------------------------------------------------------------- */
@@ -1053,7 +1133,7 @@ static int ProxyMain( int argc, char ** argv )
     if( hDriver == NULL )
     {
         int	iDr;
-        
+
         printf( "Output driver `%s' not recognised.\n", pszFormat );
         printf( "The following format drivers are configured and support output:\n" );
         for( iDr = 0; iDr < GDALGetDriverCount(); iDr++ )
@@ -1071,14 +1151,15 @@ static int ProxyMain( int argc, char ** argv )
         }
         printf( "\n" );
         Usage();
-        
+
         GDALClose( hDataset );
         CPLFree( panBandList );
-        GDALDestroyDriverManager();
-        CSLDestroy( argv );
+
+        CSLDestroy( papszTokens );
         CSLDestroy( papszCreateOptions );
         CSLDestroy( papszOpenOptions );
-        exit( 1 );
+        *phOutDataset = NULL;
+        return CE_Failure;
     }
 
 /* -------------------------------------------------------------------- */
@@ -1095,38 +1176,34 @@ static int ProxyMain( int argc, char ** argv )
         && anSrcWin[3] == GDALGetRasterYSize(hDataset)
         && pszOXSize == NULL && pszOYSize == NULL && dfXRes == 0.0 );
 
-    if( eOutputType == GDT_Unknown 
+    if( eOutputType == GDT_Unknown
         && nScaleRepeat == 0 && nExponentRepeat == 0 && !bUnscale
-        && CSLCount(papszMetadataOptions) == 0 && bDefBands 
+        && CSLCount(papszMetadataOptions) == 0 && bDefBands
         && eMaskMode == MASK_AUTO
         && bSpatialArrangementPreserved
         && nGCPCount == 0 && !bGotBounds
         && pszOutputSRS == NULL && !bSetNoData && !bUnsetNoData
         && nRGBExpand == 0 && !bStats && !bNoRAT )
     {
-        
-        hOutDS = GDALCreateCopy( hDriver, pszDest, hDataset, 
-                                 bStrict, papszCreateOptions, 
-                                 pfnProgress, NULL );
+
+        hOutDS = GDALCreateCopy( hDriver, pszDest, hDataset,
+                                 bStrict, papszCreateOptions,
+                                 pfnProgress, pProgressArg );
 
         if( hOutDS != NULL )
             GDALClose( hOutDS );
-        
+
         GDALClose( hDataset );
 
         CPLFree( panBandList );
 
-        if( !bSubCall )
-        {
-            GDALDumpOpenDatasets( stderr );
-            GDALDestroyDriverManager();
-        }
-
-        CSLDestroy( argv );
+        CSLDestroy( papszTokens );
         CSLDestroy( papszCreateOptions );
         CSLDestroy( papszOpenOptions );
 
-        return hOutDS == NULL;
+        *phOutDataset = hOutDS;
+
+        return hOutDS == NULL ? CE_Failure : CE_None;
     }
 
 /* -------------------------------------------------------------------- */
@@ -1138,13 +1215,14 @@ static int ProxyMain( int argc, char ** argv )
               nGCPCount == 0 &&
               adfGeoTransform[2] == 0.0 && adfGeoTransform[4] == 0.0) )
         {
-            fprintf( stderr, 
+            CPLError( CE_Failure, CPLE_AppDefined,
                      "The -tr option was used, but there's no geotransform or it is\n"
                      "rotated.  This configuration is not supported.\n" );
             GDALClose( hDataset );
             CPLFree( panBandList );
-            GDALDestroyDriverManager();
-            exit( 1 );
+
+            *phOutDataset = NULL;
+            return CE_Failure;
         }
         nOXSize = int(anSrcWin[2] / dfXRes * adfGeoTransform[1] + 0.5);
         nOYSize = int(anSrcWin[3] / dfYRes * fabs(adfGeoTransform[5]) + 0.5);
@@ -1156,26 +1234,27 @@ static int ProxyMain( int argc, char ** argv )
     }
     else
     {
-        nOXSize = (int) ((pszOXSize[strlen(pszOXSize)-1]=='%' 
+        nOXSize = (int) ((pszOXSize[strlen(pszOXSize)-1]=='%'
                           ? CPLAtofM(pszOXSize)/100*anSrcWin[2] : atoi(pszOXSize)));
-        nOYSize = (int) ((pszOYSize[strlen(pszOYSize)-1]=='%' 
+        nOYSize = (int) ((pszOYSize[strlen(pszOYSize)-1]=='%'
                           ? CPLAtofM(pszOYSize)/100*anSrcWin[3] : atoi(pszOYSize)));
     }
 
     if( nOXSize == 0 || nOYSize == 0 )
     {
-        fprintf(stderr, "Attempt to create %dx%d dataset is illegal.\n", nOXSize, nOYSize);
+        CPLError(CE_Failure, CPLE_AppDefined, "Attempt to create %dx%d dataset is illegal.\n", nOXSize, nOYSize);
         GDALClose( hDataset );
         CPLFree( panBandList );
-        GDALDestroyDriverManager();
-        exit( 1 );
+
+        *phOutDataset = NULL;
+        return CE_Failure;
     }
 
 /* ==================================================================== */
 /*      Create a virtual dataset.                                       */
 /* ==================================================================== */
     VRTDataset *poVDS;
-        
+
 /* -------------------------------------------------------------------- */
 /*      Make a virtual clone.                                           */
 /* -------------------------------------------------------------------- */
@@ -1207,19 +1286,19 @@ static int ProxyMain( int argc, char ** argv )
         poVDS->SetGeoTransform( adfGeoTransform );
     }
 
-    else if( GDALGetGeoTransform( hDataset, adfGeoTransform ) == CE_None 
+    else if( GDALGetGeoTransform( hDataset, adfGeoTransform ) == CE_None
         && nGCPCount == 0 )
     {
         adfGeoTransform[0] += anSrcWin[0] * adfGeoTransform[1]
             + anSrcWin[1] * adfGeoTransform[2];
         adfGeoTransform[3] += anSrcWin[0] * adfGeoTransform[4]
             + anSrcWin[1] * adfGeoTransform[5];
-        
+
         adfGeoTransform[1] *= anSrcWin[2] / (double) nOXSize;
         adfGeoTransform[2] *= anSrcWin[3] / (double) nOYSize;
         adfGeoTransform[4] *= anSrcWin[2] / (double) nOXSize;
         adfGeoTransform[5] *= anSrcWin[3] / (double) nOYSize;
-        
+
         if( dfXRes != 0.0 )
         {
             adfGeoTransform[1] = dfXRes;
@@ -1258,7 +1337,7 @@ static int ProxyMain( int argc, char ** argv )
             pasGCPs[i].dfGCPPixel *= (nOXSize / (double) anSrcWin[2] );
             pasGCPs[i].dfGCPLine  *= (nOYSize / (double) anSrcWin[3] );
         }
-            
+
         poVDS->SetGCPs( nGCPs, pasGCPs,
                         GDALGetGCPProjection( hDataset ) );
 
@@ -1331,23 +1410,24 @@ static int ProxyMain( int argc, char ** argv )
     if (nRGBExpand != 0)
     {
         GDALRasterBand  *poSrcBand;
-        poSrcBand = ((GDALDataset *) 
+        poSrcBand = ((GDALDataset *)
                      hDataset)->GetRasterBand(ABS(panBandList[0]));
         if (panBandList[0] < 0)
             poSrcBand = poSrcBand->GetMaskBand();
         GDALColorTable* poColorTable = poSrcBand->GetColorTable();
         if (poColorTable == NULL)
         {
-            fprintf(stderr, "Error : band %d has no color table\n", ABS(panBandList[0]));
+            CPLError(CE_Failure, CPLE_AppDefined, "Error : band %d has no color table\n", ABS(panBandList[0]));
             GDALClose( hDataset );
             CPLFree( panBandList );
-            GDALDestroyDriverManager();
-            CSLDestroy( argv );
+
+            CSLDestroy( papszTokens );
             CSLDestroy( papszCreateOptions );
             CSLDestroy( papszOpenOptions );
-            exit( 1 );
+            *phOutDataset = NULL;
+            return CE_Failure;
         }
-        
+
         /* Check that the color table only contains gray levels */
         /* when using -expand gray */
         if (nRGBExpand == 1)
@@ -1359,7 +1439,7 @@ static int ProxyMain( int argc, char ** argv )
                 const GDALColorEntry* poEntry = poColorTable->GetColorEntry(nColor);
                 if (poEntry->c1 != poEntry->c2 || poEntry->c1 != poEntry->c3)
                 {
-                    fprintf(stderr, "Warning : color table contains non gray levels colors\n");
+                    CPLError( CE_Failure, CPLE_AppDefined, "Warning : color table contains non gray levels colors\n");
                     break;
                 }
             }
@@ -1371,8 +1451,9 @@ static int ProxyMain( int argc, char ** argv )
             nBandCount = nRGBExpand;
         else
         {
-            fprintf(stderr, "Error : invalid use of -expand option.\n");
-            exit( 1 );
+            CPLError( CE_Failure, CPLE_AppDefined, "Error : invalid use of -expand option.\n");
+            *phOutDataset = NULL;
+            return CE_Failure;
         }
     }
 
@@ -1414,7 +1495,7 @@ static int ProxyMain( int argc, char ** argv )
         else
         {
             eBandType = eOutputType;
-            
+
             // Check that we can copy existing statistics
             GDALDataType eSrcBandType = poSrcBand->GetRasterDataType();
             const char* pszMin = poSrcBand->GetMetadataItem("STATISTICS_MINIMUM");
@@ -1535,6 +1616,7 @@ static int ProxyMain( int argc, char ** argv )
         if( bExponentScaling && !bScale )
         {
             Usage(CPLSPrintf("For band %d, -scale should be specified when -exponent is specified.", i + 1));
+            return CE_Failure;
         }
 
         if( bScale && !bHaveScaleSrc )
@@ -1553,7 +1635,7 @@ static int ProxyMain( int argc, char ** argv )
 
             if( !bExponentScaling )
             {
-                dfScale = (dfScaleDstMax - dfScaleDstMin) 
+                dfScale = (dfScaleDstMax - dfScaleDstMin)
                     / (dfScaleSrcMax - dfScaleSrcMin);
                 dfOffset = -1 * dfScaleSrcMin * dfScale + dfScaleDstMin;
             }
@@ -1668,7 +1750,7 @@ static int ProxyMain( int argc, char ** argv )
                 default:
                     break;
             }
-                
+
             if (bClamped)
             {
                 printf( "for band %d, nodata value has been clamped "
@@ -1682,7 +1764,7 @@ static int ProxyMain( int argc, char ** argv )
                        i + 1, dfVal,
                        GDALGetDataTypeName(eBandType));
             }
-            
+
             poVRTBand->SetNoDataValue( dfVal );
         }
 
@@ -1758,8 +1840,8 @@ static int ProxyMain( int argc, char ** argv )
 /*      Write to the output file using CopyCreate().                    */
 /* -------------------------------------------------------------------- */
     hOutDS = GDALCreateCopy( hDriver, pszDest, (GDALDatasetH) poVDS,
-                             bStrict, papszCreateOptions, 
-                             pfnProgress, NULL );
+                             bStrict, papszCreateOptions,
+                             pfnProgress, pProgressArg );
     if( hOutDS != NULL )
     {
         int bHasGotErr = FALSE;
@@ -1771,28 +1853,24 @@ static int ProxyMain( int argc, char ** argv )
         if (bHasGotErr)
             hOutDS = NULL;
     }
-    
+
     GDALClose( (GDALDatasetH) poVDS );
-        
+
     GDALClose( hDataset );
 
     CPLFree( panBandList );
     CPLFree( pasScaleParams );
     CPLFree( padfExponent );
-    
+
     CPLFree( pszOutputSRS );
 
-    if( !bSubCall )
-    {
-        GDALDumpOpenDatasets( stderr );
-        GDALDestroyDriverManager();
-    }
-
-    CSLDestroy( argv );
+    CSLDestroy( papszTokens );
     CSLDestroy( papszCreateOptions );
     CSLDestroy( papszOpenOptions );
-    
-    return hOutDS == NULL;
+
+    *phOutDataset = hOutDS;
+
+    return hOutDS == NULL ? CE_Failure : CE_None;
 }
 
 
@@ -1820,7 +1898,7 @@ static void AttachMetadata( GDALDatasetH hDS, char **papszMetadataOptions )
     {
         char    *pszKey = NULL;
         const char *pszValue;
-        
+
         pszValue = CPLParseNameValue( papszMetadataOptions[i], &pszKey );
         GDALSetMetadataItem(hDS,pszKey,pszValue,NULL);
         CPLFree( pszKey );
@@ -1892,7 +1970,19 @@ static void CopyBandInfo( GDALRasterBand * poSrcBand, GDALRasterBand * poDstBand
 int main( int argc, char ** argv )
 
 {
-    return ProxyMain( argc, argv );
+    /* Check strict compilation and runtime library version as we use C++ API */
+    if (! GDAL_CHECK_VERSION(argv[0]))
+        exit(1);
+
+    GDALAllRegister();
+
+    GDALDatasetH hOutDataset;
+
+    GDALTranslate( NULL, &hOutDataset, "gdaltranslate cea.tif out.png -of PNG", NULL, NULL );
+    
+    GDALClose( hOutDataset );
+
+    GDALDumpOpenDatasets( stderr );
+    GDALDestroyDriverManager();
+
 }
-
-
