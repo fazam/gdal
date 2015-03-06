@@ -272,7 +272,8 @@ typedef struct
     double  dfScaleDstMin, dfScaleDstMax;
 } ScaleParams;
 
-CPLErr GDALTranslate( GDALDatasetH hDataset, GDALDatasetH *phOutDataset, const char* pszArguments, GDALProgressFunc pfnProgress, void *pProgressArg )
+CPLErr GDALTranslate( GDALDatasetH hDataset, GDALDatasetH *phOutDataset,
+    const char* pszArguments, GDALProgressFunc pfnProgress, void *pProgressArg )
 
 {
     GDALDatasetH hOutDS;
