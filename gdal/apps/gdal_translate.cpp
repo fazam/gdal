@@ -1190,9 +1190,6 @@ CPLErr GDALTranslate( GDALDatasetH hDataset, GDALDatasetH *phOutDataset,
                                  bStrict, papszCreateOptions,
                                  pfnProgress, pProgressArg );
 
-        if( hOutDS != NULL )
-            GDALClose( hOutDS );
-
         GDALClose( hDataset );
 
         CPLFree( panBandList );
@@ -1849,7 +1846,7 @@ CPLErr GDALTranslate( GDALDatasetH hDataset, GDALDatasetH *phOutDataset,
         GDALFlushCache( hOutDS );
         if (CPLGetLastErrorType() != CE_None)
             bHasGotErr = TRUE;
-        GDALClose( hOutDS );
+        *phOutDataset = hOutDS;
         if (bHasGotErr)
             hOutDS = NULL;
     }
@@ -1867,8 +1864,6 @@ CPLErr GDALTranslate( GDALDatasetH hDataset, GDALDatasetH *phOutDataset,
     CSLDestroy( papszTokens );
     CSLDestroy( papszCreateOptions );
     CSLDestroy( papszOpenOptions );
-
-    *phOutDataset = hOutDS;
 
     return hOutDS == NULL ? CE_Failure : CE_None;
 }
@@ -1979,7 +1974,7 @@ int main( int argc, char ** argv )
     GDALDatasetH hOutDataset;
 
     GDALTranslate( NULL, &hOutDataset, "gdaltranslate cea.tif out.png -of PNG", NULL, NULL );
-    
+
     GDALClose( hOutDataset );
 
     GDALDumpOpenDatasets( stderr );
