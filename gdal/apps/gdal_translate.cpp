@@ -1979,12 +1979,13 @@ int main( int argc, char ** argv )
 
     for ( i = 0; i < argc; i++ )
     {
+        CPLStrlcat(pszArguments, "\"", sizeof(pszArguments));
         if(CPLStrlcat(pszArguments, argv[i], sizeof(pszArguments))
           >= sizeof(pszArguments))
         {
             fprintf(stderr, "truncation occured\n");
         }
-        CPLStrlcat(pszArguments, " ", sizeof(pszArguments));
+        CPLStrlcat(pszArguments, "\" ", sizeof(pszArguments));
     }
 
     GDALTranslate( NULL, &hOutDataset, pszArguments, NULL, NULL );
