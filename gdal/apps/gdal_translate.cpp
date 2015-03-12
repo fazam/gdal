@@ -36,6 +36,8 @@
 #include "vrtdataset.h"
 #include "commonutils.h"
 
+#define BUFFERSIZE 1000
+
 CPL_CVSID("$Id$");
 
 static int ArgIsNumeric( const char * );
@@ -1972,8 +1974,20 @@ int main( int argc, char ** argv )
     GDALAllRegister();
 
     GDALDatasetH hOutDataset;
+    char pszArguments[BUFFERSIZE] = "";
+    int i;
 
-    GDALTranslate( NULL, &hOutDataset, "gdaltranslate cea.tif out.png -of PNG", NULL, NULL );
+    for ( i = 0; i < argc; i++ )
+    {
+        if(CPLStrlcat(pszArguments, argv[i], sizeof(pszArguments))
+          >= sizeof(pszArguments))
+        {
+            fprintf(stderr, "truncation occured\n");
+        }
+        CPLStrlcat(pszArguments, " ", sizeof(pszArguments));
+    }
+
+    GDALTranslate( NULL, &hOutDataset, pszArguments, NULL, NULL );
 
     GDALClose( hOutDataset );
 
