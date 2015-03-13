@@ -901,7 +901,7 @@ CPLErr GDALTranslate( GDALDatasetH hDataset, GDALDatasetH *phOutDataset,
         int bOldSubCall = bSubCall;
         char** papszDupArgv = CSLDuplicate(papszTokens);
         int nRet = 0;
-        GDALDatasetH hSubDataset;
+        char pszDupArguments[BUFFERSIZE] = "";
 
         CPLString osPath = CPLGetPath(pszDest);
         CPLString osBasename = CPLGetBasename(pszDest);
@@ -933,20 +933,19 @@ CPLErr GDALTranslate( GDALDatasetH hDataset, GDALDatasetH *phOutDataset,
             osTemp = CPLFormFilename( osPath, osTemp, osExtension );
             strcpy( pszSubDest, osTemp.c_str() );
 
-            hSubDataset = GDALOpenEx( papszDupArgv[iSrcFileArg], GDAL_OF_RASTER, NULL,
-                                   (const char* const* )papszOpenOptions, NULL );
-
-            if( hSubDataset == NULL )
+            for ( i = 0; i < nTokens; i++ )
             {
-                CPLError( CE_Failure, CPLE_OpenFailed,
-                         "GDALOpen failed - %d\n%s\n",
-                         CPLGetLastErrorNo(), CPLGetLastErrorMsg() );
-
-                *phOutDataset = NULL;
-                return CE_Failure;
+                CPLStrlcat(pszDupArguments, "\"", sizeof(pszDupArguments));
+                if(CPLStrlcat(pszDupArguments, papszDupArgv[i], sizeof(pszDupArguments))
+                  >= sizeof(pszDupArguments))
+                {
+                    CPLError(CE_Failure, CPLE_AppDefined, "truncation occured\n");
+                }
+                CPLStrlcat(pszDupArguments, "\" ", sizeof(pszDupArguments));
             }
-            nRet = GDALTranslate( hSubDataset, phOutDataset, pszArguments, pfnProgress, pProgressArg );
-            if (nRet != 0)
+
+            nRet = GDALTranslate(NULL, phOutDataset, pszDupArguments, pfnProgress, pProgressArg);
+            if(nRet != 0)
                 break;
         }
         CSLDestroy(papszDupArgv);
