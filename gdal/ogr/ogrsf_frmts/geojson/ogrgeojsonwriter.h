@@ -50,7 +50,7 @@ class OGRGeometryCollection;
 #endif
 
 CPL_C_START
-json_object* json_object_new_double_with_precision(double dfVal, int nCoordPrecision);
+json_object CPL_DLL *json_object_new_double_with_precision(double dfVal, int nCoordPrecision);
 CPL_C_END
 
 /************************************************************************/

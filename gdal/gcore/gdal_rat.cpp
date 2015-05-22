@@ -603,7 +603,7 @@ void *GDALRasterAttributeTable::SerializeJSON() const
     json_object *poRAT = json_object_new_object();
 
     if( ( GetColumnCount() == 0 ) && ( GetRowCount() == 0 ) ) 
-        return NULL;
+        return poRAT;
 
 
 /* -------------------------------------------------------------------- */
