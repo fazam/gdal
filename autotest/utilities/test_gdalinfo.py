@@ -626,7 +626,7 @@ def test_gdalinfo_33():
 
     ret = gdaltest.runexternal(test_cli_utilities.get_gdalinfo_path() + ' -json ../gdrivers/data/int.img')
     ret = json.loads(ret)
-    if 'overviews' not in ret:
+    if 'overviews' not in ret['bands'][0]:
         return 'fail'
     if 'rat' not in ret:
         return 'fail'

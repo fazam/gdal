@@ -972,7 +972,7 @@ int main( int argc, char ** argv )
                         printf( "(null)" );
             }
             if(bJson)
-                json_object_object_add(poJsonObject, "overviews", poOverviews);
+                json_object_object_add(poBand, "overviews", poOverviews);
             else
                 printf( "\n" );
 
