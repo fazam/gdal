@@ -590,7 +590,7 @@ int main( int argc, char ** argv )
 
             if(bJson)
             {
-                hLatLongWGS84 = OSRNewSpatialReference( pszProjection );
+                hLatLongWGS84 = OSRNewSpatialReference( NULL );
                 OSRSetWellKnownGeogCS( hLatLongWGS84, "WGS84" );
             }
         }
@@ -639,6 +639,9 @@ int main( int argc, char ** argv )
         GDALInfoReportCorner( hDataset, hTransform, hTransformWGS84, "center",
                               GDALGetRasterXSize(hDataset)/2.0, GDALGetRasterYSize(hDataset)/2.0,
                               bJson, poCornerCoordinates, poWGS84ExtentCoordinates );
+        GDALInfoReportCorner( hDataset, hTransform, hTransformWGS84, "upperLeft",
+                              0.0, 0.0, bJson, poCornerCoordinates, poWGS84ExtentCoordinates );
+        
         json_object_object_add( poJsonObject, "cornerCoordinates", poCornerCoordinates );
         json_object_object_add( poWGS84Extent, "type", poWGS84ExtentType );
         json_object_object_add( poWGS84Extent, "coordinates", poWGS84ExtentCoordinates );
