@@ -1109,11 +1109,12 @@ int main( int argc, char ** argv )
                 if(bJson)
                 {
                     json_object_object_add(poMask, "overviews", poMaskOverviews);
-                    json_object_object_add(poBand, "mask", poMask);
                 }
                 else
                     printf( "\n" );
             }
+            if(bJson)
+                json_object_object_add(poBand, "mask", poMask);    
         }
 
         if( strlen(GDALGetRasterUnitType(hBand)) > 0 )
