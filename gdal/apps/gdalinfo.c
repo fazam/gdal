@@ -1015,7 +1015,7 @@ int main( int argc, char ** argv )
         if( (nMaskFlags & (GMF_NODATA|GMF_ALL_VALID)) == 0 )
         {
             GDALRasterBandH hMaskBand = GDALGetMaskBand(hBand) ;
-            json_object *poMask = NULL, *poFlags = NULL;
+            json_object *poMask = NULL, *poFlags = NULL, *poMaskOverviews = NULL;
 
             if(bJson)
             {
@@ -1069,26 +1069,35 @@ int main( int argc, char ** argv )
             else
                 printf( "\n" );
 
+            if(bJson)
+                poMaskOverviews = json_object_new_array();
+
             if( hMaskBand != NULL &&
                 GDALGetOverviewCount(hMaskBand) > 0 )
             {
                 int     iOverview;
-                json_object *poMaskOverviews = json_object_new_array();
-
-                printf( "  Overviews of mask band: " );
+                
+                if(!bJson)
+                    printf( "  Overviews of mask band: " );
+                
                 for( iOverview = 0; 
                      iOverview < GDALGetOverviewCount(hMaskBand);
                      iOverview++ )
                 {
                     GDALRasterBandH hOverview;
-                    json_object *poMaskOverviewSizeX, *poMaskOverviewSizeY;
+                    json_object *poMaskOverviewSizeX, *poMaskOverviewSizeY,
+                                *poMaskOverview, *poMaskOverviewSize;
 
-                    json_object *poMaskOverview = json_object_new_object();
-                    json_object *poMaskOverviewSize = json_object_new_array();
-
-                    if(!bJson)
+                    if(bJson)
+                    {
+                        poMaskOverview = json_object_new_object();
+                        poMaskOverviewSize = json_object_new_array();
+                    }
+                    else
+                    {
                         if( iOverview != 0 )
                             printf( ", " );
+                    }
 
                     hOverview = GDALGetOverview( hMaskBand, iOverview );
                     if(bJson)
@@ -1106,15 +1115,14 @@ int main( int argc, char ** argv )
                             GDALGetRasterBandXSize( hOverview ),
                             GDALGetRasterBandYSize( hOverview ) );
                 }
-                if(bJson)
-                {
-                    json_object_object_add(poMask, "overviews", poMaskOverviews);
-                }
-                else
+                if(!bJson)
                     printf( "\n" );
             }
             if(bJson)
-                json_object_object_add(poBand, "mask", poMask);    
+            {
+                json_object_object_add(poMask, "overviews", poMaskOverviews);
+                json_object_object_add(poBand, "mask", poMask);
+            }    
         }
 
         if( strlen(GDALGetRasterUnitType(hBand)) > 0 )
