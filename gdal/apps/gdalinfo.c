@@ -832,8 +832,7 @@ int main( int argc, char ** argv )
             if( eErr == CE_None )
             {
                 int iBucket;
-                json_object *poHistogram;
-                json_object *poBuckets = json_object_new_array();
+                json_object *poHistogram = NULL, *poBuckets = NULL;
 
                 if(bJson)
                 {
@@ -841,6 +840,7 @@ int main( int argc, char ** argv )
                     json_object *poMin = json_object_new_double(dfMin);
                     json_object *poMax = json_object_new_double(dfMax);
                     
+                    poBuckets = json_object_new_array();
                     poHistogram = json_object_new_object();
                     json_object_object_add(poHistogram, "count", poCount);
                     json_object_object_add(poHistogram, "min", poMin);
@@ -1185,13 +1185,15 @@ int main( int argc, char ** argv )
             && (hTable = GDALGetRasterColorTable( hBand )) != NULL )
         {
             int         i;
-            json_object *poColorTable = json_object_new_object();
+            json_object *poColorTable = NULL;
             
             if(bJson)
             {
                 json_object *poPalette = json_object_new_string(GDALGetPaletteInterpretationName(
                     GDALGetPaletteInterpretation(hTable)));
                 json_object *poCount = json_object_new_int(GDALGetColorEntryCount(hTable));
+                poColorTable = json_object_new_object();
+
                 json_object_object_add(poColorTable, "palette", poPalette);
                 json_object_object_add(poColorTable, "count", poCount);
             }
@@ -1203,8 +1205,11 @@ int main( int argc, char ** argv )
 
             if (bShowColorTable)
             {
-                json_object *poEntries = json_object_new_array();
+                json_object *poEntries = NULL;
                 
+                if(bJson)
+                    poEntries = json_object_new_array();
+
                 for( i = 0; i < GDALGetColorEntryCount( hTable ); i++ )
                 {
                     GDALColorEntry  sEntry;
