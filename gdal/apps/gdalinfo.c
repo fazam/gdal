@@ -1015,10 +1015,14 @@ int main( int argc, char ** argv )
         if( (nMaskFlags & (GMF_NODATA|GMF_ALL_VALID)) == 0 )
         {
             GDALRasterBandH hMaskBand = GDALGetMaskBand(hBand) ;
-            json_object *poMask = json_object_new_object();
-            json_object *poFlags = json_object_new_array();
+            json_object *poMask = NULL, *poFlags = NULL;
 
-            if(!bJson)
+            if(bJson)
+            {
+                poMask = json_object_new_object();
+                poFlags = json_object_new_array(); 
+            }
+            else
                 printf( "  Mask Flags: " );
             if( nMaskFlags & GMF_PER_DATASET )
             {
@@ -1096,15 +1100,18 @@ int main( int argc, char ** argv )
                         json_object_array_add(poMaskOverviewSize, poMaskOverviewSizeY);
                         json_object_object_add(poMaskOverview, "size", poMaskOverviewSize);
                         json_object_array_add(poMaskOverviews, poMaskOverview);
-                        json_object_object_add(poMask, "overviews", poMaskOverviews);
-                        json_object_object_add(poBand, "mask", poMask);
                     }
                     else
                         printf( "%dx%d", 
                             GDALGetRasterBandXSize( hOverview ),
                             GDALGetRasterBandYSize( hOverview ) );
                 }
-                if(!bJson)
+                if(bJson)
+                {
+                    json_object_object_add(poMask, "overviews", poMaskOverviews);
+                    json_object_object_add(poBand, "mask", poMask);
+                }
+                else
                     printf( "\n" );
             }
         }
