@@ -910,9 +910,11 @@ int main( int argc, char ** argv )
         if( GDALGetOverviewCount(hBand) > 0 )
         {
             int     iOverview;
-            json_object *poOverviews = json_object_new_array();
-
-            if(!bJson)
+            json_object *poOverviews = NULL;
+            
+            if(bJson)
+                poOverviews = json_object_new_array();
+            else
                 printf( "  Overviews: " );
 
             for( iOverview = 0; 
@@ -950,7 +952,6 @@ int main( int argc, char ** argv )
                             json_object_object_add(poOverview, "checksum", poOverviewChecksum);
                         }
                         json_object_array_add(poOverviews, poOverview);
-                        json_object_object_add(poJsonObject, "overviews", poOverviews);
                     }
                     else
                         printf( "%dx%d", 
@@ -968,7 +969,9 @@ int main( int argc, char ** argv )
                     if(!bJson)
                         printf( "(null)" );
             }
-            if(!bJson)
+            if(bJson)
+                json_object_object_add(poJsonObject, "overviews", poOverviews);
+            else
                 printf( "\n" );
 
             if ( bComputeChecksum && !bJson )
