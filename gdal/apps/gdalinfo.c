@@ -622,6 +622,7 @@ int main( int argc, char ** argv )
 /* -------------------------------------------------------------------- */
     if(bJson)
     {
+        json_object *poLinearRing = json_object_new_array();
         json_object *poCornerCoordinates = json_object_new_object();
         json_object *poWGS84Extent = json_object_new_object();
         json_object *poWGS84ExtentType = json_object_new_string("Polygon");
@@ -644,7 +645,8 @@ int main( int argc, char ** argv )
         
         json_object_object_add( poJsonObject, "cornerCoordinates", poCornerCoordinates );
         json_object_object_add( poWGS84Extent, "type", poWGS84ExtentType );
-        json_object_object_add( poWGS84Extent, "coordinates", poWGS84ExtentCoordinates );
+        json_object_array_add( poLinearRing, poWGS84ExtentCoordinates );
+        json_object_object_add( poWGS84Extent, "coordinates", poLinearRing );
         json_object_object_add( poJsonObject, "wgs84Extent", poWGS84Extent );
     }
     else
