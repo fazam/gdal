@@ -1452,9 +1452,14 @@ static void GDALInfoPrintMetadata( GDALMajorObjectH hObject,
         if(bJson)
         {
             if(bIsxml)
-                json_object_object_add( poMetadata, pszDisplayedname, poValue );
+                json_object_object_add( poMetadata, pszDomain, poValue );
             else
-                json_object_object_add( poMetadata, pszDisplayedname, poDomain );
+            {
+                if(pszDomain == NULL)
+                    json_object_object_add( poMetadata, "", poDomain );
+                else
+                    json_object_object_add( poMetadata, pszDomain, poDomain );
+            }
         }
     }
     
@@ -1522,10 +1527,7 @@ static void GDALInfoReportMetadata( GDALMajorObjectH hObject,
     /* -------------------------------------------------------------------- */
     /*      Report default Metadata domain.                                 */
     /* -------------------------------------------------------------------- */
-    if(bJson)
-        GDALInfoPrintMetadata( hObject, NULL, "", pszIndent, bJson, poMetadata );
-    else
-        GDALInfoPrintMetadata( hObject, NULL, "Metadata", pszIndent, bJson, poMetadata );
+    GDALInfoPrintMetadata( hObject, NULL, "Metadata", pszIndent, bJson, poMetadata );
 
     /* -------------------------------------------------------------------- */
     /*      Report extra Metadata domains                                   */
