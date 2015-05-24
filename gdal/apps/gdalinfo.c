@@ -892,7 +892,8 @@ int main( int argc, char ** argv )
             {
                 if(bJson)
                 {
-                    json_object_object_add(poBand, "noDataValue", NULL);
+                    json_object *poNoDataValue = json_object_new_string("nan");
+                    json_object_object_add(poBand, "noDataValue", poNoDataValue);
                 }
                 else
                     printf( "  NoData Value=nan\n" );
@@ -1411,7 +1412,7 @@ static void GDALInfoPrintMetadata( GDALMajorObjectH hObject,
     int bIsxml = FALSE;
     char *pszKey = NULL;
     const char *pszValue;
-    json_object *poDomain, *poValue;
+    json_object *poDomain = NULL, *poValue = NULL;
 
     if (pszDomain != NULL && EQUALN(pszDomain, "xml:", 4))
         bIsxml = TRUE;
@@ -1419,18 +1420,25 @@ static void GDALInfoPrintMetadata( GDALMajorObjectH hObject,
     papszMetadata = GDALGetMetadata( hObject, pszDomain );
     if( CSLCount(papszMetadata) > 0 )
     {
-        if(bJson)
+        if(bJson && !bIsxml)
             poDomain = json_object_new_object();
-        else
+        
+        if(!bJson)
             printf( "%s%s:\n", pszIndent, pszDisplayedname );
+        
         for( i = 0; papszMetadata[i] != NULL; i++ )
         {
             if(bJson)
             {
-                pszValue = CPLParseNameValue( papszMetadata[i], &pszKey );
-                poValue = json_object_new_string( pszValue );
-                json_object_object_add( poDomain, pszKey, poValue );
-                CPLFree( pszKey );
+                if(bIsxml)
+                    poValue = json_object_new_string( papszMetadata[i] );
+                else
+                {
+                    pszValue = CPLParseNameValue( papszMetadata[i], &pszKey );
+                    poValue = json_object_new_string( pszValue );
+                    json_object_object_add( poDomain, pszKey, poValue );
+                    CPLFree( pszKey );
+                }
             }
             else
             {
@@ -1440,10 +1448,14 @@ static void GDALInfoPrintMetadata( GDALMajorObjectH hObject,
                     printf( "%s  %s\n", pszIndent, papszMetadata[i] );
             
             }
-            
         }
         if(bJson)
-            json_object_object_add( poMetadata, pszDisplayedname, poDomain );
+        {
+            if(bIsxml)
+                json_object_object_add( poMetadata, pszDisplayedname, poValue );
+            else
+                json_object_object_add( poMetadata, pszDisplayedname, poDomain );
+        }
     }
     
 }
@@ -1484,7 +1496,7 @@ static void GDALInfoReportMetadata( GDALMajorObjectH hObject,
             if( EQUAL(*papszIter, "") )
             {
                 if(bJson)
-                    poMDD = json_object_new_string( "__default__" );
+                    poMDD = json_object_new_string( *papszIter );
                 else
                     printf( "%s  (default)\n", pszIndent);
             }
@@ -1511,7 +1523,7 @@ static void GDALInfoReportMetadata( GDALMajorObjectH hObject,
     /*      Report default Metadata domain.                                 */
     /* -------------------------------------------------------------------- */
     if(bJson)
-        GDALInfoPrintMetadata( hObject, NULL, "__default__", pszIndent, bJson, poMetadata );
+        GDALInfoPrintMetadata( hObject, NULL, "", pszIndent, bJson, poMetadata );
     else
         GDALInfoPrintMetadata( hObject, NULL, "Metadata", pszIndent, bJson, poMetadata );
 
@@ -1551,7 +1563,10 @@ static void GDALInfoReportMetadata( GDALMajorObjectH hObject,
         {
             char pszDisplayedname[256];
             snprintf(pszDisplayedname, 256, "Metadata (%s)", papszExtraMDDomainsExpanded[iMDD]);
-            GDALInfoPrintMetadata( hObject, papszExtraMDDomainsExpanded[iMDD], pszDisplayedname, pszIndent, bJson, poMetadata );
+            if(bJson)
+                GDALInfoPrintMetadata( hObject, papszExtraMDDomainsExpanded[iMDD], papszExtraMDDomainsExpanded[iMDD], pszIndent, bJson, poMetadata );
+            else
+                GDALInfoPrintMetadata( hObject, papszExtraMDDomainsExpanded[iMDD], pszDisplayedname, pszIndent, bJson, poMetadata );
         }
 
         CSLDestroy(papszExtraMDDomainsExpanded);

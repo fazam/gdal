@@ -600,14 +600,14 @@ def test_gdalinfo_32():
     
     ret = gdaltest.runexternal(test_cli_utilities.get_gdalinfo_path() + ' -json ../gcore/data/byte.tif')
     ret = json.loads(ret)
-    if '__default__' in ret['bands'][0]['metadata']:
+    if '' in ret['bands'][0]['metadata']:
         gdaltest.post_reason( 'got wrong minimum.' )
         print(ret)
         return 'fail'
 
     ret = gdaltest.runexternal(test_cli_utilities.get_gdalinfo_path() + ' -json -stats ../gcore/data/byte.tif')
     ret = json.loads(ret)
-    if ret['bands'][0]['metadata']['__default__']['STATISTICS_MINIMUM'] != '74':
+    if ret['bands'][0]['metadata']['']['STATISTICS_MINIMUM'] != '74':
         gdaltest.post_reason( 'got wrong minimum (2).' )
         print(ret)
         return 'fail'
@@ -696,14 +696,14 @@ def test_gdalinfo_36():
 
     ret = gdaltest.runexternal(test_cli_utilities.get_gdalinfo_path() + ' -json ../gdrivers/data/fake_nsif.ntf')
     ret = json.loads(ret)
-    if 'Metadata (TRE)' in ret['metadata']:
+    if 'TRE' in ret['metadata']:
         gdaltest.post_reason( 'unexpectingly got extra MD.' )
         print(ret)
         return 'fail'
 
     ret = gdaltest.runexternal(test_cli_utilities.get_gdalinfo_path() + ' -json -mdd TRE ../gdrivers/data/fake_nsif.ntf')
     ret = json.loads(ret)
-    if ret['metadata']['Metadata (TRE)']['BLOCKA'].find('010000001000000000') == -1:
+    if ret['metadata']['TRE']['BLOCKA'].find('010000001000000000') == -1:
         gdaltest.post_reason( 'did not get extra MD.' )
         print(ret)
         return 'fail'
@@ -756,7 +756,7 @@ def test_gdalinfo_39():
 
     ret = gdaltest.runexternal(test_cli_utilities.get_gdalinfo_path() + ' -json ../gdrivers/data/byte_with_xmp.tif -mdd all', check_memleak = False )
     ret = json.loads(ret)
-    if 'Metadata (xml:XMP)' not in ret['metadata']:
+    if 'xml:XMP' not in ret['metadata']:
         print(ret)
         return 'fail'
 
