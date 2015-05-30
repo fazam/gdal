@@ -92,6 +92,8 @@ LIBGDAL_CURRENT	:=	20
 LIBGDAL_REVISION	:=	0
 LIBGDAL_AGE	:=	0
 
+LIBGDAL_UTILS := libgdalutils.la
+
 # native build targets and variables
 GDAL_VER	=	@GDAL_VER@
 
@@ -103,6 +105,9 @@ GDAL_VERSION_REV   =    @GDAL_VERSION_REV@
 GDAL_LIB	= 	$(GDAL_ROOT)/libgdal.a
 GDAL_SLIB	=	$(GDAL_ROOT)/libgdal.$(SO_EXT)
 GDAL_SLIB_LINK	=	-L$(GDAL_ROOT) -lgdal
+
+GDAL_UTILS_LIB = $(GDAL_ROOT)/libgdalutils.a
+GDAL_UTILS_SLIB = $(GDAL_ROOT)/libgdal.$(SO_EXT)
 
 # Mac OS X Framework definition
 MACOSX_FRAMEWORK = @MACOSX_FRAMEWORK@

@@ -30,6 +30,7 @@
 #ifndef GDAL_RAT_H_INCLUDED
 #define GDAL_RAT_H_INCLUDED
 
+#include "gdal_priv.h"
 #include "cpl_minixml.h"
 
 // Clone and Serialize are allowed to fail if GetRowCount()*GetColCount() greater
