@@ -139,8 +139,7 @@ int main( int argc, char ** argv )
         else if( EQUAL(argv[i], "-mdd") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
-            psOptions->papszExtraMDDomains = CSLAddString( psOptions->papszExtraMDDomains,
-                                                argv[++i] );
+            GDALInfoOptionsAddExtraMDDomains( psOptions, argv[++i] );
         }
         else if( EQUAL(argv[i], "-oo") )
         {

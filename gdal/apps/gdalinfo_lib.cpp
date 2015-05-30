@@ -58,6 +58,21 @@ GDALInfoReportMetadata( GDALMajorObjectH hObject,
                         json_object *poMetadata,
                         CPLString& osStr );
 
+/************************************************************************/
+/*                             GDALInfo()                               */
+/************************************************************************/
+
+/**
+ * lists various information about a GDAL supported raster dataset.
+ *
+ * GDALInfoOptions* must be allocated and freed with GDALInfoOptionsNew()
+ * and GDALInfoOptionsFree( GDALInfoOptions* ) respectively.
+ *
+ * @param hDataset the dataset handle.
+ * @param psOptions the options struct for GDALInfo().
+ * @return string corresponding to the information about the raster dataset.
+ */
+
 char *GDALInfo( GDALDatasetH hDataset, GDALInfoOptions *psOptions )
 {
     GDALRasterBandH hBand = NULL;
@@ -75,7 +90,7 @@ char *GDALInfo( GDALDatasetH hDataset, GDALInfoOptions *psOptions )
         bJson = TRUE;
 
     if(psOptions->bAllMetadata == TRUE)
-        psOptions->papszExtraMDDomains = CSLAddString( psOptions->papszExtraMDDomains, "all" );
+        GDALInfoOptionsAddExtraMDDomains( psOptions, "all" );
 
 /* -------------------------------------------------------------------- */
 /*      Report general info.                                            */
@@ -1218,13 +1233,20 @@ static void GDALInfoPrintMetadata( GDALMajorObjectH hObject,
             if(bJson)
             {
                 if(bIsxml)
+                {
                     poValue = json_object_new_string( papszMetadata[i] );
+                    break;
+                }
                 else
                 {
+                    pszKey = NULL;
                     pszValue = CPLParseNameValue( papszMetadata[i], &pszKey );
-                    poValue = json_object_new_string( pszValue );
-                    json_object_object_add( poDomain, pszKey, poValue );
-                    CPLFree( pszKey );
+                    if( pszKey )
+                    {
+                        poValue = json_object_new_string( pszValue );
+                        json_object_object_add( poDomain, pszKey, poValue );
+                        CPLFree( pszKey );
+                    }
                 }
             }
             else
@@ -1378,6 +1400,16 @@ static void GDALInfoReportMetadata( GDALMajorObjectH hObject,
 
 }
 
+/************************************************************************/
+/*                             GDALInfoOptionsNew()                     */
+/************************************************************************/
+
+/**
+ * allocates a GDALInfoOptions struct.
+ *
+ * @return pointer to the allocated GDALInfoOptions struct.
+ */
+
 GDALInfoOptions *GDALInfoOptionsNew()
 {
     GDALInfoOptions *psOptions = (GDALInfoOptions *) CPLCalloc( 1, sizeof(GDALInfoOptions) );
@@ -1400,6 +1432,33 @@ GDALInfoOptions *GDALInfoOptionsNew()
 
     return psOptions;
 }
+
+/************************************************************************/
+/*                   GDALInfoOptionsAddExtraMDDomains()                 */
+/************************************************************************/
+
+/**
+ * Specify the particular metadata domain which need to be reported.
+ *
+ * @param psOptions the options struct for GDALInfo().
+ * @param pszDomain the specific metadata domain which need to be reported.
+ */
+
+void GDALInfoOptionsAddExtraMDDomains( GDALInfoOptions *psOptions,
+                                       const char *pszDomain )
+{
+    psOptions->papszExtraMDDomains = CSLAddString( psOptions->papszExtraMDDomains, pszDomain );
+}
+
+/************************************************************************/
+/*                             GDALInfoOptionsFree()                    */
+/************************************************************************/
+
+/**
+ * frees the GDALInfoOptions struct.
+ *
+ * @param psOptions the options struct for GDALInfo().
+ */
 
 void GDALInfoOptionsFree( GDALInfoOptions *psOptions )
 {

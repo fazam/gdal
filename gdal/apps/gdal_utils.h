@@ -3,11 +3,12 @@
  *
  * Project:  GDAL Utilities
  * Purpose:  GDAL Utilities Public Declarations.
- * Author:   Frank Warmerdam, warmerdam@pobox.com
+ * Author:   Faza Mahamood, fazamhd at gmail dot com
  *
  * ****************************************************************************
  * Copyright (c) 1998, Frank Warmerdam
  * Copyright (c) 2007-2013, Even Rouault <even dot rouault at mines-paris dot org>
+ * Copyright (c) 2015, Faza Mahamood
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -30,11 +31,16 @@
 
 #include "cpl_port.h"
 
+CPL_C_START
+
 typedef enum {
     GDALINFO_FORMAT_TEXT = 0,
     GDALINFO_FORMAT_JSON = 1
 } GDALInfoFormat;
 
+/** GDALInfoOptions* must be allocated and freed with GDALInfoOptionsNew() and 
+ * GDALInfoOptionsFree( GDALInfoOptions* ) respectively.
+ */
 typedef struct
 {
     GDALInfoFormat eFormat;
@@ -52,11 +58,20 @@ typedef struct
     int bListMDD;
     int bShowFileList;
     int bAllMetadata;
+    /** papszExtraMDDomains must not be directly set but through
+     * GDALInfoOptionsAddExtraMDDomains( GDALInfoOptions *psOptions, 
+     *                                   const char pszDomain )
+     */
     char **papszExtraMDDomains;
 } GDALInfoOptions;
 
 GDALInfoOptions CPL_DLL *GDALInfoOptionsNew( void );
 
+void CPL_DLL GDALInfoOptionsAddExtraMDDomains( GDALInfoOptions *psOptions,
+                                               const char *pszDomain );
+
 void CPL_DLL GDALInfoOptionsFree( GDALInfoOptions *psOptions );
 
 char CPL_DLL *GDALInfo( GDALDatasetH hDataset, GDALInfoOptions *psOptions );
+
+CPL_C_END
