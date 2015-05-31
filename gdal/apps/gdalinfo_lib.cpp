@@ -66,11 +66,12 @@ GDALInfoReportMetadata( GDALMajorObjectH hObject,
  * lists various information about a GDAL supported raster dataset.
  *
  * GDALInfoOptions* must be allocated and freed with GDALInfoOptionsNew()
- * and GDALInfoOptionsFree( GDALInfoOptions* ) respectively.
+ * and GDALInfoOptionsFree() respectively.
  *
  * @param hDataset the dataset handle.
  * @param psOptions the options struct for GDALInfo().
  * @return string corresponding to the information about the raster dataset.
+ * It must be freed using CPLFree().
  */
 
 char *GDALInfo( GDALDatasetH hDataset, GDALInfoOptions *psOptions )

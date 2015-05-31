@@ -29,6 +29,12 @@
  * DEALINGS IN THE SOFTWARE.
  ****************************************************************************/
 
+/**
+ * \file gdal_utils.h
+ *
+ * Public (C callable) GDAL Utilities entry points.
+ */
+
 #include "cpl_port.h"
 
 CPL_C_START
@@ -39,7 +45,7 @@ typedef enum {
 } GDALInfoFormat;
 
 /** GDALInfoOptions* must be allocated and freed with GDALInfoOptionsNew() and 
- * GDALInfoOptionsFree( GDALInfoOptions* ) respectively.
+ * GDALInfoOptionsFree() respectively.
  */
 typedef struct
 {
@@ -59,8 +65,7 @@ typedef struct
     int bShowFileList;
     int bAllMetadata;
     /** papszExtraMDDomains must not be directly set but through
-     * GDALInfoOptionsAddExtraMDDomains( GDALInfoOptions *psOptions, 
-     *                                   const char pszDomain )
+     * GDALInfoOptionsAddExtraMDDomains().
      */
     char **papszExtraMDDomains;
 } GDALInfoOptions;

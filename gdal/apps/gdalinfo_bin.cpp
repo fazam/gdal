@@ -71,6 +71,7 @@ int main( int argc, char ** argv )
     GDALInfoOptions *psOptions = NULL;
     char **papszFileList;
     char **papszOpenOptions = NULL;
+    char *pszGDALInfoOutput = NULL;
 
     /* Check that we are running against at least GDAL 1.5 */
     /* Note to developers : if we use newer API, please change the requirement */
@@ -247,7 +248,11 @@ int main( int argc, char ** argv )
         }
     }
 
-    printf( "%s\n", GDALInfo( hDataset, psOptions ) );
+    pszGDALInfoOutput = GDALInfo( hDataset, psOptions );
+
+    printf( "%s\n", pszGDALInfoOutput );
+
+    CPLFree( pszGDALInfoOutput );
 
     GDALInfoOptionsFree( psOptions );
 
