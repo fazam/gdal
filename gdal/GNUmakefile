@@ -11,10 +11,17 @@ GDAL_OBJ += $(GDAL_ROOT)/ogr/ogrsf_frmts/o/*.o
 include ./ogr/file.lst
 GDAL_OBJ += $(addprefix ./ogr/,$(OBJ))
 
+GDAL_UTILS_OBJ = $(GDAL_ROOT)/apps/gdalinfo_lib.o
+
 LIBGDAL-yes	:=	$(GDAL_LIB)
 LIBGDAL-$(HAVE_LD_SHARED)	+=	$(GDAL_SLIB)
 # override if we are using libtool
 LIBGDAL-$(HAVE_LIBTOOL)	:= $(LIBGDAL)
+
+LIBGDAL_UTILS-yes := $(GDAL_UTILS_LIB)
+LIBGDAL_UTILS-$(HAVE_LD_SHARED) += $(GDAL_UTILS_SLIB)
+# override if we are using libtool
+LIBGDAL_UTILS-$(HAVE_LIBTOOL) := $(LIBGDAL_UTILS)
 
 default:	lib-target apps-target swig-target gdal.pc
 
@@ -44,8 +51,24 @@ ifeq ($(MACOSX_FRAMEWORK),yes)
 	install_name_tool -id ${OSX_VERSION_FRAMEWORK_PREFIX}/GDAL .libs/libgdal.dylib
 endif
 
+$(GDAL_UTILS_LIB): $(GDAL_UTILS_OBJ) GDALmake.opt
+	rm -f libgdalutils.a
+	$(AR) r $(GDAL_UTILS_LIB) $(GDAL_UTILS_OBJ)
+	$(RANLIB) $(GDAL_UTILS_LIB)
+
+$(GDAL_UTILS_SLIB): $(GDAL_UTILS_OBJ) $(GDAL_UTILS_LIB)
+	$(LD_SHARED) $(GDAL_UTILS_SLIB_SONAME) $(GDAL_UTILS_OBJ) $(GDAL_UTILS_LIB) \
+		-o $(GDAL_UTILS_SLIB)
+
+$(LIBGDAL_UTILS): $(GDAL_UTILS_OBJ:.o=.lo)
+	$(LD) $(LDFLAGS) $(LIBS) -o $@ $(GDAL_UTILS_OBJ:.o=.lo) \
+		-rpath $(INST_LIB) \
+		-no-undefined \
+		-version-info $(LIBGDAL_CURRENT):$(LIBGDAL_REVISION):$(LIBGDAL_AGE)	
+
 check-lib:	port-target core-target frmts-target ogr-target
 	$(MAKE) $(LIBGDAL-yes)
+	$(MAKE) $(LIBGDAL_UTILS-yes)
 
 port-target:
 	(cd port; $(MAKE))

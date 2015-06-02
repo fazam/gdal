@@ -107,7 +107,8 @@ GDAL_SLIB	=	$(GDAL_ROOT)/libgdal.$(SO_EXT)
 GDAL_SLIB_LINK	=	-L$(GDAL_ROOT) -lgdal
 
 GDAL_UTILS_LIB = $(GDAL_ROOT)/libgdalutils.a
-GDAL_UTILS_SLIB = $(GDAL_ROOT)/libgdal.$(SO_EXT)
+GDAL_UTILS_SLIB = $(GDAL_ROOT)/libgdalutils.$(SO_EXT)
+GDAL_UTILS_SLIB_LINK = -L$(GDAL_ROOT) -lgdalutils
 
 # Mac OS X Framework definition
 MACOSX_FRAMEWORK = @MACOSX_FRAMEWORK@
@@ -533,7 +534,7 @@ endif
 
 ifeq ($(HAVE_LIBTOOL), yes)
 
-CONFIG_LIBS	=	$(GDAL_ROOT)/$(LIBGDAL)
+CONFIG_LIBS	=	$(GDAL_ROOT)/$(LIBGDAL) $(GDAL_ROOT)/$(LIBGDAL_UTILS)
 ifeq ($(MACOSX_FRAMEWORK),yes)
 CONFIG_LIBS_INS	=	-L$(INST_LIB)/unix/lib -lgdal
 else

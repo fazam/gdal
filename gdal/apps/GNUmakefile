@@ -43,8 +43,8 @@ lib-depend:
 	(cd ../gcore ; $(MAKE) )
 	(cd ../port ; $(MAKE) )
 
-gdalinfo$(EXE):	gdalinfo_bin.$(OBJ_EXT) gdalinfo_lib.$(OBJ_EXT) commonutils.$(OBJ_EXT) $(DEP_LIBS)
-	$(LD) $(LNK_FLAGS) $< commonutils.$(OBJ_EXT) gdalinfo_lib.$(OBJ_EXT) $(XTRAOBJ) $(CONFIG_LIBS) -o $@
+gdalinfo$(EXE):	gdalinfo_bin.$(OBJ_EXT) commonutils.$(OBJ_EXT) $(DEP_LIBS)
+	$(LD) $(LNK_FLAGS) $< commonutils.$(OBJ_EXT) $(XTRAOBJ) $(CONFIG_LIBS) -o $@
 
 gdalserver$(EXE):	gdalserver.$(OBJ_EXT) $(DEP_LIBS)
 	$(LD) $(LNK_FLAGS) $< $(XTRAOBJ) $(CONFIG_LIBS) -o $@
