@@ -534,7 +534,7 @@ endif
 
 ifeq ($(HAVE_LIBTOOL), yes)
 
-CONFIG_LIBS	=	$(GDAL_ROOT)/$(LIBGDAL) $(GDAL_ROOT)/$(LIBGDAL_UTILS)
+CONFIG_LIBS	=	$(GDAL_ROOT)/$(LIBGDAL)
 ifeq ($(MACOSX_FRAMEWORK),yes)
 CONFIG_LIBS_INS	=	-L$(INST_LIB)/unix/lib -lgdal
 else

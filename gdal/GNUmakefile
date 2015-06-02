@@ -66,9 +66,12 @@ $(LIBGDAL_UTILS): $(GDAL_UTILS_OBJ:.o=.lo)
 		-no-undefined \
 		-version-info $(LIBGDAL_CURRENT):$(LIBGDAL_REVISION):$(LIBGDAL_AGE)	
 
-check-lib:	port-target core-target frmts-target ogr-target
+check-lib:	port-target core-target frmts-target ogr-target appslib-target
 	$(MAKE) $(LIBGDAL-yes)
 	$(MAKE) $(LIBGDAL_UTILS-yes)
+
+appslib-target:
+	(cd apps; $(MAKE) appslib)
 
 port-target:
 	(cd port; $(MAKE))
