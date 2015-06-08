@@ -926,3 +926,208 @@ GDALDriverShadow *IdentifyDriver( const char *utf8_path,
 __version__ = _gdal.VersionInfo("RELEASE_NAME") 
 %}
 #endif
+
+//************************************************************************
+//
+// GDAL Utilities
+//
+//************************************************************************
+
+#ifdef SWIGPYTHON
+%{
+#include "gdal_utils.h"   
+%}
+
+typedef enum {
+    GDALINFO_FORMAT_TEXT = 0,
+    GDALINFO_FORMAT_JSON = 1
+} GDALInfoFormat;
+
+typedef struct
+{
+    GDALInfoFormat eFormat;
+    int bComputeMinMax;
+    int bReportHistograms;
+    int bReportProj4;
+    int bStats;
+    int bApproxStats;
+    int bSample;
+    int bComputeChecksum;
+    int bShowGCPs;
+    int bShowMetadata;
+    int bShowRAT;
+    int bShowColorTable;
+    int bListMDD;
+    int bShowFileList;
+    int bAllMetadata;
+    char **papszExtraMDDomains;
+} GDALInfoOptions;
+
+%apply Pointer NONNULL {GDALInfoOptions *psOptions};
+%inline %{
+
+GDALInfoFormat InfoOptions_Format_get( GDALInfoOptions *psOptions )
+{
+    return psOptions->eFormat;
+}
+
+void InfoOptions_Format_set( GDALInfoOptions *psOptions, GDALInfoFormat eFormat )
+{
+    psOptions->eFormat = eFormat;
+}
+
+bool InfoOptions_ComputeMinMax_get( GDALInfoOptions *psOptions )
+{
+    return psOptions->bComputeMinMax;
+}
+
+void InfoOptions_ComputeMinMax_set( GDALInfoOptions *psOptions, bool bComputeMinMax )
+{
+    psOptions->bComputeMinMax = bComputeMinMax;
+}
+
+bool InfoOptions_ReportHistograms_get( GDALInfoOptions *psOptions )
+{
+    return psOptions->bReportHistograms;
+}
+
+void InfoOptions_ReportHistograms_set( GDALInfoOptions *psOptions, bool bReportHistograms )
+{
+    psOptions->bReportHistograms = bReportHistograms;
+}
+
+bool InfoOptions_ReportProj4_get( GDALInfoOptions *psOptions )
+{
+    return psOptions->bReportProj4;
+}
+
+void InfoOptions_ReportProj4_set( GDALInfoOptions *psOptions, bool bReportProj4 )
+{
+    psOptions->bReportProj4 = bReportProj4;
+}
+
+bool InfoOptions_Stats_get( GDALInfoOptions *psOptions )
+{
+    return psOptions->bStats;
+}
+
+void InfoOptions_Stats_set( GDALInfoOptions *psOptions, bool bStats )
+{
+    psOptions->bStats = bStats;
+}
+
+bool InfoOptions_ApproxStats_get( GDALInfoOptions *psOptions )
+{
+    return psOptions->bApproxStats;
+}
+
+void InfoOptions_ApproxStats_set( GDALInfoOptions *psOptions, bool bApproxStats )
+{
+    psOptions->bApproxStats = bApproxStats;
+}
+
+bool InfoOptions_Sample_get( GDALInfoOptions *psOptions )
+{
+    return psOptions->bSample;
+}
+
+void InfoOptions_Sample_set( GDALInfoOptions *psOptions, bool bSample )
+{
+    psOptions->bSample = bSample;
+}
+
+bool InfoOptions_ComputeChecksum_get( GDALInfoOptions *psOptions )
+{
+    return psOptions->bComputeChecksum;
+}
+
+void InfoOptions_ComputeChecksum_set( GDALInfoOptions *psOptions, bool bComputeChecksum )
+{
+    psOptions->bComputeChecksum = bComputeChecksum;
+}
+
+bool InfoOptions_ShowGCPs_get( GDALInfoOptions *psOptions )
+{
+    return psOptions->bShowGCPs;
+}
+
+void InfoOptions_ShowGCPs_set( GDALInfoOptions *psOptions, bool bShowGCPs )
+{
+    psOptions->bShowGCPs = bShowGCPs;
+}
+
+bool InfoOptions_ShowMetadata_get( GDALInfoOptions *psOptions )
+{
+    return psOptions->bShowMetadata;
+}
+
+void InfoOptions_ShowMetadata_set( GDALInfoOptions *psOptions, bool bShowMetadata )
+{
+    psOptions->bShowMetadata = bShowMetadata;
+}
+
+bool InfoOptions_ShowRAT_get( GDALInfoOptions *psOptions )
+{
+    return psOptions->bShowRAT;
+}
+
+void InfoOptions_ShowRAT_set( GDALInfoOptions *psOptions, bool bShowRAT )
+{
+    psOptions->bShowRAT = bShowRAT;
+}
+
+bool InfoOptions_ShowColorTable_get( GDALInfoOptions *psOptions )
+{
+    return psOptions->bShowColorTable;
+}
+
+void InfoOptions_ShowColorTable_set( GDALInfoOptions *psOptions, bool bShowColorTable )
+{
+    psOptions->bShowColorTable = bShowColorTable;
+}
+
+bool InfoOptions_ListMDD_get( GDALInfoOptions *psOptions )
+{
+    return psOptions->bListMDD;
+}
+
+void InfoOptions_ListMDD_set( GDALInfoOptions *psOptions, bool bListMDD )
+{
+    psOptions->bListMDD = bListMDD;
+}
+
+bool InfoOptions_ShowFileList_get( GDALInfoOptions *psOptions )
+{
+    return psOptions->bShowFileList;
+}
+
+void InfoOptions_ShowFileList_set( GDALInfoOptions *psOptions, bool bShowFileList )
+{
+    psOptions->bShowFileList = bShowFileList;
+}
+
+bool InfoOptions_AllMetadata_get( GDALInfoOptions *psOptions )
+{
+    return psOptions->bAllMetadata;
+}
+
+void InfoOptions_AllMetadata_set( GDALInfoOptions *psOptions, bool bAllMetadata )
+{
+    psOptions->bAllMetadata = bAllMetadata;
+}
+
+%}
+
+%clear GDALInfoOptions *psOptions;
+
+%rename (InfoOptionsNew) GDALInfoOptionsNew;
+GDALInfoOptions *GDALInfoOptionsNew( void );
+
+%rename (InfoOptionsAddExtraMDDomains) GDALInfoOptionsAddExtraMDDomains;
+void GDALInfoOptionsAddExtraMDDomains( GDALInfoOptions *psOptions,
+                                               const char *pszDomain );
+
+%rename (Info) GDALInfo;
+char *GDALInfo( GDALDatasetShadow *hDataset, GDALInfoOptions *psOptions );
+
+#endif
