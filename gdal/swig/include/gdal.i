@@ -969,36 +969,13 @@ struct GDALInfoOptions {
     char **extraMDDomains;
 %immutable;
 
-    GDALInfoOptions( GDALInfoFormat format = GDALINFO_FORMAT_TEXT, bool computeMinMax = FALSE,
-                     bool reportHistograms = FALSE, bool reportProj4 = FALSE, bool stats = FALSE,
-                     bool approxStats = TRUE, bool sample = FALSE, bool computeChecksum = FALSE,
-                     bool showGCPs = TRUE, bool showMetadata = TRUE, bool showRAT = TRUE,
-                     bool showColorTable = TRUE, bool listMDD = FALSE, bool showFileList = TRUE,
-                     bool allMetadata = FALSE ) {
-        GDALInfoOptions *self = (GDALInfoOptions*) CPLMalloc( sizeof(GDALInfoOptions) );
-        self->eFormat = format;
-        self->bComputeMinMax = computeMinMax;
-        self->bReportHistograms = reportHistograms;
-        self->bReportProj4 = reportProj4;
-        self->bStats = stats;
-        self->bApproxStats = approxStats;
-        self->bSample = sample;
-        self->bComputeChecksum = computeChecksum;
-        self->bShowGCPs = showGCPs;
-        self->bShowMetadata = showMetadata;
-        self->bShowRAT = showRAT;
-        self->bShowColorTable = showColorTable;
-        self->bListMDD = listMDD;
-        self->bShowFileList = showFileList;
-        self->bAllMetadata = allMetadata;
-        self->papszExtraMDDomains = NULL;
+    GDALInfoOptions() {
+        GDALInfoOptions *self = GDALInfoOptionsNew();
         return self;
     }
 
     ~GDALInfoOptions() {
-        if( self->papszExtraMDDomains )
-            CSLDestroy( self->papszExtraMDDomains );
-        CPLFree( self );
+        GDALInfoOptionsFree( self );
     }
 }
 };
