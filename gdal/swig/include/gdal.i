@@ -938,196 +938,243 @@ __version__ = _gdal.VersionInfo("RELEASE_NAME")
 #include "gdal_utils.h"   
 %}
 
+%rename (INFO_FORMAT_TEXT) GDALINFO_FORMAT_TEXT;
+%rename (INFO_FORMAT_JSON) GDALINFO_FORMAT_JSON;
+
 typedef enum {
     GDALINFO_FORMAT_TEXT = 0,
     GDALINFO_FORMAT_JSON = 1
 } GDALInfoFormat;
 
-typedef struct
-{
-    GDALInfoFormat eFormat;
-    int bComputeMinMax;
-    int bReportHistograms;
-    int bReportProj4;
-    int bStats;
-    int bApproxStats;
-    int bSample;
-    int bComputeChecksum;
-    int bShowGCPs;
-    int bShowMetadata;
-    int bShowRAT;
-    int bShowColorTable;
-    int bListMDD;
-    int bShowFileList;
-    int bAllMetadata;
-    char **papszExtraMDDomains;
-} GDALInfoOptions;
+%rename (InfoOptions) GDALInfoOptions;
 
-%apply Pointer NONNULL {GDALInfoOptions *psOptions};
+struct GDALInfoOptions {
+%extend {
+%mutable;
+    GDALInfoFormat format;
+    int computeMinMax;
+    int reportHistograms;
+    int reportProj4;
+    int stats;
+    int approxStats;
+    int sample;
+    int computeChecksum;
+    int showGCPs;
+    int showMetadata;
+    int showRAT;
+    int showColorTable;
+    int listMDD;
+    int showFileList;
+    int allMetadata;
+    char **extraMDDomains;
+%immutable;
+
+    GDALInfoOptions( GDALInfoFormat format = GDALINFO_FORMAT_TEXT, bool computeMinMax = FALSE,
+                     bool reportHistograms = FALSE, bool reportProj4 = FALSE, bool stats = FALSE,
+                     bool approxStats = TRUE, bool sample = FALSE, bool computeChecksum = FALSE,
+                     bool showGCPs = TRUE, bool showMetadata = TRUE, bool showRAT = TRUE,
+                     bool showColorTable = TRUE, bool listMDD = FALSE, bool showFileList = TRUE,
+                     bool allMetadata = FALSE ) {
+        GDALInfoOptions *self = (GDALInfoOptions*) CPLMalloc( sizeof(GDALInfoOptions) );
+        self->eFormat = format;
+        self->bComputeMinMax = computeMinMax;
+        self->bReportHistograms = reportHistograms;
+        self->bReportProj4 = reportProj4;
+        self->bStats = stats;
+        self->bApproxStats = approxStats;
+        self->bSample = sample;
+        self->bComputeChecksum = computeChecksum;
+        self->bShowGCPs = showGCPs;
+        self->bShowMetadata = showMetadata;
+        self->bShowRAT = showRAT;
+        self->bShowColorTable = showColorTable;
+        self->bListMDD = listMDD;
+        self->bShowFileList = showFileList;
+        self->bAllMetadata = allMetadata;
+        self->papszExtraMDDomains = NULL;
+        return self;
+    }
+
+    ~GDALInfoOptions() {
+        if( self->papszExtraMDDomains )
+            CSLDestroy( self->papszExtraMDDomains );
+        CPLFree( self );
+    }
+}
+};
+
+%apply Pointer NONNULL {GDALInfoOptions *infoOptions};
 %inline %{
 
-GDALInfoFormat InfoOptions_Format_get( GDALInfoOptions *psOptions )
+GDALInfoFormat GDALInfoOptions_format_get( GDALInfoOptions *infoOptions )
 {
-    return psOptions->eFormat;
+    return infoOptions->eFormat;
 }
 
-void InfoOptions_Format_set( GDALInfoOptions *psOptions, GDALInfoFormat eFormat )
+void GDALInfoOptions_format_set( GDALInfoOptions *infoOptions, GDALInfoFormat eFormat )
 {
-    psOptions->eFormat = eFormat;
+    infoOptions->eFormat = eFormat;
 }
 
-bool InfoOptions_ComputeMinMax_get( GDALInfoOptions *psOptions )
+bool GDALInfoOptions_computeMinMax_get( GDALInfoOptions *infoOptions )
 {
-    return psOptions->bComputeMinMax;
+    return infoOptions->bComputeMinMax;
 }
 
-void InfoOptions_ComputeMinMax_set( GDALInfoOptions *psOptions, bool bComputeMinMax )
+void GDALInfoOptions_computeMinMax_set( GDALInfoOptions *infoOptions, bool bComputeMinMax )
 {
-    psOptions->bComputeMinMax = bComputeMinMax;
+    infoOptions->bComputeMinMax = bComputeMinMax;
 }
 
-bool InfoOptions_ReportHistograms_get( GDALInfoOptions *psOptions )
+bool GDALInfoOptions_reportHistograms_get( GDALInfoOptions *infoOptions )
 {
-    return psOptions->bReportHistograms;
+    return infoOptions->bReportHistograms;
 }
 
-void InfoOptions_ReportHistograms_set( GDALInfoOptions *psOptions, bool bReportHistograms )
+void GDALInfoOptions_reportHistograms_set( GDALInfoOptions *infoOptions, bool bReportHistograms )
 {
-    psOptions->bReportHistograms = bReportHistograms;
+    infoOptions->bReportHistograms = bReportHistograms;
 }
 
-bool InfoOptions_ReportProj4_get( GDALInfoOptions *psOptions )
+bool GDALInfoOptions_reportProj4_get( GDALInfoOptions *infoOptions )
 {
-    return psOptions->bReportProj4;
+    return infoOptions->bReportProj4;
 }
 
-void InfoOptions_ReportProj4_set( GDALInfoOptions *psOptions, bool bReportProj4 )
+void GDALInfoOptions_reportProj4_set( GDALInfoOptions *infoOptions, bool bReportProj4 )
 {
-    psOptions->bReportProj4 = bReportProj4;
+    infoOptions->bReportProj4 = bReportProj4;
 }
 
-bool InfoOptions_Stats_get( GDALInfoOptions *psOptions )
+bool GDALInfoOptions_stats_get( GDALInfoOptions *infoOptions )
 {
-    return psOptions->bStats;
+    return infoOptions->bStats;
 }
 
-void InfoOptions_Stats_set( GDALInfoOptions *psOptions, bool bStats )
+void GDALInfoOptions_stats_set( GDALInfoOptions *infoOptions, bool bStats )
 {
-    psOptions->bStats = bStats;
+    infoOptions->bStats = bStats;
 }
 
-bool InfoOptions_ApproxStats_get( GDALInfoOptions *psOptions )
+bool GDALInfoOptions_approxStats_get( GDALInfoOptions *infoOptions )
 {
-    return psOptions->bApproxStats;
+    return infoOptions->bApproxStats;
 }
 
-void InfoOptions_ApproxStats_set( GDALInfoOptions *psOptions, bool bApproxStats )
+void GDALInfoOptions_approxStats_set( GDALInfoOptions *infoOptions, bool bApproxStats )
 {
-    psOptions->bApproxStats = bApproxStats;
+    infoOptions->bApproxStats = bApproxStats;
 }
 
-bool InfoOptions_Sample_get( GDALInfoOptions *psOptions )
+bool GDALInfoOptions_sample_get( GDALInfoOptions *infoOptions )
 {
-    return psOptions->bSample;
+    return infoOptions->bSample;
 }
 
-void InfoOptions_Sample_set( GDALInfoOptions *psOptions, bool bSample )
+void GDALInfoOptions_sample_set( GDALInfoOptions *infoOptions, bool bSample )
 {
-    psOptions->bSample = bSample;
+    infoOptions->bSample = bSample;
 }
 
-bool InfoOptions_ComputeChecksum_get( GDALInfoOptions *psOptions )
+bool GDALInfoOptions_computeChecksum_get( GDALInfoOptions *infoOptions )
 {
-    return psOptions->bComputeChecksum;
+    return infoOptions->bComputeChecksum;
 }
 
-void InfoOptions_ComputeChecksum_set( GDALInfoOptions *psOptions, bool bComputeChecksum )
+void GDALInfoOptions_computeChecksum_set( GDALInfoOptions *infoOptions, bool bComputeChecksum )
 {
-    psOptions->bComputeChecksum = bComputeChecksum;
+    infoOptions->bComputeChecksum = bComputeChecksum;
 }
 
-bool InfoOptions_ShowGCPs_get( GDALInfoOptions *psOptions )
+bool GDALInfoOptions_showGCPs_get( GDALInfoOptions *infoOptions )
 {
-    return psOptions->bShowGCPs;
+    return infoOptions->bShowGCPs;
 }
 
-void InfoOptions_ShowGCPs_set( GDALInfoOptions *psOptions, bool bShowGCPs )
+void GDALInfoOptions_showGCPs_set( GDALInfoOptions *infoOptions, bool bShowGCPs )
 {
-    psOptions->bShowGCPs = bShowGCPs;
+    infoOptions->bShowGCPs = bShowGCPs;
 }
 
-bool InfoOptions_ShowMetadata_get( GDALInfoOptions *psOptions )
+bool GDALInfoOptions_showMetadata_get( GDALInfoOptions *infoOptions )
 {
-    return psOptions->bShowMetadata;
+    return infoOptions->bShowMetadata;
 }
 
-void InfoOptions_ShowMetadata_set( GDALInfoOptions *psOptions, bool bShowMetadata )
+void GDALInfoOptions_showMetadata_set( GDALInfoOptions *infoOptions, bool bShowMetadata )
 {
-    psOptions->bShowMetadata = bShowMetadata;
+    infoOptions->bShowMetadata = bShowMetadata;
 }
 
-bool InfoOptions_ShowRAT_get( GDALInfoOptions *psOptions )
+bool GDALInfoOptions_showRAT_get( GDALInfoOptions *infoOptions )
 {
-    return psOptions->bShowRAT;
+    return infoOptions->bShowRAT;
 }
 
-void InfoOptions_ShowRAT_set( GDALInfoOptions *psOptions, bool bShowRAT )
+void GDALInfoOptions_showRAT_set( GDALInfoOptions *infoOptions, bool bShowRAT )
 {
-    psOptions->bShowRAT = bShowRAT;
+    infoOptions->bShowRAT = bShowRAT;
 }
 
-bool InfoOptions_ShowColorTable_get( GDALInfoOptions *psOptions )
+bool GDALInfoOptions_showColorTable_get( GDALInfoOptions *infoOptions )
 {
-    return psOptions->bShowColorTable;
+    return infoOptions->bShowColorTable;
 }
 
-void InfoOptions_ShowColorTable_set( GDALInfoOptions *psOptions, bool bShowColorTable )
+void GDALInfoOptions_showColorTable_set( GDALInfoOptions *infoOptions, bool bShowColorTable )
 {
-    psOptions->bShowColorTable = bShowColorTable;
+    infoOptions->bShowColorTable = bShowColorTable;
 }
 
-bool InfoOptions_ListMDD_get( GDALInfoOptions *psOptions )
+bool GDALInfoOptions_listMDD_get( GDALInfoOptions *infoOptions )
 {
-    return psOptions->bListMDD;
+    return infoOptions->bListMDD;
 }
 
-void InfoOptions_ListMDD_set( GDALInfoOptions *psOptions, bool bListMDD )
+void GDALInfoOptions_listMDD_set( GDALInfoOptions *infoOptions, bool bListMDD )
 {
-    psOptions->bListMDD = bListMDD;
+    infoOptions->bListMDD = bListMDD;
 }
 
-bool InfoOptions_ShowFileList_get( GDALInfoOptions *psOptions )
+bool GDALInfoOptions_showFileList_get( GDALInfoOptions *infoOptions )
 {
-    return psOptions->bShowFileList;
+    return infoOptions->bShowFileList;
 }
 
-void InfoOptions_ShowFileList_set( GDALInfoOptions *psOptions, bool bShowFileList )
+void GDALInfoOptions_showFileList_set( GDALInfoOptions *infoOptions, bool bShowFileList )
 {
-    psOptions->bShowFileList = bShowFileList;
+    infoOptions->bShowFileList = bShowFileList;
 }
 
-bool InfoOptions_AllMetadata_get( GDALInfoOptions *psOptions )
+bool GDALInfoOptions_allMetadata_get( GDALInfoOptions *infoOptions )
 {
-    return psOptions->bAllMetadata;
+    return infoOptions->bAllMetadata;
 }
 
-void InfoOptions_AllMetadata_set( GDALInfoOptions *psOptions, bool bAllMetadata )
+void GDALInfoOptions_allMetadata_set( GDALInfoOptions *infoOptions, bool bAllMetadata )
 {
-    psOptions->bAllMetadata = bAllMetadata;
+    infoOptions->bAllMetadata = bAllMetadata;
+}
+
+char **GDALInfoOptions_extraMDDomains_get( GDALInfoOptions *infoOptions )
+{
+    return infoOptions->papszExtraMDDomains;
+}
+
+void GDALInfoOptions_extraMDDomains_set( GDALInfoOptions *infoOptions, char **papszExtraMDDomains )
+{
+    infoOptions->papszExtraMDDomains = papszExtraMDDomains;
 }
 
 %}
 
-%clear GDALInfoOptions *psOptions;
-
-%rename (InfoOptionsNew) GDALInfoOptionsNew;
-GDALInfoOptions *GDALInfoOptionsNew( void );
+%clear GDALInfoOptions *infoOptions;
 
 %rename (InfoOptionsAddExtraMDDomains) GDALInfoOptionsAddExtraMDDomains;
-void GDALInfoOptionsAddExtraMDDomains( GDALInfoOptions *psOptions,
+void GDALInfoOptionsAddExtraMDDomains( GDALInfoOptions *infoOptions,
                                                const char *pszDomain );
 
 %rename (Info) GDALInfo;
-char *GDALInfo( GDALDatasetShadow *hDataset, GDALInfoOptions *psOptions );
+char *GDALInfo( GDALDatasetShadow *hDataset, GDALInfoOptions *infoOptions );
 
 #endif
