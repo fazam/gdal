@@ -726,3 +726,16 @@ CPLErr ReadRaster1(  int xoff, int yoff, int xsize, int ysize,
 }
 
 %include "callback.i"
+
+%pythoncode %{
+
+def Info(ds, format = _gdal.INFO_FORMAT_TEXT, deserialize = True):
+    options = _gdal.InfoOptions()
+    options.format = format
+    ret = _gdal.Info(ds, options)
+    if format == _gdal.INFO_FORMAT_JSON and deserialize:
+        import json
+        ret = json.loads(ret)
+    return ret
+
+%}

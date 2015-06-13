@@ -75,6 +75,9 @@ GDALInfoOptions CPL_DLL *GDALInfoOptionsNew( void );
 void CPL_DLL GDALInfoOptionsAddExtraMDDomains( GDALInfoOptions *psOptions,
                                                const char *pszDomain );
 
+void CPL_DLL GDALInfoOptionsSetExtraMDDomains( GDALInfoOptions *psOptions,
+                                               char **papszExtraMDDomains );
+
 void CPL_DLL GDALInfoOptionsFree( GDALInfoOptions *psOptions );
 
 char CPL_DLL *GDALInfo( GDALDatasetH hDataset, GDALInfoOptions *psOptions );

@@ -948,6 +948,8 @@ typedef enum {
 
 %rename (InfoOptions) GDALInfoOptions;
 
+%apply (char** options) {char** extraMDDomains};
+
 struct GDALInfoOptions {
 %extend {
 %mutable;
@@ -966,7 +968,7 @@ struct GDALInfoOptions {
     int listMDD;
     int showFileList;
     int allMetadata;
-    char **extraMDDomains;
+    char** extraMDDomains;
 %immutable;
 
     GDALInfoOptions() {
@@ -979,6 +981,8 @@ struct GDALInfoOptions {
     }
 }
 };
+
+%clear char** extraMDDomains;
 
 %apply Pointer NONNULL {GDALInfoOptions *infoOptions};
 %inline %{
@@ -1138,9 +1142,9 @@ char **GDALInfoOptions_extraMDDomains_get( GDALInfoOptions *infoOptions )
     return infoOptions->papszExtraMDDomains;
 }
 
-void GDALInfoOptions_extraMDDomains_set( GDALInfoOptions *infoOptions, char **papszExtraMDDomains )
+void GDALInfoOptions_extraMDDomains_set( GDALInfoOptions *infoOptions, char** papszExtraMDDomains )
 {
-    infoOptions->papszExtraMDDomains = papszExtraMDDomains;
+    GDALInfoOptionsSetExtraMDDomains( infoOptions, papszExtraMDDomains );
 }
 
 %}

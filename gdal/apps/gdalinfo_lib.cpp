@@ -1452,6 +1452,24 @@ void GDALInfoOptionsAddExtraMDDomains( GDALInfoOptions *psOptions,
 }
 
 /************************************************************************/
+/*                   GDALInfoOptionsSetExtraMDDomains()                 */
+/************************************************************************/
+
+/**
+ * Specify the particular metadata domain which need to be reported.
+ *
+ * @param psOptions the options struct for GDALInfo().
+ * @param pszDomain the specific metadata domain which need to be reported.
+ */
+
+void GDALInfoOptionsSetExtraMDDomains( GDALInfoOptions *psOptions,
+                                       char **papszExtraMDDomains )
+{
+    CSLDestroy( psOptions->papszExtraMDDomains );
+    psOptions->papszExtraMDDomains = CSLDuplicate( papszExtraMDDomains );
+}
+
+/************************************************************************/
 /*                             GDALInfoOptionsFree()                    */
 /************************************************************************/
 
