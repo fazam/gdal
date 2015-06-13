@@ -1456,7 +1456,7 @@ void GDALInfoOptionsAddExtraMDDomains( GDALInfoOptions *psOptions,
 /************************************************************************/
 
 /**
- * Specify the particular metadata domain which need to be reported.
+ * Set function for papszExtraMDDomains.
  *
  * @param psOptions the options struct for GDALInfo().
  * @param pszDomain the specific metadata domain which need to be reported.

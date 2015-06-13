@@ -149,9 +149,30 @@ def test_gdalinfo_lib_6():
 
     ds = gdal.Open('../gcore/data/byte.tif')
 
-    ret = gdal.Info(ds)
+    ret = gdal.Info(ds, format=gdal.INFO_FORMAT_JSON)
     if ret['driverShortName'] != 'GTiff':
         gdaltest.post_reason('wrong value for driverShortName.')
+        print(ret)
+        return 'fail'
+
+    return 'success'
+
+###############################################################################
+# Test overriden Info method with extraMDDomains option
+
+def test_gdalinfo_lib_7():
+
+    ds = gdal.Open('../gdrivers/data/fake_nsif.ntf')
+
+    ret = gdal.Info(ds, format=gdal.INFO_FORMAT_JSON)
+    if 'TRE' in ret['metadata']:
+        gdaltest.post_reason( 'unexpectingly got extra MD.' )
+        print(ret)
+        return 'fail'
+
+    ret = gdal.Info(ds, format=gdal.INFO_FORMAT_JSON, extraMDDomains=['TRE'])
+    if ret['metadata']['TRE']['BLOCKA'].find('010000001000000000') == -1:
+        gdaltest.post_reason( 'did not get extra MD.' )
         print(ret)
         return 'fail'
 
@@ -163,6 +184,8 @@ gdaltest_list = [
     test_gdalinfo_lib_3,
     test_gdalinfo_lib_4,
     test_gdalinfo_lib_5,
+    test_gdalinfo_lib_6,
+    test_gdalinfo_lib_7,
     ]
 
 if __name__ == '__main__':
