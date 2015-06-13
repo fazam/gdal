@@ -1155,7 +1155,11 @@ void GDALInfoOptions_extraMDDomains_set( GDALInfoOptions *infoOptions, char** pa
 void GDALInfoOptionsAddExtraMDDomains( GDALInfoOptions *infoOptions,
                                                const char *pszDomain );
 
+#ifdef SWIGPYTHON
+%rename (InfoInternal) GDALInfo;
+#else
 %rename (Info) GDALInfo;
+#endif
 char *GDALInfo( GDALDatasetShadow *hDataset, GDALInfoOptions *infoOptions );
 
 #endif

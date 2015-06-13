@@ -729,11 +729,13 @@ CPLErr ReadRaster1(  int xoff, int yoff, int xsize, int ysize,
 
 %pythoncode %{
 
-def Info(ds, format = _gdal.INFO_FORMAT_TEXT, deserialize = True):
-    options = _gdal.InfoOptions()
-    options.format = format
-    ret = _gdal.Info(ds, options)
-    if format == _gdal.INFO_FORMAT_JSON and deserialize:
+def Info(ds, options = None, format = _gdal.INFO_FORMAT_TEXT, deserialize = True):
+    """ If options is provided as a gdal.InfoOptions() object, format and other keywords (except deserialize) are ignored. """
+    if options is None:
+        options = InfoOptions()
+        options.format = format
+    ret = InfoInternal(ds, options)
+    if options.format == _gdal.INFO_FORMAT_JSON and deserialize:
         import json
         ret = json.loads(ret)
     return ret

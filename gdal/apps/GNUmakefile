@@ -51,7 +51,7 @@ gdalinfo_lib.$(OBJ_EXT): gdalinfo_lib.cpp
 	$(CXX) -c $(GDAL_INCLUDE) $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 
 gdalinfo$(EXE):	gdalinfo_bin.$(OBJ_EXT) commonutils.$(OBJ_EXT) $(DEP_LIBS)
-	$(LD) $(LNK_FLAGS) $< commonutils.$(OBJ_EXT) $(XTRAOBJ) $(CONFIG_LIBS) $(GDAL_ROOT)/$(LIBGDAL_UTILS) -o $@
+	$(LD) $(LNK_FLAGS) $< commonutils.$(OBJ_EXT) $(XTRAOBJ) $(CONFIG_LIBS) $(CONFIG_LIB_UTILS) -o $@
 
 gdalserver$(EXE):	gdalserver.$(OBJ_EXT) $(DEP_LIBS)
 	$(LD) $(LNK_FLAGS) $< $(XTRAOBJ) $(CONFIG_LIBS) -o $@

@@ -65,7 +65,6 @@ def test_gdalinfo_lib_2():
     options.format = gdal.INFO_FORMAT_JSON
 
     ret = gdal.Info(ds, options)
-    ret = json.loads(ret)
     if ret['driverShortName'] != 'GTiff':
         gdaltest.post_reason('wrong value for driverShortName.')
         print(ret)
@@ -84,7 +83,6 @@ def test_gdalinfo_lib_3():
     options.format = gdal.INFO_FORMAT_JSON
 
     ret = gdal.Info(ds, options)
-    ret = json.loads(ret)
     if 'TRE' in ret['metadata']:
         gdaltest.post_reason( 'unexpectingly got extra MD.' )
         print(ret)
@@ -93,7 +91,6 @@ def test_gdalinfo_lib_3():
     gdal.InfoOptionsAddExtraMDDomains(options, 'TRE')
 
     ret = gdal.Info(ds, options)
-    ret = json.loads(ret)
     if ret['metadata']['TRE']['BLOCKA'].find('010000001000000000') == -1:
         gdaltest.post_reason( 'did not get extra MD.' )
         print(ret)
@@ -113,7 +110,6 @@ def test_gdalinfo_lib_4():
     options.format = gdal.INFO_FORMAT_JSON
 
     ret = gdal.Info(ds, options)
-    ret = json.loads(ret)
     if 'xml:XMP' not in ret['metadata']:
         print(ret)
         return 'fail'
@@ -131,7 +127,6 @@ def test_gdalinfo_lib_5():
     options.format = gdal.INFO_FORMAT_JSON
 
     ret = gdal.Info(ds, options)
-    ret = json.loads(ret)
     if 'TRE' in ret['metadata']:
         gdaltest.post_reason( 'unexpectingly got extra MD.' )
         print(ret)
@@ -140,7 +135,6 @@ def test_gdalinfo_lib_5():
     options.extraMDDomains = ['TRE']
 
     ret = gdal.Info(ds, options)
-    ret = json.loads(ret)
     if ret['metadata']['TRE']['BLOCKA'].find('010000001000000000') == -1:
         gdaltest.post_reason( 'did not get extra MD.' )
         print(ret)

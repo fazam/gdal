@@ -535,6 +535,7 @@ endif
 ifeq ($(HAVE_LIBTOOL), yes)
 
 CONFIG_LIBS	=	$(GDAL_ROOT)/$(LIBGDAL)
+CONFIG_LIB_UTILS =      $(GDAL_ROOT)/$(LIBGDAL_UTILS)
 ifeq ($(MACOSX_FRAMEWORK),yes)
 CONFIG_LIBS_INS	=	-L$(INST_LIB)/unix/lib -lgdal
 else
@@ -548,6 +549,7 @@ else # HAVE_LIBTOOL
 
 ifeq ($(HAVE_LD_SHARED),yes)
 CONFIG_LIBS	=	$(GDAL_SLIB_LINK) $(LIBS)
+CONFIG_LIB_UTILS =      $(GDAL_UTILS_SLIB_LINK)
 ifeq ($(MACOSX_FRAMEWORK),yes)
 CONFIG_LIBS_INS	=	-L$(INST_LIB)/unix/lib -lgdal
 else
@@ -556,6 +558,7 @@ endif
 EXE_DEP_LIBS	=	$(GDAL_SLIB)
 else
 CONFIG_LIBS	=	$(GDAL_LIBS) $(LIBS)
+CONFIG_LIB_UTILS =      $(LIBGDAL_UTILS)
 CONFIG_LIBS_INS	=	$(foreach LF,$(GDAL_LIBS),$(INST_LIB)/$(notdir $(LF)))\
 			 $(LIBS)
 EXE_DEP_LIBS	=	$(GDAL_LIB)
