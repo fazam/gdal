@@ -82,4 +82,75 @@ void CPL_DLL GDALInfoOptionsFree( GDALInfoOptions *psOptions );
 
 char CPL_DLL *GDALInfo( GDALDatasetH hDataset, GDALInfoOptions *psOptions );
 
+enum
+{
+    MASK_DISABLED,
+    MASK_AUTO,
+    MASK_USER
+};
+
+typedef struct
+{
+    int     bScale;
+    int     bHaveScaleSrc;
+    double  dfScaleSrcMin, dfScaleSrcMax;
+    double  dfScaleDstMin, dfScaleDstMax;
+} ScaleParams;
+
+typedef struct
+{
+    char *pszFormat;
+    int bQuiet;
+    GDALProgressFunc pfnProgress;
+    GDALDataType eOutputType;
+    int eMaskMode;
+    int nBandCount;
+    char *pszSource;
+    char *pszDest;
+    int *panBandList; /* negative value of panBandList[i] means mask band of ABS(panBandList[i]) */
+    int bDefBands;
+    char *pszOXSize;
+    char *pszOYSize;
+    char **papszCreateOptions;
+    int anSrcWin[4];
+    int bStrict;
+    int bUnscale;
+    int nScaleRepeat;
+    ScaleParams *pasScaleParams;
+    int bHasUsedExplicitScaleBand;
+    int nExponentRepeat;
+    double *padfExponent;
+    int bHasUsedExplicitExponentBand;
+    double dfULX;
+    double dfULY;
+    double dfLRX;
+    double dfLRY;
+    char **papszMetadataOptions;
+    char *pszOutputSRS;
+    int bGotBounds;
+    int nGCPCount;
+    GDAL_GCP *pasGCPs;
+    double adfULLR[4];
+    int bSetNoData;
+    int bUnsetNoData;
+    double dfNoDataReal;
+    int nRGBExpand;
+    int nMaskBand; /* negative value means mask band of ABS(nMaskBand) */
+    int bStats;
+    int bApproxStats;
+    int bErrorOnPartiallyOutside;
+    int bErrorOnCompletelyOutside;
+    int bNoRAT;
+    char *pszResampling;
+    double dfXRes;
+    double dfYRes;
+    CPLString osProjSRS;
+} GDALTranslateOptions;
+
+GDALTranslateOptions CPL_DLL *GDALTranslateOptionsNew(void);
+
+void CPL_DLL GDALTranslateOptionsFree(GDALTranslateOptions *psOptions);
+
+GDALDatasetH CPL_DLL GDALTranslate(GDALDatasetH hDataset, GDALTranslateOptions *psOptions);
+
 CPL_C_END
