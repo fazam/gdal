@@ -11,7 +11,7 @@ GDAL_OBJ += $(GDAL_ROOT)/ogr/ogrsf_frmts/o/*.o
 include ./ogr/file.lst
 GDAL_OBJ += $(addprefix ./ogr/,$(OBJ))
 
-GDAL_UTILS_OBJ = $(GDAL_ROOT)/apps/gdalinfo_lib.o
+GDAL_UTILS_OBJ = $(GDAL_ROOT)/apps/gdalinfo_lib.o $(GDAL_ROOT)/apps/gdal_translate_lib.o
 
 LIBGDAL-yes	:=	$(GDAL_LIB)
 LIBGDAL-$(HAVE_LD_SHARED)	+=	$(GDAL_SLIB)
