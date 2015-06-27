@@ -82,12 +82,12 @@ void CPL_DLL GDALInfoOptionsFree( GDALInfoOptions *psOptions );
 
 char CPL_DLL *GDALInfo( GDALDatasetH hDataset, GDALInfoOptions *psOptions );
 
-enum
+typedef enum
 {
     MASK_DISABLED,
     MASK_AUTO,
     MASK_USER
-};
+} MaskMode;
 
 typedef struct
 {
@@ -102,15 +102,16 @@ typedef struct
     char *pszFormat;
     int bQuiet;
     GDALProgressFunc pfnProgress;
+    void *pProgressData;
     GDALDataType eOutputType;
-    int eMaskMode;
-    int nBandCount;
-    char *pszSource;
+    MaskMode eMaskMode;
     char *pszDest;
+    int nBandCount;
     int *panBandList; /* negative value of panBandList[i] means mask band of ABS(panBandList[i]) */
-    int bDefBands;
-    char *pszOXSize;
-    char *pszOYSize;
+    int nOXSizePixel;
+    int nOYSizePixel;
+    double dfOXSizePct;
+    double dfOYSizePct;
     char **papszCreateOptions;
     int anSrcWin[4];
     int bStrict;
@@ -144,13 +145,14 @@ typedef struct
     char *pszResampling;
     double dfXRes;
     double dfYRes;
-    CPLString osProjSRS;
+    char *pszProjSRS;
+
 } GDALTranslateOptions;
 
 GDALTranslateOptions CPL_DLL *GDALTranslateOptionsNew(void);
 
 void CPL_DLL GDALTranslateOptionsFree(GDALTranslateOptions *psOptions);
 
-GDALDatasetH CPL_DLL GDALTranslate(GDALDatasetH hDataset, GDALTranslateOptions *psOptions);
+GDALDatasetH CPL_DLL GDALTranslate(char *pszDest, GDALDatasetH hDataset, GDALTranslateOptions *psOptions, int *pbUsageError);
 
 CPL_C_END

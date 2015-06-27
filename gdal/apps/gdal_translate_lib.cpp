@@ -199,7 +199,7 @@ static int FixSrcDstWindow( int* panSrcWin, int* panDstWin,
 /*                             GDALTranslate()                          */
 /************************************************************************/
 
-GDALDatasetH GDALTranslate( GDALDatasetH hDataset, GDALTranslateOptions *psOptions )
+GDALDatasetH GDALTranslate( char *pszDest, GDALDatasetH hDataset, GDALTranslateOptions *psOptions, int *pbUsageError )
 
 {
     GDALDatasetH hOutDS;
@@ -209,45 +209,58 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, GDALTranslateOptions *psOptio
     double		adfGeoTransform[6];
     int			nOXSize = 0, nOYSize = 0;
     const char          *pszProjection;
+    const char *pszSource;
+    int bGotBounds = FALSE;
+    int bDefBands = TRUE;
 
-    if( psOptions->pszDest == NULL )
+    *pbUsageError = FALSE;
+
+    if(psOptions->adfULLR[0] != 0.0 || psOptions->adfULLR[1] != 0.0 || psOptions->adfULLR[2] != 0.0 || psOptions->adfULLR[3] != 0.0)
+        bGotBounds = TRUE;
+
+    if(psOptions->panBandList != NULL)
     {
-        if( psOptions->pszSource == NULL )
+        if( psOptions->panBandList[psOptions->nBandCount-1] != psOptions->nBandCount )
+                bDefBands = FALSE;
+    }
+
+    pszSource = GDALGetDescription(hDataset);
+
+    if( pszDest == NULL )
+    {
+        if( pszSource == NULL )
         {
             CPLError( CE_Failure, CPLE_AppDefined, "No source dataset specified.");
-            return NULL;
         }
         else
         {
             CPLError( CE_Failure, CPLE_AppDefined, "No target dataset specified.");
-            return NULL;
         }
-    }
-
-    if ( strcmp(psOptions->pszSource, psOptions->pszDest) == 0)
-    {
-        CPLError( CE_Failure, CPLE_AppDefined, "Source and destination datasets must be different.");
+        *pbUsageError = TRUE;
         return NULL;
     }
 
-    if( strcmp(psOptions->pszDest, "/vsistdout/") == 0)
+    if ( strcmp(pszSource, pszDest) == 0)
     {
-        psOptions->bQuiet = TRUE;
-        psOptions->pfnProgress = GDALDummyProgress;
+        CPLError( CE_Failure, CPLE_AppDefined, "Source and destination datasets must be different.");
+        *pbUsageError = TRUE;
+        return NULL;
     }
 
 /* -------------------------------------------------------------------- */
 /*      Check that incompatible options are not used                    */
 /* -------------------------------------------------------------------- */
 
-    if( psOptions->pszOXSize != NULL && (psOptions->dfXRes != 0 && psOptions->dfYRes != 0) )
+    if( (psOptions->nOXSizePixel != 0 || psOptions->dfOXSizePct != 0.0) && (psOptions->dfXRes != 0 && psOptions->dfYRes != 0) )
     {
         CPLError( CE_Failure, CPLE_IllegalArg, "-outsize and -tr options cannot be used at the same time.");
+        *pbUsageError = TRUE;
         return NULL;
     }
-    if( psOptions->bGotBounds &&  (psOptions->dfXRes != 0 && psOptions->dfYRes != 0) )
+    if( bGotBounds &&  (psOptions->dfXRes != 0 && psOptions->dfYRes != 0) )
     {
         CPLError( CE_Failure, CPLE_IllegalArg, "-a_ullr and -tr options cannot be used at the same time.");
+        *pbUsageError = TRUE;
         return NULL;
     }
 
@@ -256,9 +269,6 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, GDALTranslateOptions *psOptio
 /* -------------------------------------------------------------------- */
     nRasterXSize = GDALGetRasterXSize( hDataset );
     nRasterYSize = GDALGetRasterYSize( hDataset );
-
-    if( !psOptions->bQuiet );
-        //CPLError( CE_None, CPLE_None, "Input file size is %d, %d\n", nRasterXSize, nRasterYSize );
 
     if( psOptions->anSrcWin[2] == 0 && psOptions->anSrcWin[3] == 0 )
     {
@@ -296,7 +306,7 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, GDALTranslateOptions *psOptio
         }
 
         if( psOptions->nBandCount != GDALGetRasterCount( hDataset ) )
-            psOptions->bDefBands = FALSE;
+            bDefBands = FALSE;
     }
 
     if( psOptions->nScaleRepeat > psOptions->nBandCount )
@@ -305,6 +315,8 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, GDALTranslateOptions *psOptio
             CPLError( CE_Failure, CPLE_IllegalArg, "-scale has been specified more times than the number of output bands");
         else
             CPLError( CE_Failure, CPLE_IllegalArg, "-scale_XX has been specified with XX greater than the number of output bands");
+        *pbUsageError = TRUE;
+        return NULL;
     }
 
     if( psOptions->nExponentRepeat > psOptions->nBandCount )
@@ -313,6 +325,8 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, GDALTranslateOptions *psOptio
             CPLError( CE_Failure, CPLE_IllegalArg, "-exponent has been specified more times than the number of output bands");
         else
             CPLError( CE_Failure, CPLE_IllegalArg, "-exponent_XX has been specified with XX greater than the number of output bands");
+        *pbUsageError = TRUE;
+        return NULL;
     }
 /* -------------------------------------------------------------------- */
 /*      Compute the source window from the projected source window      */
@@ -336,14 +350,14 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, GDALTranslateOptions *psOptio
             return NULL;
         }
 
-        if( psOptions->osProjSRS.size() )
+        if( psOptions->pszProjSRS != NULL )
         {
             pszProjection = GDALGetProjectionRef( hDataset );
             if( pszProjection != NULL && strlen(pszProjection) > 0 )
             {
                 OGRSpatialReference oSRSIn;
                 OGRSpatialReference oSRSDS;
-                oSRSIn.SetFromUserInput(psOptions->osProjSRS);
+                oSRSIn.SetFromUserInput(psOptions->pszProjSRS);
                 oSRSDS.SetFromUserInput(pszProjection);
                 if( !oSRSIn.IsSame(&oSRSDS) )
                 {
@@ -374,13 +388,14 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, GDALTranslateOptions *psOptio
         psOptions->anSrcWin[2] = (int) ((psOptions->dfLRX - psOptions->dfULX) / adfGeoTransform[1] + 0.5);
         psOptions->anSrcWin[3] = (int) ((psOptions->dfLRY - psOptions->dfULY) / adfGeoTransform[5] + 0.5);
 
-        if( !psOptions->bQuiet )
-            CPLError( CE_None, CPLE_None,
-                     "Computed -srcwin %d %d %d %d from projected window.\n",
-                     psOptions->anSrcWin[0], 
-                     psOptions->anSrcWin[1], 
-                     psOptions->anSrcWin[2], 
-                     psOptions->anSrcWin[3] );
+        /*if( !psOptions->bQuiet )
+        {
+            CPLError( CE_None, CPLE_None, "Computed -srcwin %d %d %d %d from projected window.\n",
+                psOptions->anSrcWin[0], 
+                psOptions->anSrcWin[1], 
+                psOptions->anSrcWin[2], 
+                psOptions->anSrcWin[3] );
+        }*/
     }
 
 /* -------------------------------------------------------------------- */
@@ -412,9 +427,13 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, GDALTranslateOptions *psOptio
         int bIsError = psOptions->bErrorOnPartiallyOutside || (bCompletelyOutside && psOptions->bErrorOnCompletelyOutside);
         if( !psOptions->bQuiet || bIsError )
         {
-            CPLError( CE_Failure, CPLE_AppDefined,
-                 "%s: %s-srcwin %d %d %d %d falls %s outside raster extent.%s\n",
-                 (bIsError) ? "Error" : "Warning",
+            CPLErr eErr = CE_Warning;
+
+            if(bIsError)
+                eErr = CE_Failure;
+
+            CPLError( eErr, CPLE_AppDefined,
+                 "%s-srcwin %d %d %d %d falls %s outside raster extent.%s\n",
                  ( psOptions->dfULX != 0.0 || psOptions->dfULY != 0.0 || psOptions->dfLRX != 0.0 || psOptions->dfLRY != 0.0 ) ? "Computed " : "",
                  psOptions->anSrcWin[0],
                  psOptions->anSrcWin[1],
@@ -451,7 +470,7 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, GDALTranslateOptions *psOptio
             }
         }
         CPLError( CE_Failure, CPLE_IllegalArg, "\n" );
-
+        *pbUsageError = TRUE;
         return NULL;
     }
 
@@ -467,21 +486,22 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, GDALTranslateOptions *psOptio
            psOptions->anSrcWin[0] == 0 && psOptions->anSrcWin[1] == 0
         && psOptions->anSrcWin[2] == GDALGetRasterXSize(hDataset)
         && psOptions->anSrcWin[3] == GDALGetRasterYSize(hDataset)
-        && psOptions->pszOXSize == NULL && psOptions->pszOYSize == NULL && psOptions->dfXRes == 0.0 );
+        && psOptions->nOXSizePixel == 0 && psOptions->dfOXSizePct == 0.0
+        && psOptions->nOYSizePixel == 0 && psOptions->dfOYSizePct == 0.0 && psOptions->dfXRes == 0.0 );
 
     if( psOptions->eOutputType == GDT_Unknown 
         && psOptions->nScaleRepeat == 0 && psOptions->nExponentRepeat == 0 && !psOptions->bUnscale
-        && CSLCount(psOptions->papszMetadataOptions) == 0 && psOptions->bDefBands 
+        && CSLCount(psOptions->papszMetadataOptions) == 0 && bDefBands 
         && psOptions->eMaskMode == MASK_AUTO
         && bSpatialArrangementPreserved
-        && psOptions->nGCPCount == 0 && !psOptions->bGotBounds
+        && psOptions->nGCPCount == 0 && !bGotBounds
         && psOptions->pszOutputSRS == NULL && !psOptions->bSetNoData && !psOptions->bUnsetNoData
         && psOptions->nRGBExpand == 0 && !psOptions->bStats && !psOptions->bNoRAT )
     {
         
-        hOutDS = GDALCreateCopy( hDriver, psOptions->pszDest, hDataset, 
+        hOutDS = GDALCreateCopy( hDriver, pszDest, hDataset, 
                                  psOptions->bStrict, psOptions->papszCreateOptions, 
-                                 psOptions->pfnProgress, NULL );
+                                 psOptions->pfnProgress, psOptions->pProgressData );
 
 
         return hOutDS;
@@ -504,29 +524,38 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, GDALTranslateOptions *psOptio
         nOXSize = int(psOptions->anSrcWin[2] / psOptions->dfXRes * adfGeoTransform[1] + 0.5);
         nOYSize = int(psOptions->anSrcWin[3] / psOptions->dfYRes * fabs(adfGeoTransform[5]) + 0.5);
     }
-    else if( psOptions->pszOXSize == NULL )
+    else if( psOptions->nOXSizePixel == 0 && psOptions->dfOXSizePct == 0.0 )
     {
         nOXSize = psOptions->anSrcWin[2];
         nOYSize = psOptions->anSrcWin[3];
     }
     else
     {
-        int bXAuto = EQUAL(psOptions->pszOXSize, "auto") || EQUAL(psOptions->pszOXSize, "0");
-        int bYAuto = EQUAL(psOptions->pszOYSize, "auto") || EQUAL(psOptions->pszOYSize, "0");
-        if( bXAuto && bYAuto )
+        if( psOptions->nOXSizePixel == 0 && psOptions->dfOXSizePct == 0.0 && psOptions->nOYSizePixel == 0 && psOptions->dfOYSizePct == 0.0 )
         {
-            CPLError( CE_Failure, CPLE_IllegalArg, "-outsize %s %s invalid.\n", psOptions->pszOXSize, psOptions->pszOYSize);
+            CPLError( CE_Failure, CPLE_IllegalArg, "-outsize %d %d invalid.\n", psOptions->nOXSizePixel, psOptions->nOYSizePixel);
             return NULL;
         }
-        if( !bXAuto )
-            nOXSize = (int) ((psOptions->pszOXSize[strlen(psOptions->pszOXSize)-1]=='%' 
-                            ? CPLAtofM(psOptions->pszOXSize)/100*psOptions->anSrcWin[2] : atoi(psOptions->pszOXSize)));
-        if( !bYAuto )
-            nOYSize = (int) ((psOptions->pszOYSize[strlen(psOptions->pszOYSize)-1]=='%' 
-                            ? CPLAtofM(psOptions->pszOYSize)/100*psOptions->anSrcWin[3] : atoi(psOptions->pszOYSize)));
-        if( bXAuto )
+
+        if( !(psOptions->nOXSizePixel == 0 && psOptions->dfOXSizePct == 0.0) )
+        {
+            if(psOptions->nOXSizePixel != 0)
+                nOXSize = psOptions->nOXSizePixel;
+            else
+                nOXSize = (int) psOptions->dfOXSizePct/100*psOptions->anSrcWin[2];
+        }
+
+        if( !(psOptions->nOYSizePixel == 0 && psOptions->dfOYSizePct == 0.0) )
+        {
+            if(psOptions->nOYSizePixel != 0)
+                nOYSize = psOptions->nOYSizePixel;
+            else
+                nOYSize = (int) psOptions->dfOYSizePct/100*psOptions->anSrcWin[3];
+        }
+
+        if( psOptions->nOXSizePixel == 0 && psOptions->dfOXSizePct == 0.0 )
             nOXSize = (int)((double)nOYSize * psOptions->anSrcWin[2] / psOptions->anSrcWin[3] + 0.5);
-        else if( bYAuto )
+        else if( psOptions->nOYSizePixel == 0 && psOptions->dfOYSizePct == 0.0 )
             nOYSize = (int)((double)nOXSize * psOptions->anSrcWin[3] / psOptions->anSrcWin[2] + 0.5);
     }
 
@@ -560,7 +589,7 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, GDALTranslateOptions *psOptio
         }
     }
 
-    if( psOptions->bGotBounds )
+    if( bGotBounds )
     {
         adfGeoTransform[0] = psOptions->adfULLR[0];
         adfGeoTransform[1] = (psOptions->adfULLR[2] - psOptions->adfULLR[0]) / nOXSize;
@@ -741,6 +770,7 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, GDALTranslateOptions *psOptio
         if (poColorTable == NULL)
         {
             CPLError( CE_Failure, CPLE_AppDefined, "Error : band %d has no color table\n", ABS(psOptions->panBandList[0]));
+            GDALClose((GDALDatasetH) poVDS);
             return NULL;
         }
         
@@ -768,6 +798,7 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, GDALTranslateOptions *psOptio
         else
         {
             CPLError( CE_Failure, CPLE_IllegalArg, "Error : invalid use of -expand option.\n");
+            GDALClose((GDALDatasetH) poVDS);
             return NULL;
         }
     }
@@ -931,6 +962,8 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, GDALTranslateOptions *psOptio
         if( bExponentScaling && !bScale )
         {
             CPLError( CE_Failure, CPLE_IllegalArg, "For band %d, -scale should be specified when -exponent is specified.", i + 1);
+            *pbUsageError = TRUE;
+            return NULL;
         }
 
         if( bScale && !bHaveScaleSrc )
@@ -1153,9 +1186,9 @@ GDALDatasetH GDALTranslate( GDALDatasetH hDataset, GDALTranslateOptions *psOptio
 /* -------------------------------------------------------------------- */
 /*      Write to the output file using CopyCreate().                    */
 /* -------------------------------------------------------------------- */
-    hOutDS = GDALCreateCopy( hDriver, psOptions->pszDest, (GDALDatasetH) poVDS,
+    hOutDS = GDALCreateCopy( hDriver, pszDest, (GDALDatasetH) poVDS,
                              psOptions->bStrict, psOptions->papszCreateOptions, 
-                             psOptions->pfnProgress, NULL );
+                             psOptions->pfnProgress, psOptions->pProgressData );
     if( hOutDS != NULL )
     {
         int bHasGotErr = FALSE;
@@ -1259,15 +1292,15 @@ GDALTranslateOptions *GDALTranslateOptionsNew()
     psOptions->pszFormat = CPLStrdup("GTiff");
     psOptions->bQuiet = FALSE;
     psOptions->pfnProgress = GDALTermProgress;
+    psOptions->pProgressData = NULL;
     psOptions->eOutputType = GDT_Unknown;
     psOptions->eMaskMode = MASK_AUTO;
     psOptions->nBandCount = 0;
-    psOptions->pszSource = NULL;
-    psOptions->pszDest = NULL;
     psOptions->panBandList = NULL;
-    psOptions->bDefBands = TRUE;
-    psOptions->pszOXSize = NULL;
-    psOptions->pszOYSize = NULL;
+    psOptions->nOXSizePixel = 0;
+    psOptions->nOYSizePixel = 0;
+    psOptions->dfOXSizePct = 0.0;
+    psOptions->dfOYSizePct = 0.0;
     psOptions->papszCreateOptions = NULL;
     psOptions->anSrcWin[0] = 0;
     psOptions->anSrcWin[1] = 0;
@@ -1287,7 +1320,6 @@ GDALTranslateOptions *GDALTranslateOptionsNew()
     psOptions->dfLRY = 0.0;
     psOptions->papszMetadataOptions = NULL;
     psOptions->pszOutputSRS = NULL;
-    psOptions->bGotBounds = FALSE;
     psOptions->nGCPCount = 0;
     psOptions->pasGCPs = NULL;
     psOptions->adfULLR[0] = 0;
@@ -1307,7 +1339,7 @@ GDALTranslateOptions *GDALTranslateOptionsNew()
     psOptions->pszResampling = NULL;
     psOptions->dfXRes = 0.0;
     psOptions->dfYRes = 0.0;
-    psOptions->osProjSRS = CPLString();
+    psOptions->pszProjSRS = NULL;
 
     return psOptions;
 }
@@ -1315,11 +1347,7 @@ GDALTranslateOptions *GDALTranslateOptionsNew()
 void GDALTranslateOptionsFree(GDALTranslateOptions *psOptions)
 {
     CPLFree(psOptions->pszFormat);
-    CPLFree(psOptions->pszSource);
-    CPLFree(psOptions->pszDest);
     CPLFree(psOptions->panBandList);
-    CPLFree(psOptions->pszOXSize);
-    CPLFree(psOptions->pszOYSize);
     CSLDestroy(psOptions->papszCreateOptions);
     CPLFree(psOptions->pasScaleParams);
     CPLFree(psOptions->padfExponent);

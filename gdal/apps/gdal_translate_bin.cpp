@@ -100,12 +100,16 @@ int main( int argc, char ** argv )
 
 {
     GDALDatasetH    hDataset, hOutDS;
+    char *pszSource = NULL, *pszDest = NULL;
     int         i;
     int                 bCopySubDatasets = FALSE;
     int                 bParsedMaskArgument = FALSE;
     char              **papszOpenOptions = NULL;
     int bFormatExplicitlySet = FALSE;
     GDALTranslateOptions *psOptions = NULL;
+    int *pbUsageError;
+
+    pbUsageError = (int *)CPLMalloc(sizeof(int));
 
     /* Check strict compilation and runtime library version as we use C++ API */
     if (! GDAL_CHECK_VERSION(argv[0]))
@@ -217,8 +221,6 @@ int main( int argc, char ** argv )
             if (bMask)
                 psOptions->panBandList[psOptions->nBandCount-1] *= -1;
 
-            if( psOptions->panBandList[psOptions->nBandCount-1] != psOptions->nBandCount )
-                psOptions->bDefBands = FALSE;
         }
         else if( EQUAL(argv[i],"-mask") )
         {
@@ -314,8 +316,6 @@ int main( int argc, char ** argv )
             psOptions->adfULLR[1] = CPLAtofM(argv[i+2]);
             psOptions->adfULLR[2] = CPLAtofM(argv[i+3]);
             psOptions->adfULLR[3] = CPLAtofM(argv[i+4]);
-
-            psOptions->bGotBounds = TRUE;
             
             i += 4;
         }   
@@ -426,8 +426,16 @@ int main( int argc, char ** argv )
         else if( EQUAL(argv[i],"-outsize") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(2);
-            psOptions->pszOXSize = argv[++i];
-            psOptions->pszOYSize = argv[++i];
+            ++i;
+            if( argv[i][strlen(argv[i])-1] == '%' )
+                psOptions->dfOXSizePct = CPLAtofM(argv[i]);
+            else
+                psOptions->nOXSizePixel = atoi(argv[i]);
+            ++i;
+            if( argv[i][strlen(argv[i])-1] == '%' )
+                psOptions->dfOYSizePct = CPLAtofM(argv[i]);
+            else
+                psOptions->nOYSizePixel = atoi(argv[i]);
         }
         
         else if( EQUAL(argv[i],"-tr") )
@@ -475,7 +483,7 @@ int main( int argc, char ** argv )
             char* pszSRS = NULL;
             oSRS.exportToWkt( &pszSRS );
             if( pszSRS )
-                psOptions->osProjSRS = pszSRS;
+                psOptions->pszProjSRS = pszSRS;
             i++;
         }
 
@@ -553,13 +561,13 @@ int main( int argc, char ** argv )
         {
             Usage(CPLSPrintf("Unknown option name '%s'", argv[i]));
         }
-        else if( psOptions->pszSource == NULL )
+        else if( pszSource == NULL )
         {
-            psOptions->pszSource = argv[i];
+            pszSource = argv[i];
         }
-        else if( psOptions->pszDest == NULL )
+        else if( pszDest == NULL )
         {
-            psOptions->pszDest = argv[i];
+            pszDest = argv[i];
         }
 
         else
@@ -569,13 +577,19 @@ int main( int argc, char ** argv )
     }
 
     if (!psOptions->bQuiet && !bFormatExplicitlySet)
-        CheckExtensionConsistency(psOptions->pszDest, psOptions->pszFormat);
+        CheckExtensionConsistency(pszDest, psOptions->pszFormat);
+
+    if( strcmp(pszDest, "/vsistdout/") == 0)
+    {
+        psOptions->bQuiet = TRUE;
+        psOptions->pfnProgress = GDALDummyProgress;
+    }
 
 /* -------------------------------------------------------------------- */
 /*      Attempt to open source file.                                    */
 /* -------------------------------------------------------------------- */
 
-    hDataset = GDALOpenEx( psOptions->pszSource, GDAL_OF_RASTER, NULL,
+    hDataset = GDALOpenEx( pszSource, GDAL_OF_RASTER, NULL,
                            (const char* const* )papszOpenOptions, NULL );
     
     if( hDataset == NULL )
@@ -605,12 +619,12 @@ int main( int argc, char ** argv )
         && bCopySubDatasets )
     {
         char **papszSubdatasets = GDALGetMetadata(hDataset,"SUBDATASETS");
-        char *pszSubDest = (char *) CPLMalloc(strlen(psOptions->pszDest)+32);
+        char *pszSubDest = (char *) CPLMalloc(strlen(pszDest)+32);
         int i;
 
-        CPLString osPath = CPLGetPath(psOptions->pszDest);
-        CPLString osBasename = CPLGetBasename(psOptions->pszDest);
-        CPLString osExtension = CPLGetExtension(psOptions->pszDest);
+        CPLString osPath = CPLGetPath(pszDest);
+        CPLString osBasename = CPLGetBasename(pszDest);
+        CPLString osExtension = CPLGetExtension(pszDest);
         CPLString osTemp;
 
         const char* pszFormat = NULL;
@@ -627,17 +641,21 @@ int main( int argc, char ** argv )
             pszFormat = "%s_%003d";
         }
 
-        psOptions->pszDest = pszSubDest;
+        pszDest = pszSubDest;
 
         for( i = 0; papszSubdatasets[i] != NULL; i += 2 )
         {
-            psOptions->pszSource = CPLStrdup(strstr(papszSubdatasets[i],"=")+1);
+            pszSource = CPLStrdup(strstr(papszSubdatasets[i],"=")+1);
             osTemp = CPLSPrintf( pszFormat, osBasename.c_str(), i/2 + 1 );
             osTemp = CPLFormFilename( osPath, osTemp, osExtension ); 
             strcpy( pszSubDest, osTemp.c_str() );
-            hDataset = GDALOpenEx( psOptions->pszSource, GDAL_OF_RASTER, NULL,
+            hDataset = GDALOpenEx( pszSource, GDAL_OF_RASTER, NULL,
                            (const char* const* )papszOpenOptions, NULL );
-            hOutDS = GDALTranslate( hDataset, psOptions);
+            if( !psOptions->bQuiet );
+                printf("Input file size is %d, %d\n", GDALGetRasterXSize(hDataset), GDALGetRasterYSize(hDataset));
+            hOutDS = GDALTranslate(pszDest, hDataset, psOptions, pbUsageError);
+            if(*pbUsageError == TRUE)
+                Usage();
             if (hOutDS == NULL)
                 break;
             GDALClose(hOutDS);
@@ -650,10 +668,15 @@ int main( int argc, char ** argv )
 
     }
 
-    hOutDS = GDALTranslate( hDataset, psOptions);
+    if( !psOptions->bQuiet );
+        printf("Input file size is %d, %d\n", GDALGetRasterXSize(hDataset), GDALGetRasterYSize(hDataset));
 
-    if(hOutDS == NULL)
+    hOutDS = GDALTranslate(pszDest, hDataset, psOptions, pbUsageError);
+
+    if(*pbUsageError == TRUE)
         Usage();
+
+    CPLFree(pbUsageError);
 
     GDALClose(hDataset);
     GDALClose(hOutDS);
