@@ -919,6 +919,14 @@ GDALDatasetH GDALTranslate( char *pszDest, GDALDatasetH hDataset, GDALTranslateO
             continue;
         }
 
+        // Preserve nbits if no option change values
+        const char* pszNBits = poSrcBand->GetMetadataItem("NBITS", "IMAGE_STRUCTURE");
+        if( pszNBits && psOptions->nRGBExpand == 0 && psOptions->nScaleRepeat == 0 &&
+            !psOptions->bUnscale && psOptions->eOutputType == GDT_Unknown && psOptions->pszResampling == NULL )
+        {
+            poVRTBand->SetMetadataItem("NBITS", pszNBits, "IMAGE_STRUCTURE");
+        }
+
 /* -------------------------------------------------------------------- */
 /*      Do we need to collect scaling information?                      */
 /* -------------------------------------------------------------------- */
