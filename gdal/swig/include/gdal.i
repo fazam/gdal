@@ -1162,4 +1162,423 @@ void GDALInfoOptionsAddExtraMDDomains( GDALInfoOptions *infoOptions,
 #endif
 char *GDALInfo( GDALDatasetShadow *hDataset, GDALInfoOptions *infoOptions );
 
+
+typedef enum
+{
+    MASK_DISABLED,
+    MASK_AUTO,
+    MASK_USER
+} MaskMode;
+
+%rename (TranslateOptions) GDALTranslateOptions;
+
+%apply (char** options) {char** createOptions};
+%apply (char** options) {char** metadataOptions};
+
+struct GDALTranslateOptions
+{
+%extend {
+%mutable;
+    char* format;
+    int quiet;
+    GDALProgressFunc progress;
+    void* progressData;
+    GDALDataType outputType;
+    MaskMode maskMode;
+    int* bandList; /* negative value of panBandList[i] means mask band of ABS(panBandList[i]) */
+    int oXSizePixel;
+    int oYSizePixel;
+    double oXSizePct;
+    double oYSizePct;
+    char** createOptions;
+    int srcWin[4];
+    int strict;
+    int unscale;
+    int scaleRepeat;
+    ScaleParams* scaleParams;
+    int exponentRepeat;
+    double* exponent;
+    double uLX;
+    double uLY;
+    double lRX;
+    double lRY;
+    char** metadataOptions;
+    char* outputSRS;
+    GDAL_GCP* gcps;
+    double uLLR[4];
+    int setNoData;
+    int unsetNoData;
+    double noDataReal;
+    int rgbExpand;
+    int maskBand; /* negative value means mask band of ABS(nMaskBand) */
+    int stats;
+    int approxStats;
+    int errorOnPartiallyOutside;
+    int errorOnCompletelyOutside;
+    int noRAT;
+    char* resampling;
+    double xRes;
+    double yRes;
+    char* projSRS;
+%immutable;
+    GDALTranslateOptions() {
+        GDALTranslateOptions *self = GDALTranslateOptionsNew();
+        return self;
+    }
+
+    ~GDALTranslateOptions() {
+        GDALTranslateOptionsFree( self );
+    }
+} /* extend */
+};
+
+%clear char** createOptions;
+%clear char** metadataOptions;
+
+%apply Pointer NONNULL {GDALTranslateOptions *translateOptions};
+%inline %{
+
+char* GDALTranslateOptions_format_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->pszFormat;
+}
+
+void GDALTranslateOptions_format_set( GDALTranslateOptions *translateOptions, char *pszFormat ) {
+    translateOptions->pszFormat = pszFormat;
+}
+
+bool GDALTranslateOptions_quiet_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->bQuiet;
+}
+
+void GDALTranslateOptions_quiet_set( GDALTranslateOptions *translateOptions, bool bQuiet ) {
+    translateOptions->bQuiet = bQuiet;
+}
+
+GDALProgressFunc GDALTranslateOptions_progress_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->pfnProgress;
+}
+
+void GDALTranslateOptions_progress_set( GDALTranslateOptions *translateOptions, GDALProgressFunc pfnProgress ) {
+    translateOptions->pfnProgress = pfnProgress;
+}
+
+void* GDALTranslateOptions_progressData_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->pProgressData;
+}
+
+void GDALTranslateOptions_progressData_set( GDALTranslateOptions *translateOptions, void *pProgressData ) {
+    translateOptions->pProgressData = pProgressData;
+}
+
+GDALDataType GDALTranslateOptions_outputType_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->eOutputType;
+}
+
+void GDALTranslateOptions_outputType_set( GDALTranslateOptions *translateOptions, GDALDataType eOutputType) {
+    translateOptions->eOutputType = eOutputType;
+}
+
+MaskMode GDALTranslateOptions_maskMode_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->eMaskMode;
+}
+
+void GDALTranslateOptions_maskMode_set( GDALTranslateOptions *translateOptions, MaskMode eMaskMode ) {
+    translateOptions->eMaskMode = eMaskMode;
+}
+
+int* GDALTranslateOptions_bandList_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->panBandList;
+}
+
+void GDALTranslateOptions_bandList_set( GDALTranslateOptions *translateOptions, int *panBandList ) {
+    translateOptions->panBandList = panBandList;
+}
+
+int GDALTranslateOptions_oXSizePixel_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->nOXSizePixel;
+}
+
+void GDALTranslateOptions_oXSizePixel_set( GDALTranslateOptions *translateOptions, int nOXSizePixel ) {
+    translateOptions->nOXSizePixel = nOXSizePixel;
+}
+
+int GDALTranslateOptions_oYSizePixel_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->nOYSizePixel;
+}
+
+void GDALTranslateOptions_oYSizePixel_set( GDALTranslateOptions *translateOptions, int nOYSizePixel ) {
+    translateOptions->nOYSizePixel = nOYSizePixel;
+}
+
+double GDALTranslateOptions_oXSizePct_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->dfOXSizePct;
+}
+
+void GDALTranslateOptions_oXSizePct_set( GDALTranslateOptions *translateOptions, double dfOXSizePct ) {
+    translateOptions->dfOXSizePct = dfOXSizePct;
+}
+
+double GDALTranslateOptions_oYSizePct_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->dfOYSizePct;
+}
+
+void GDALTranslateOptions_oYSizePct_set( GDALTranslateOptions *translateOptions, double dfOYSizePct ) {
+    translateOptions->dfOYSizePct = dfOYSizePct;
+}
+
+char** GDALTranslateOptions_createOptions_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->papszCreateOptions;
+}
+
+void GDALTranslateOptions_createOptions_set( GDALTranslateOptions *translateOptions, char **papszCreateOptions ) {
+    GDALTranslateOptionsSetCreateOptions( translateOptions, papszCreateOptions );
+}
+
+int* GDALTranslateOptions_srcWin_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->anSrcWin;
+}
+
+void GDALTranslateOptions_srcWin_set( GDALTranslateOptions *translateOptions, int *anSrcWin ) {
+    //translateOptions->anSrcWin = anSrcWin;
+}
+
+bool GDALTranslateOptions_strict_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->bStrict;
+}
+
+void GDALTranslateOptions_strict_set( GDALTranslateOptions *translateOptions, bool bStrict ) {
+    translateOptions->bStrict = bStrict;
+}
+
+bool GDALTranslateOptions_unscale_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->bUnscale;
+}
+
+void GDALTranslateOptions_unscale_set( GDALTranslateOptions *translateOptions, bool bUnscale ) {
+    translateOptions->bUnscale = bUnscale;
+}
+
+int GDALTranslateOptions_scaleRepeat_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->nScaleRepeat;
+}
+
+void GDALTranslateOptions_scaleRepeat_set( GDALTranslateOptions *translateOptions, int nScaleRepeat ) {
+    translateOptions->nScaleRepeat = nScaleRepeat;
+}
+
+ScaleParams* GDALTranslateOptions_scaleParams_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->pasScaleParams;
+}
+
+void GDALTranslateOptions_scaleParams_set( GDALTranslateOptions *translateOptions, ScaleParams *pasScaleParams ) {
+    translateOptions->pasScaleParams = pasScaleParams;
+}
+
+int GDALTranslateOptions_exponentRepeat_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->nExponentRepeat;
+}
+
+void GDALTranslateOptions_exponentRepeat_set( GDALTranslateOptions *translateOptions, int nExponentRepeat ) {
+    translateOptions->nExponentRepeat = nExponentRepeat;
+}
+
+double* GDALTranslateOptions_exponent_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->padfExponent;
+}
+
+void GDALTranslateOptions_exponent_set( GDALTranslateOptions *translateOptions, double *padfExponent ) {
+    translateOptions->padfExponent = padfExponent;
+}
+
+double GDALTranslateOptions_uLX_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->dfULX;
+}
+
+void GDALTranslateOptions_uLX_set( GDALTranslateOptions *translateOptions, double dfULX ) {
+    translateOptions->dfULX = dfULX;
+}
+
+double GDALTranslateOptions_uLY_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->dfULY;
+}
+
+void GDALTranslateOptions_uLY_set( GDALTranslateOptions *translateOptions, double dfULY ) {
+    translateOptions->dfULY = dfULY;
+}
+
+double GDALTranslateOptions_lRX_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->dfLRX;
+}
+
+void GDALTranslateOptions_lRX_set( GDALTranslateOptions *translateOptions, double dfLRX ) {
+    translateOptions->dfLRX = dfLRX;
+}
+
+double GDALTranslateOptions_lRY_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->dfLRY;
+}
+
+void GDALTranslateOptions_lRY_set( GDALTranslateOptions *translateOptions, double dfLRY ) {
+    translateOptions->dfLRY = dfLRY;
+}
+
+char** GDALTranslateOptions_metadataOptions_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->papszMetadataOptions;
+}
+
+void GDALTranslateOptions_metadataOptions_set( GDALTranslateOptions *translateOptions, char **papszMetadataOptions ) {
+    GDALTranslateOptionsSetMetadataOptions( translateOptions, papszMetadataOptions );
+}
+
+char* GDALTranslateOptions_outputSRS_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->pszOutputSRS;
+}
+
+void GDALTranslateOptions_outputSRS_set( GDALTranslateOptions *translateOptions, char *pszOutputSRS ) {
+    translateOptions->pszOutputSRS = pszOutputSRS;
+}
+
+GDAL_GCP* GDALTranslateOptions_gcps_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->pasGCPs;
+}
+
+void GDALTranslateOptions_gcps_set( GDALTranslateOptions *translateOptions, GDAL_GCP *pasGCPs ) {
+    translateOptions->pasGCPs = pasGCPs;
+}
+
+double* GDALTranslateOptions_uLLR_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->adfULLR;
+}
+
+void GDALTranslateOptions_uLLR_set( GDALTranslateOptions *translateOptions, double *adfULLR ) {
+    //translateOptions->adfULLR = adfULLR;
+}
+
+bool GDALTranslateOptions_setNoData_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->bSetNoData;
+}
+
+void GDALTranslateOptions_setNoData_set( GDALTranslateOptions *translateOptions, bool bSetNoData ) {
+    translateOptions->bSetNoData = bSetNoData;
+}
+
+bool GDALTranslateOptions_unsetNoData_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->bUnsetNoData;
+}
+
+void GDALTranslateOptions_unsetNoData_set( GDALTranslateOptions *translateOptions, bool bUnsetNoData ) {
+    translateOptions->bUnsetNoData = bUnsetNoData;
+}
+
+double GDALTranslateOptions_noDataReal_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->dfNoDataReal;
+}
+
+void GDALTranslateOptions_noDataReal_set( GDALTranslateOptions *translateOptions, double dfNoDataReal ) {
+    translateOptions->dfNoDataReal = dfNoDataReal;
+}
+
+int GDALTranslateOptions_rgbExpand_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->nRGBExpand;
+}
+
+void GDALTranslateOptions_rgbExpand_set( GDALTranslateOptions *translateOptions, int nRGBExpand ) {
+    translateOptions->nRGBExpand = nRGBExpand;
+}
+
+int GDALTranslateOptions_maskBand_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->nMaskBand;
+}
+
+void GDALTranslateOptions_maskBand_set( GDALTranslateOptions *translateOptions, int nMaskBand ) {
+    translateOptions->nMaskBand = nMaskBand;
+}
+
+bool GDALTranslateOptions_stats_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->bStats;
+}
+
+void GDALTranslateOptions_stats_set( GDALTranslateOptions *translateOptions, bool bStats ) {
+    translateOptions->bStats = bStats;
+}
+
+bool GDALTranslateOptions_approxStats_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->bApproxStats;
+}
+
+void GDALTranslateOptions_approxStats_set( GDALTranslateOptions *translateOptions, bool bApproxStats ) {
+    translateOptions->bApproxStats = bApproxStats;
+}
+
+bool GDALTranslateOptions_errorOnPartiallyOutside_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->bErrorOnPartiallyOutside;
+}
+
+void GDALTranslateOptions_errorOnPartiallyOutside_set( GDALTranslateOptions *translateOptions, bool bErrorOnPartiallyOutside ) {
+    translateOptions->bErrorOnPartiallyOutside = bErrorOnPartiallyOutside;
+}
+
+bool GDALTranslateOptions_errorOnCompletelyOutside_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->bErrorOnCompletelyOutside;
+}
+
+void GDALTranslateOptions_errorOnCompletelyOutside_set( GDALTranslateOptions *translateOptions, bool bErrorOnCompletelyOutside ) {
+    translateOptions->bErrorOnCompletelyOutside = bErrorOnCompletelyOutside;
+}
+
+bool GDALTranslateOptions_noRAT_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->bNoRAT;
+}
+
+void GDALTranslateOptions_noRAT_set( GDALTranslateOptions *translateOptions, bool bNoRAT ) {
+    translateOptions->bNoRAT = bNoRAT;
+}
+
+char* GDALTranslateOptions_resampling_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->pszResampling;
+}
+
+void GDALTranslateOptions_resampling_set( GDALTranslateOptions *translateOptions, char *pszResampling ) {
+    translateOptions->pszResampling = pszResampling;
+}
+
+double GDALTranslateOptions_xRes_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->dfXRes;
+}
+
+void GDALTranslateOptions_xRes_set( GDALTranslateOptions *translateOptions, double dfXRes ) {
+    translateOptions->dfXRes = dfXRes;
+}
+
+double GDALTranslateOptions_yRes_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->dfYRes;
+}
+
+void GDALTranslateOptions_yRes_set( GDALTranslateOptions *translateOptions, double dfYRes ) {
+    translateOptions->dfYRes = dfYRes;
+}
+
+char* GDALTranslateOptions_projSRS_get( GDALTranslateOptions *translateOptions ) {
+    return translateOptions->pszProjSRS;
+}
+
+void GDALTranslateOptions_projSRS_set( GDALTranslateOptions *translateOptions, char *pszProjSRS ) {
+    translateOptions->pszProjSRS = pszProjSRS;
+}
+
+%}
+
+%clear GDALTranslateOptions *translateOptions;
+
+%rename (Translate) wrapper_GDALTranslate;
+
+%inline %{
+GDALDatasetShadow* wrapper_GDALTranslate( const char* dest, GDALDatasetShadow* dataset, GDALTranslateOptions* translateOptions)
+{
+    int usageError; /* ignored */
+    return GDALTranslate(dest, dataset, translateOptions, &usageError);    
+}
+%}
+
+
 #endif

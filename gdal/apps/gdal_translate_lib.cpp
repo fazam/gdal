@@ -199,7 +199,20 @@ static int FixSrcDstWindow( int* panSrcWin, int* panDstWin,
 /*                             GDALTranslate()                          */
 /************************************************************************/
 
-GDALDatasetH GDALTranslate( char *pszDest, GDALDatasetH hDataset, GDALTranslateOptions *psOptions, int *pbUsageError )
+/**
+ * converts raster data between different formats.
+ *
+ * GDALTranslateOptions* must be allocated and freed with GDALTranslateOptionsNew()
+ * and GDALTranslateOptionsFree() respectively.
+ *
+ * @param pszDest the destination dataset path.
+ * @param hDataset the dataset handle.
+ * @param psOptions the options struct for GDALTranslate().
+ * @return the converted dataset.
+ * It must be freed using CPLFree().
+ */
+
+GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTranslateOptions *psOptions, int *pbUsageError )
 
 {
     GDALDatasetH hOutDS;
@@ -209,11 +222,12 @@ GDALDatasetH GDALTranslate( char *pszDest, GDALDatasetH hDataset, GDALTranslateO
     double		adfGeoTransform[6];
     int			nOXSize = 0, nOYSize = 0;
     const char          *pszProjection;
-    const char *pszSource;
+    const char *pszSource = NULL;
     int bGotBounds = FALSE;
     int bDefBands = TRUE;
 
-    *pbUsageError = FALSE;
+    if(pbUsageError)
+        *pbUsageError = FALSE;
 
     if(psOptions->adfULLR[0] != 0.0 || psOptions->adfULLR[1] != 0.0 || psOptions->adfULLR[2] != 0.0 || psOptions->adfULLR[3] != 0.0)
         bGotBounds = TRUE;
@@ -228,22 +242,19 @@ GDALDatasetH GDALTranslate( char *pszDest, GDALDatasetH hDataset, GDALTranslateO
 
     if( pszDest == NULL )
     {
-        if( pszSource == NULL )
-        {
-            CPLError( CE_Failure, CPLE_AppDefined, "No source dataset specified.");
-        }
-        else
-        {
-            CPLError( CE_Failure, CPLE_AppDefined, "No target dataset specified.");
-        }
-        *pbUsageError = TRUE;
+        CPLError( CE_Failure, CPLE_AppDefined, "No target dataset specified.");
+
+        if(pbUsageError)
+            *pbUsageError = TRUE;
         return NULL;
     }
 
     if ( strcmp(pszSource, pszDest) == 0)
     {
         CPLError( CE_Failure, CPLE_AppDefined, "Source and destination datasets must be different.");
-        *pbUsageError = TRUE;
+        
+        if(pbUsageError)
+            *pbUsageError = TRUE;
         return NULL;
     }
 
@@ -251,16 +262,19 @@ GDALDatasetH GDALTranslate( char *pszDest, GDALDatasetH hDataset, GDALTranslateO
 /*      Check that incompatible options are not used                    */
 /* -------------------------------------------------------------------- */
 
-    if( (psOptions->nOXSizePixel != 0 || psOptions->dfOXSizePct != 0.0) && (psOptions->dfXRes != 0 && psOptions->dfYRes != 0) )
+    if( (psOptions->nOXSizePixel != 0 || psOptions->dfOXSizePct != 0.0 || psOptions->nOYSizePixel != 0 ||
+         psOptions->dfOYSizePct) && (psOptions->dfXRes != 0 && psOptions->dfYRes != 0) )
     {
         CPLError( CE_Failure, CPLE_IllegalArg, "-outsize and -tr options cannot be used at the same time.");
-        *pbUsageError = TRUE;
+        if(pbUsageError)
+            *pbUsageError = TRUE;
         return NULL;
     }
     if( bGotBounds &&  (psOptions->dfXRes != 0 && psOptions->dfYRes != 0) )
     {
         CPLError( CE_Failure, CPLE_IllegalArg, "-a_ullr and -tr options cannot be used at the same time.");
-        *pbUsageError = TRUE;
+        if(pbUsageError)
+            *pbUsageError = TRUE;
         return NULL;
     }
 
@@ -315,7 +329,8 @@ GDALDatasetH GDALTranslate( char *pszDest, GDALDatasetH hDataset, GDALTranslateO
             CPLError( CE_Failure, CPLE_IllegalArg, "-scale has been specified more times than the number of output bands");
         else
             CPLError( CE_Failure, CPLE_IllegalArg, "-scale_XX has been specified with XX greater than the number of output bands");
-        *pbUsageError = TRUE;
+        if(pbUsageError)
+            *pbUsageError = TRUE;
         return NULL;
     }
 
@@ -325,7 +340,8 @@ GDALDatasetH GDALTranslate( char *pszDest, GDALDatasetH hDataset, GDALTranslateO
             CPLError( CE_Failure, CPLE_IllegalArg, "-exponent has been specified more times than the number of output bands");
         else
             CPLError( CE_Failure, CPLE_IllegalArg, "-exponent_XX has been specified with XX greater than the number of output bands");
-        *pbUsageError = TRUE;
+        if(pbUsageError)
+            *pbUsageError = TRUE;
         return NULL;
     }
 /* -------------------------------------------------------------------- */
@@ -470,7 +486,8 @@ GDALDatasetH GDALTranslate( char *pszDest, GDALDatasetH hDataset, GDALTranslateO
             }
         }
         CPLError( CE_Failure, CPLE_IllegalArg, "\n" );
-        *pbUsageError = TRUE;
+        if(pbUsageError)
+            *pbUsageError = TRUE;
         return NULL;
     }
 
@@ -524,19 +541,13 @@ GDALDatasetH GDALTranslate( char *pszDest, GDALDatasetH hDataset, GDALTranslateO
         nOXSize = int(psOptions->anSrcWin[2] / psOptions->dfXRes * adfGeoTransform[1] + 0.5);
         nOYSize = int(psOptions->anSrcWin[3] / psOptions->dfYRes * fabs(adfGeoTransform[5]) + 0.5);
     }
-    else if( psOptions->nOXSizePixel == 0 && psOptions->dfOXSizePct == 0.0 )
+    else if( psOptions->nOXSizePixel == 0 && psOptions->dfOXSizePct == 0.0 && psOptions->nOYSizePixel == 0 && psOptions->dfOYSizePct == 0.0)
     {
         nOXSize = psOptions->anSrcWin[2];
         nOYSize = psOptions->anSrcWin[3];
     }
     else
     {
-        if( psOptions->nOXSizePixel == 0 && psOptions->dfOXSizePct == 0.0 && psOptions->nOYSizePixel == 0 && psOptions->dfOYSizePct == 0.0 )
-        {
-            CPLError( CE_Failure, CPLE_IllegalArg, "-outsize %d %d invalid.\n", psOptions->nOXSizePixel, psOptions->nOYSizePixel);
-            return NULL;
-        }
-
         if( !(psOptions->nOXSizePixel == 0 && psOptions->dfOXSizePct == 0.0) )
         {
             if(psOptions->nOXSizePixel != 0)
@@ -970,7 +981,8 @@ GDALDatasetH GDALTranslate( char *pszDest, GDALDatasetH hDataset, GDALTranslateO
         if( bExponentScaling && !bScale )
         {
             CPLError( CE_Failure, CPLE_IllegalArg, "For band %d, -scale should be specified when -exponent is specified.", i + 1);
-            *pbUsageError = TRUE;
+            if(pbUsageError)
+                *pbUsageError = TRUE;
             return NULL;
         }
 
@@ -1293,6 +1305,16 @@ static void CopyBandInfo( GDALRasterBand * poSrcBand, GDALRasterBand * poDstBand
         poDstBand->SetUnitType( poSrcBand->GetUnitType() );
 }
 
+/************************************************************************/
+/*                             GDALTranslateOptionsNew()                */
+/************************************************************************/
+
+/**
+ * allocates a GDALTranslateOptions struct.
+ *
+ * @return pointer to the allocated GDALTranslateOptions struct.
+ */
+
 GDALTranslateOptions *GDALTranslateOptionsNew()
 {
     GDALTranslateOptions *psOptions = (GDALTranslateOptions *) CPLCalloc( 1, sizeof(GDALTranslateOptions) );
@@ -1352,6 +1374,16 @@ GDALTranslateOptions *GDALTranslateOptionsNew()
     return psOptions;
 }
 
+/************************************************************************/
+/*                        GDALTranslateOptionsFree()                    */
+/************************************************************************/
+
+/**
+ * frees the GDALTranslateOptions struct.
+ *
+ * @param psOptions the options struct for GDALTranslate().
+ */
+
 void GDALTranslateOptionsFree(GDALTranslateOptions *psOptions)
 {
     CPLFree(psOptions->pszFormat);
@@ -1363,6 +1395,77 @@ void GDALTranslateOptionsFree(GDALTranslateOptions *psOptions)
     CPLFree(psOptions->pszOutputSRS);
     CPLFree(psOptions->pasGCPs);
     CPLFree(psOptions->pszResampling);
+    CPLFree(psOptions->pszProjSRS);
 
     CPLFree(psOptions);
+}
+
+/************************************************************************/
+/*                   GDALTranslateOptionsSetCreateOptions()             */
+/************************************************************************/
+
+/**
+ * Set function for papszCreateOptions.
+ *
+ * @param psOptions the options struct for GDALTranslate().
+ * @param papszCreateOption.
+ */
+
+void GDALTranslateOptionsSetCreateOptions( GDALTranslateOptions *psOptions,
+                                       char **papszCreateOptions )
+{
+    CSLDestroy( psOptions->papszCreateOptions );
+    psOptions->papszCreateOptions = CSLDuplicate( papszCreateOptions );
+}
+
+/************************************************************************/
+/*                  GDALTranslateOptionsAddCreateOptions()              */
+/************************************************************************/
+
+/**
+ * Specify the particular create option which need to be added.
+ *
+ * @param psOptions the options struct for GDALTranslate().
+ * @param pszCreateOption the specific create option which need to be added.
+ */
+
+void GDALTranslateOptionsAddCreateOptions( GDALTranslateOptions *psOptions,
+                                       const char *pszCreateOption )
+{
+    psOptions->papszCreateOptions = CSLAddString( psOptions->papszCreateOptions, pszCreateOption );
+}
+
+/************************************************************************/
+/*                   GDALTranslateOptionsSetMetadataOptions()           */
+/************************************************************************/
+
+/**
+ * Set function for papszMetadataOptions.
+ *
+ * @param psOptions the options struct for GDALTranslate().
+ * @param papszMetadataOption.
+ */
+
+void GDALTranslateOptionsSetMetadataOptions( GDALTranslateOptions *psOptions,
+                                       char **papszMetadataOptions )
+{
+    CSLDestroy( psOptions->papszMetadataOptions );
+    psOptions->papszMetadataOptions = CSLDuplicate( papszMetadataOptions );
+}
+
+/************************************************************************/
+/*                   GDALTranslateOptionsAddMetadataOptions()           */
+/************************************************************************/
+
+/**
+ * Specify the particular metadata option which need to be added.
+ *
+ * @param psOptions the options struct for GDALTranslate().
+ * @param pszMetadataOption the specific metadata option which need to be added.
+ */
+
+void GDALTranslateOptionsAddMetadataOptions( GDALTranslateOptions *psOptions,
+                                       const char *pszMetadataOption )
+{
+    psOptions->papszMetadataOptions = CSLAddString( psOptions->papszMetadataOptions, pszMetadataOption );
 }

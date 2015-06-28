@@ -1459,7 +1459,7 @@ void GDALInfoOptionsAddExtraMDDomains( GDALInfoOptions *psOptions,
  * Set function for papszExtraMDDomains.
  *
  * @param psOptions the options struct for GDALInfo().
- * @param pszDomain the specific metadata domain which need to be reported.
+ * @param papszExtraMDDomains.
  */
 
 void GDALInfoOptionsSetExtraMDDomains( GDALInfoOptions *psOptions,

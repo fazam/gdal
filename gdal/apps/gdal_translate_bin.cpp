@@ -107,9 +107,7 @@ int main( int argc, char ** argv )
     char              **papszOpenOptions = NULL;
     int bFormatExplicitlySet = FALSE;
     GDALTranslateOptions *psOptions = NULL;
-    int *pbUsageError;
-
-    pbUsageError = (int *)CPLMalloc(sizeof(int));
+    int pbUsageError;
 
     /* Check strict compilation and runtime library version as we use C++ API */
     if (! GDAL_CHECK_VERSION(argv[0]))
@@ -576,6 +574,11 @@ int main( int argc, char ** argv )
         }
     }
 
+    if( pszSource == NULL )
+    {
+        Usage("No source dataset specified.");
+    }
+
     if (!psOptions->bQuiet && !bFormatExplicitlySet)
         CheckExtensionConsistency(pszDest, psOptions->pszFormat);
 
@@ -653,8 +656,8 @@ int main( int argc, char ** argv )
                            (const char* const* )papszOpenOptions, NULL );
             if( !psOptions->bQuiet );
                 printf("Input file size is %d, %d\n", GDALGetRasterXSize(hDataset), GDALGetRasterYSize(hDataset));
-            hOutDS = GDALTranslate(pszDest, hDataset, psOptions, pbUsageError);
-            if(*pbUsageError == TRUE)
+            hOutDS = GDALTranslate(pszDest, hDataset, psOptions, &pbUsageError);
+            if(pbUsageError == TRUE)
                 Usage();
             if (hOutDS == NULL)
                 break;
@@ -671,12 +674,10 @@ int main( int argc, char ** argv )
     if( !psOptions->bQuiet );
         printf("Input file size is %d, %d\n", GDALGetRasterXSize(hDataset), GDALGetRasterYSize(hDataset));
 
-    hOutDS = GDALTranslate(pszDest, hDataset, psOptions, pbUsageError);
+    hOutDS = GDALTranslate(pszDest, hDataset, psOptions, &pbUsageError);
 
-    if(*pbUsageError == TRUE)
+    if(pbUsageError == TRUE)
         Usage();
-
-    CPLFree(pbUsageError);
 
     GDALClose(hDataset);
     GDALClose(hOutDS);

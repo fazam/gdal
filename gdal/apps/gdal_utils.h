@@ -105,7 +105,6 @@ typedef struct
     void *pProgressData;
     GDALDataType eOutputType;
     MaskMode eMaskMode;
-    char *pszDest;
     int nBandCount;
     int *panBandList; /* negative value of panBandList[i] means mask band of ABS(panBandList[i]) */
     int nOXSizePixel;
@@ -128,7 +127,6 @@ typedef struct
     double dfLRY;
     char **papszMetadataOptions;
     char *pszOutputSRS;
-    int bGotBounds;
     int nGCPCount;
     GDAL_GCP *pasGCPs;
     double adfULLR[4];
@@ -153,6 +151,18 @@ GDALTranslateOptions CPL_DLL *GDALTranslateOptionsNew(void);
 
 void CPL_DLL GDALTranslateOptionsFree(GDALTranslateOptions *psOptions);
 
-GDALDatasetH CPL_DLL GDALTranslate(char *pszDest, GDALDatasetH hDataset, GDALTranslateOptions *psOptions, int *pbUsageError);
+void CPL_DLL GDALTranslateOptionsSetCreateOptions( GDALTranslateOptions *psOptions,
+                                                   char **papszCreateOptions );
+
+void  CPL_DLL GDALTranslateOptionsAddCreateOptions( GDALTranslateOptions *psOptions,
+                                                    const char *pszCreateOption );
+
+void CPL_DLL GDALTranslateOptionsSetMetadataOptions( GDALTranslateOptions *psOptions,
+                                                     char **papszMetadataOptions );
+
+void  CPL_DLL GDALTranslateOptionsAddMetadataOptions( GDALTranslateOptions *psOptions,
+                                                      const char *pszMetadataOption );
+
+GDALDatasetH CPL_DLL GDALTranslate(const char *pszDest, GDALDatasetH hDataset, GDALTranslateOptions *psOptions, int *pbUsageError);
 
 CPL_C_END
