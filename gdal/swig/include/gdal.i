@@ -1170,6 +1170,89 @@ typedef enum
     MASK_USER
 } MaskMode;
 
+struct ScaleParams
+{
+%extend {
+%mutable;
+    int     scale;
+    int     haveScaleSrc;
+    double  scaleSrcMin, scaleSrcMax;
+    double  scaleDstMin, scaleDstMax;
+%immutable;
+    
+    ScaleParams( int scale = 0, int haveScaleSrc = 0, double scaleSrcMin = 0.0,
+                 double scaleSrcMax = 0.0, double scaleDstMin = 0.0, double scaleDstMax = 0.0 ) {
+        ScaleParams *self = (ScaleParams*) CPLMalloc( sizeof( ScaleParams ) );
+        self->bScale = scale;
+        self->bHaveScaleSrc = haveScaleSrc;
+        self->dfScaleSrcMin = scaleSrcMin;
+        self->dfScaleSrcMax = scaleSrcMax;
+        self->dfScaleDstMin = scaleDstMin;
+        self->dfScaleDstMax = scaleDstMax;
+        return self;
+    }
+
+    ~ScaleParams() {
+        CPLFree( self );
+    }
+} /* extend */
+};
+
+%apply Pointer NONNULL {ScaleParams *scaleParams};
+%inline %{
+    
+bool ScaleParams_scale_get( ScaleParams scaleParams ) {
+    return scaleParams->bScale;
+}
+
+void ScaleParams_scale_set( ScaleParams scaleParams, bool bScale ) {
+    scaleParams->bScale = bScale;
+}
+
+bool ScaleParams_haveScaleSrc_get( ScaleParams scaleParams ) {
+    return scaleParams->bHaveScaleSrc;
+}
+
+void ScaleParams_haveScaleSrc_set( ScaleParams scaleParams, bool bHaveScaleSrc ) {
+    scaleParams->bHaveScaleSrc = bHaveScaleSrc;
+}
+
+double ScaleParams_scaleSrcMin_get( ScaleParams scaleParams ) {
+    return scaleParams->dfScaleSrcMin;
+}
+
+void ScaleParams_scaleSrcMin_set( ScaleParams scaleParams, double dfScaleSrcMin ) {
+    scaleParams->dfScaleSrcMin = dfScaleSrcMin;
+}
+
+double ScaleParams_scaleSrcMax_get( ScaleParams scaleParams ) {
+    return scaleParams->dfScaleSrcMax;
+}
+
+void ScaleParams_scaleSrcMax_set( ScaleParams scaleParams, double dfScaleSrcMax ) {
+    scaleParams->dfScaleSrcMax = dfScaleSrcMax;
+}
+
+double ScaleParams_scaleDstMin_get( ScaleParams scaleParams ) {
+    return scaleParams->dfScaleDstMin;
+}
+
+void ScaleParams_scaleDstMin_set( ScaleParams scaleParams, double dfScaleDstMin ) {
+    scaleParams->dfScaleDstMin = dfScaleDstMin;
+}
+
+double ScaleParams_scaleDstMax_get( ScaleParams scaleParams ) {
+    return scaleParams->dfScaleDstMax;
+}
+
+void ScaleParams_scaleDstMax_set( ScaleParams scaleParams, double dfScaleDstMax ) {
+    scaleParams->dfScaleDstMax = dfScaleDstMax;
+}
+
+%}
+
+%clear ScaleParams *scaleParams;
+
 %rename (TranslateOptions) GDALTranslateOptions;
 
 %apply (char** options) {char** createOptions};
@@ -1571,6 +1654,8 @@ void GDALTranslateOptions_projSRS_set( GDALTranslateOptions *translateOptions, c
 %clear GDALTranslateOptions *translateOptions;
 
 %rename (Translate) wrapper_GDALTranslate;
+
+%newobject wrapper_GDALTranslate;
 
 %inline %{
 GDALDatasetShadow* wrapper_GDALTranslate( const char* dest, GDALDatasetShadow* dataset, GDALTranslateOptions* translateOptions)
