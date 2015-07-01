@@ -991,11 +991,10 @@ int GDALJP2Metadata::ParseGMLCoverageDesc()
 /* -------------------------------------------------------------------- */
     int bNeedAxisFlip = FALSE;
 
+    OGRSpatialReference oSRS;
     if( bSuccess && pszSRSName != NULL 
         && (pszProjection == NULL || strlen(pszProjection) == 0) )
     {
-        OGRSpatialReference oSRS;
-
         if( EQUALN(pszSRSName,"epsg:",5) )
         {
             if( oSRS.SetFromUserInput( pszSRSName ) == OGRERR_NONE )
@@ -1033,9 +1032,6 @@ int GDALJP2Metadata::ParseGMLCoverageDesc()
                   "Got projection from GML box: %s", 
                  pszProjection );
 
-    CPLDestroyXMLNode( psXML );
-    psXML = NULL;
-
 /* -------------------------------------------------------------------- */
 /*      Do we need to flip the axes?                                    */
 /* -------------------------------------------------------------------- */
@@ -1046,6 +1042,60 @@ int GDALJP2Metadata::ParseGMLCoverageDesc()
         bNeedAxisFlip = FALSE;
         CPLDebug( "GMLJP2", "Suppressed axis flipping based on GDAL_IGNORE_AXIS_ORIENTATION." );
     }
+    
+    if( pszSRSName && bNeedAxisFlip )
+    {
+        // Suppress explicit axis order in SRS definition
+
+        OGR_SRSNode *poGEOGCS = oSRS.GetAttrNode( "GEOGCS" );
+        if( poGEOGCS != NULL )
+            poGEOGCS->StripNodes( "AXIS" );
+
+        OGR_SRSNode *poPROJCS = oSRS.GetAttrNode( "PROJCS" );
+        if (poPROJCS != NULL && oSRS.EPSGTreatsAsNorthingEasting())
+            poPROJCS->StripNodes( "AXIS" );
+        
+        CPLFree(pszProjection);
+        oSRS.exportToWkt( &pszProjection );
+
+    }
+    
+    /* Some Pleiades files have explicit <gml:axisName>Easting</gml:axisName> */
+    /* <gml:axisName>Northing</gml:axisName> to override default EPSG order */
+    if( bNeedAxisFlip && psRG != NULL )
+    {
+        int nAxisCount = 0;
+        int bFirstAxisIsEastOrLong = FALSE, bSecondAxisIsNorthOrLat = FALSE;
+        for(CPLXMLNode* psIter = psRG->psChild; psIter != NULL; psIter = psIter->psNext )
+        {
+            if( psIter->eType == CXT_Element && strcmp(psIter->pszValue, "axisName") == 0 &&
+                psIter->psChild != NULL && psIter->psChild->eType == CXT_Text )
+            {
+                if( nAxisCount == 0 && 
+                    (EQUALN(psIter->psChild->pszValue, "EAST", 4) ||
+                     EQUALN(psIter->psChild->pszValue, "LONG", 4) ) )
+                {
+                    bFirstAxisIsEastOrLong = TRUE;
+                }
+                else if( nAxisCount == 1 &&
+                         (EQUALN(psIter->psChild->pszValue, "NORTH", 5) ||
+                          EQUALN(psIter->psChild->pszValue, "LAT", 3)) )
+                {
+                    bSecondAxisIsNorthOrLat = TRUE;
+                }
+                nAxisCount ++;
+            }
+        }
+        if( bFirstAxisIsEastOrLong && bSecondAxisIsNorthOrLat )
+        {
+            CPLDebug( "GMLJP2", "Disable axis flip because of explicit axisName disabling it" );
+            bNeedAxisFlip = FALSE;
+        }
+    }
+
+    CPLDestroyXMLNode( psXML );
+    psXML = NULL;
+    psRG = NULL;
 
     if( bNeedAxisFlip )
     {
@@ -1190,7 +1240,8 @@ int GDALJP2Metadata::GetGMLJP2GeoreferencingInfo( int& nEPSGCode,
                                                   double adfXVector[2],
                                                   double adfYVector[2],
                                                   const char*& pszComment,
-                                                  CPLString& osDictBox )
+                                                  CPLString& osDictBox,
+                                                  int& bNeedAxisFlip )
 {
 
 /* -------------------------------------------------------------------- */
@@ -1199,7 +1250,7 @@ int GDALJP2Metadata::GetGMLJP2GeoreferencingInfo( int& nEPSGCode,
     OGRSpatialReference oSRS;
     char *pszWKTCopy = (char *) pszProjection;
     nEPSGCode = 0;
-    int  bNeedAxisFlip = FALSE;
+    bNeedAxisFlip = FALSE;
 
     if( oSRS.importFromWkt( &pszWKTCopy ) != OGRERR_NONE )
         return FALSE;
@@ -1395,9 +1446,10 @@ GDALJP2Box *GDALJP2Metadata::CreateGMLJP2( int nXSize, int nYSize )
     double adfYVector[2];
     const char* pszComment = "";
     CPLString osDictBox;
+    int bNeedAxisFlip = FALSE;
     if( !GetGMLJP2GeoreferencingInfo( nEPSGCode, adfOrigin,
                                       adfXVector, adfYVector,
-                                      pszComment, osDictBox ) )
+                                      pszComment, osDictBox, bNeedAxisFlip ) )
     {
         return NULL;
     }
@@ -1408,6 +1460,30 @@ GDALJP2Box *GDALJP2Metadata::CreateGMLJP2( int nXSize, int nYSize )
     else
         strcpy( szSRSName, 
                 "gmljp2://xml/CRSDictionary.gml#ogrcrs1" );
+
+    // Compute bounding box
+    double dfX1 = adfGeoTransform[0];
+    double dfX2 = adfGeoTransform[0] + nXSize * adfGeoTransform[1];
+    double dfX3 = adfGeoTransform[0] +                               nYSize * adfGeoTransform[2];
+    double dfX4 = adfGeoTransform[0] + nXSize * adfGeoTransform[1] + nYSize * adfGeoTransform[2];
+    double dfY1 = adfGeoTransform[3];
+    double dfY2 = adfGeoTransform[3] + nXSize * adfGeoTransform[4];
+    double dfY3 = adfGeoTransform[3] +                               nYSize * adfGeoTransform[5];
+    double dfY4 = adfGeoTransform[3] + nXSize * adfGeoTransform[4] + nYSize * adfGeoTransform[5];
+    double dfLCX = MIN(MIN(dfX1,dfX2),MIN(dfX3,dfX4));
+    double dfLCY = MIN(MIN(dfY1,dfY2),MIN(dfY3,dfY4));
+    double dfUCX = MAX(MAX(dfX1,dfX2),MAX(dfX3,dfX4));
+    double dfUCY = MAX(MAX(dfY1,dfY2),MAX(dfY3,dfY4));
+    if( bNeedAxisFlip )
+    {
+        double dfTmp = dfLCX;
+        dfLCX = dfLCY;
+        dfLCY = dfTmp;
+        
+        dfTmp = dfUCX;
+        dfUCX = dfUCY;
+        dfUCY = dfTmp;
+    }
 
 /* -------------------------------------------------------------------- */
 /*      For now we hardcode for a minimal instance format.              */
@@ -1420,7 +1496,10 @@ GDALJP2Box *GDALJP2Metadata::CreateGMLJP2( int nXSize, int nYSize )
 "   xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n"
 "   xsi:schemaLocation=\"http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/gmlJP2Profile/1.0.0/gmlJP2Profile.xsd\">\n"
 "  <gml:boundedBy>\n"
-"    <gml:Null>withheld</gml:Null>\n"
+"    <gml:Envelope srsName=\"%s\">\n"
+"      <gml:lowerCorner>%.15g %.15g</gml:lowerCorner>\n"
+"      <gml:upperCorner>%.15g %.15g</gml:upperCorner>\n"
+"    </gml:Envelope>\n"
 "  </gml:boundedBy>\n"
 "  <gml:featureMember>\n"
 "    <gml:FeatureCollection>\n"
@@ -1458,6 +1537,7 @@ GDALJP2Box *GDALJP2Metadata::CreateGMLJP2( int nXSize, int nYSize )
 "    </gml:FeatureCollection>\n"
 "  </gml:featureMember>\n"
 "</gml:FeatureCollection>\n",
+             szSRSName, dfLCX, dfLCY, dfUCX, dfUCY,
              nXSize-1, nYSize-1, szSRSName, adfOrigin[0], adfOrigin[1],
              pszComment,
              szSRSName, adfXVector[0], adfXVector[1], 
@@ -1552,6 +1632,7 @@ class GMLJP2V2GMLFileDesc
 {
     public:
         CPLString osFile;
+        CPLString osRemoteResource;
         CPLString osNamespace;
         CPLString osSchemaLocation;
         int       bInline;
@@ -1579,6 +1660,23 @@ class GMLJP2V2MetadataDesc
             GMLJP2V2MetadataDesc(): bGDALMetadata(FALSE), bParentCoverageCollection(TRUE) {}
 };
 
+class GMLJP2V2StyleDesc
+{
+    public:
+        CPLString osFile;
+        int       bParentCoverageCollection;
+
+            GMLJP2V2StyleDesc(): bParentCoverageCollection(TRUE) {}
+};
+
+class GMLJP2V2ExtensionDesc
+{
+    public:
+        CPLString osFile;
+        int       bParentCoverageCollection;
+
+            GMLJP2V2ExtensionDesc(): bParentCoverageCollection(TRUE) {}
+};
 class GMLJP2V2BoxDesc
 {
     public:
@@ -1598,6 +1696,8 @@ GDALJP2Box *GDALJP2Metadata::CreateGMLJP2V2( int nXSize, int nYSize,
     std::vector<GMLJP2V2MetadataDesc> aoMetadata;
     std::vector<GMLJP2V2AnnotationDesc> aoAnnotations;
     std::vector<GMLJP2V2GMLFileDesc> aoGMLFiles;
+    std::vector<GMLJP2V2StyleDesc> aoStyles;
+    std::vector<GMLJP2V2ExtensionDesc> aoExtensions;
     std::vector<GMLJP2V2BoxDesc> aoBoxes;
 
 /* -------------------------------------------------------------------- */
@@ -1683,19 +1783,50 @@ GDALJP2Box *GDALJP2Metadata::CreateGMLJP2V2( int nXSize, int nYSize,
             "my.gml",
 
             {
-                "#file_doc": "can use relative or absolute paths. Required",
+                "#file_doc": "Can use relative or absolute paths. Exclusive of remote_resource",
                 "file": "converted/test_0.gml",
 
+                "#remote_resource_doc": "URL of a feature collection that must be referenced through a xlink:href",
+                "remote_resource": "http://svn.osgeo.org/gdal/trunk/autotest/ogr/data/expected_gml_gml32.gml",
+
                 "#namespace_doc": ["The namespace in schemaLocation for which to substitute",
-                                  "its original schemaLocation with the one provided below"],
+                                  "its original schemaLocation with the one provided below.",
+                                  "Ignored for a remote_resource"],
                 "namespace": "http://example.com",
 
                 "#schema_location_doc": ["Value of the substitued schemaLocation. ",
-                                         "Typically a schema box label (link)"],
+                                         "Typically a schema box label (link)",
+                                         "Ignored for a remote_resource"],
                 "schema_location": "gmljp2://xml/schema_0.xsd",
 
-                "#inline_doc": "Whether to inline the content, or put it in a separate xml box. Default is true",
+                "#inline_doc": [
+                    "Whether to inline the content, or put it in a separate xml box. Default is true",
+                    "Ignored for a remote_resource." ],
                 "inline": true,
+
+                "#parent_node": ["Where to put the FeatureCollection.",
+                                 "Under CoverageCollection (default) or GridCoverage" ],
+                "parent_node": "CoverageCollection"
+            }
+        ],
+
+        "#styles_doc: [ "An array of styles. For example SLD files" ],
+        "styles" : [
+            {
+                "#file_doc": "Can use relative or absolute paths.",
+                "file": "my.sld",
+
+                "#parent_node": ["Where to put the FeatureCollection.",
+                                 "Under CoverageCollection (default) or GridCoverage" ],
+                "parent_node": "CoverageCollection"
+            }
+        ],
+
+        "#extensions_doc: [ "An array of extensions." ],
+        "extensions" : [
+            {
+                "#file_doc": "Can use relative or absolute paths.",
+                "file": "my.xml",
 
                 "#parent_node": ["Where to put the FeatureCollection.",
                                  "Under CoverageCollection (default) or GridCoverage" ],
@@ -1832,7 +1963,7 @@ GDALJP2Box *GDALJP2Metadata::CreateGMLJP2V2( int nXSize, int nYSize,
                                     oDesc.bParentCoverageCollection = FALSE;
                                 else
                                     CPLError(CE_Warning, CPLE_NotSupported,
-                                             "metadata.location should be CoverageCollection or GridCoverage");
+                                             "metadata[].parent_node should be CoverageCollection or GridCoverage");
                             }
 
                             aoMetadata.push_back(oDesc);
@@ -1864,11 +1995,23 @@ GDALJP2Box *GDALJP2Metadata::CreateGMLJP2V2( int nXSize, int nYSize,
                     json_object* poGMLFile = json_object_array_get_idx(poGMLFileList, i);
                     if( poGMLFile && json_object_get_type(poGMLFile) == json_type_object )
                     {
+                        const char* pszFile = NULL;
                         json_object* poFile = json_object_object_get(poGMLFile, "file");
                         if( poFile && json_object_get_type(poFile) == json_type_string )
+                            pszFile = json_object_get_string(poFile);
+
+                        const char* pszRemoteResource = NULL;
+                        json_object* poRemoteResource = json_object_object_get(poGMLFile, "remote_resource");
+                        if( poRemoteResource && json_object_get_type(poRemoteResource) == json_type_string )
+                            pszRemoteResource = json_object_get_string(poRemoteResource);
+
+                        if( pszFile || pszRemoteResource )
                         {
                             GMLJP2V2GMLFileDesc oDesc;
-                            oDesc.osFile = json_object_get_string(poFile);
+                            if( pszFile )
+                                oDesc.osFile = pszFile;
+                            else if( pszRemoteResource )
+                                oDesc.osRemoteResource = pszRemoteResource;
 
                             json_object* poNamespace = json_object_object_get(poGMLFile, "namespace");
                             if( poNamespace && json_object_get_type(poNamespace) == json_type_string )
@@ -1893,7 +2036,7 @@ GDALJP2Box *GDALJP2Metadata::CreateGMLJP2V2( int nXSize, int nYSize,
                                     oDesc.bParentCoverageCollection = FALSE;
                                 else
                                     CPLError(CE_Warning, CPLE_NotSupported,
-                                             "gml_filelist.location should be CoverageCollection or GridCoverage");
+                                             "gml_filelist[].parent_node should be CoverageCollection or GridCoverage");
                             }
 
                             aoGMLFiles.push_back(oDesc);
@@ -1908,6 +2051,91 @@ GDALJP2Box *GDALJP2Metadata::CreateGMLJP2V2( int nXSize, int nYSize,
                 }
             }
 
+            json_object* poStyles = json_object_object_get(poRootInstance, "styles"); 
+            if( poStyles && json_object_get_type(poStyles) == json_type_array )
+            {
+                for(int i=0;i<json_object_array_length(poStyles);i++)
+                {
+                    json_object* poStyle = json_object_array_get_idx(poStyles, i);
+                    if( poStyle && json_object_get_type(poStyle) == json_type_object )
+                    {
+                        const char* pszFile = NULL;
+                        json_object* poFile = json_object_object_get(poStyle, "file");
+                        if( poFile && json_object_get_type(poFile) == json_type_string )
+                            pszFile = json_object_get_string(poFile);
+
+                        if( pszFile )
+                        {
+                            GMLJP2V2StyleDesc oDesc;
+                            oDesc.osFile = pszFile;
+
+                            json_object* poLocation = json_object_object_get(poStyle, "parent_node");
+                            if( poLocation && json_object_get_type(poLocation) == json_type_string )
+                            {
+                                const char* pszLocation = json_object_get_string(poLocation);
+                                if( EQUAL(pszLocation, "CoverageCollection") )
+                                    oDesc.bParentCoverageCollection  = TRUE;
+                                else if( EQUAL(pszLocation, "GridCoverage") )
+                                    oDesc.bParentCoverageCollection = FALSE;
+                                else
+                                    CPLError(CE_Warning, CPLE_NotSupported,
+                                             "styles[].parent_node should be CoverageCollection or GridCoverage");
+                            }
+
+                            aoStyles.push_back(oDesc);
+                        }
+                    }
+                    else if( poStyle && json_object_get_type(poStyle) == json_type_string )
+                    {
+                        GMLJP2V2StyleDesc oDesc;
+                        oDesc.osFile = json_object_get_string(poStyle);
+                        aoStyles.push_back(oDesc);
+                    }
+                }
+            }
+
+            json_object* poExtensions = json_object_object_get(poRootInstance, "extensions"); 
+            if( poExtensions && json_object_get_type(poExtensions) == json_type_array )
+            {
+                for(int i=0;i<json_object_array_length(poExtensions);i++)
+                {
+                    json_object* poExtension = json_object_array_get_idx(poExtensions, i);
+                    if( poExtension && json_object_get_type(poExtension) == json_type_object )
+                    {
+                        const char* pszFile = NULL;
+                        json_object* poFile = json_object_object_get(poExtension, "file");
+                        if( poFile && json_object_get_type(poFile) == json_type_string )
+                            pszFile = json_object_get_string(poFile);
+
+                        if( pszFile )
+                        {
+                            GMLJP2V2ExtensionDesc oDesc;
+                            oDesc.osFile = pszFile;
+
+                            json_object* poLocation = json_object_object_get(poExtension, "parent_node");
+                            if( poLocation && json_object_get_type(poLocation) == json_type_string )
+                            {
+                                const char* pszLocation = json_object_get_string(poLocation);
+                                if( EQUAL(pszLocation, "CoverageCollection") )
+                                    oDesc.bParentCoverageCollection  = TRUE;
+                                else if( EQUAL(pszLocation, "GridCoverage") )
+                                    oDesc.bParentCoverageCollection = FALSE;
+                                else
+                                    CPLError(CE_Warning, CPLE_NotSupported,
+                                             "extensions[].parent_node should be CoverageCollection or GridCoverage");
+                            }
+
+                            aoExtensions.push_back(oDesc);
+                        }
+                    }
+                    else if( poExtension && json_object_get_type(poExtension) == json_type_string )
+                    {
+                        GMLJP2V2ExtensionDesc oDesc;
+                        oDesc.osFile = json_object_get_string(poExtension);
+                        aoExtensions.push_back(oDesc);
+                    }
+                }
+            }
         }
 
         json_object* poBoxes = json_object_object_get(poObj, "boxes"); 
@@ -1999,9 +2227,10 @@ GDALJP2Box *GDALJP2Metadata::CreateGMLJP2V2( int nXSize, int nYSize,
         double adfXVector[2];
         double adfYVector[2];
         const char* pszComment = "";   
+        int bNeedAxisFlip = FALSE;
         if( !GetGMLJP2GeoreferencingInfo( nEPSGCode, adfOrigin,
                                         adfXVector, adfYVector,
-                                        pszComment, osDictBox ) )
+                                        pszComment, osDictBox, bNeedAxisFlip ) )
         {
             return NULL;
         }
@@ -2091,7 +2320,8 @@ GDALJP2Box *GDALJP2Metadata::CreateGMLJP2V2( int nXSize, int nYSize,
 /* -------------------------------------------------------------------- */
     std::vector<CPLString> aosTmpFiles;
     int bRootHasXLink = FALSE;
-    if( aoMetadata.size() || aoAnnotations.size() || aoGMLFiles.size() )
+    if( aoMetadata.size() || aoAnnotations.size() || aoGMLFiles.size() ||
+        aoStyles.size() || aoExtensions.size() )
     {
         CPLXMLNode* psRoot = CPLParseXMLString(osDoc);
         CPLAssert(psRoot);
@@ -2189,74 +2419,77 @@ GDALJP2Box *GDALJP2Metadata::CreateGMLJP2V2( int nXSize, int nYSize,
         {
             // Is the file already a GML file ?
             CPLXMLNode* psGMLFile = NULL;
-            if( EQUAL(CPLGetExtension(aoGMLFiles[i].osFile), "gml") ||
-                EQUAL(CPLGetExtension(aoGMLFiles[i].osFile), "xml") )
+            if( aoGMLFiles[i].osFile.size() )
             {
-                 psGMLFile = CPLParseXMLFile(aoGMLFiles[i].osFile);
-            }
-            GDALDriverH hDrv = NULL;
-            if( psGMLFile == NULL )
-            {
-                hDrv = GDALIdentifyDriver(aoGMLFiles[i].osFile, NULL);
-                if( hDrv == NULL )
+                if( EQUAL(CPLGetExtension(aoGMLFiles[i].osFile), "gml") ||
+                    EQUAL(CPLGetExtension(aoGMLFiles[i].osFile), "xml") )
                 {
-                    CPLError(CE_Failure, CPLE_AppDefined,
-                             "%s is no a GDAL recognized file",
-                             aoGMLFiles[i].osFile.c_str());
-                    continue;
+                    psGMLFile = CPLParseXMLFile(aoGMLFiles[i].osFile);
                 }
-            }
-            GDALDriverH hGMLDrv = GDALGetDriverByName("GML");
-            if( psGMLFile == NULL && hDrv == hGMLDrv )
-            {
-                // Yes, parse it
-                psGMLFile = CPLParseXMLFile(aoGMLFiles[i].osFile);
-            }
-            else if( psGMLFile == NULL )
-            {
-                if( hGMLDrv == NULL )
+                GDALDriverH hDrv = NULL;
+                if( psGMLFile == NULL )
                 {
-                    CPLError(CE_Failure, CPLE_AppDefined,
-                             "Cannot translate %s to GML",
-                             aoGMLFiles[i].osFile.c_str());
-                    continue;
-                }
-
-                // On-the-fly translation to GML 3.2
-                GDALDatasetH hSrcDS = GDALOpenEx(aoGMLFiles[i].osFile, 0, NULL, NULL, NULL);
-                if( hSrcDS )
-                {
-                    CPLString osTmpFile = CPLSPrintf("/vsimem/gmljp2/%p/%d/%s.gml",
-                                                     this,
-                                                     i,
-                                                     CPLGetBasename(aoGMLFiles[i].osFile));
-                    char* apszOptions[2];
-                    apszOptions[0] = (char*) "FORMAT=GML3.2";
-                    apszOptions[1] = NULL;
-                    GDALDatasetH hDS = GDALCreateCopy(hGMLDrv, osTmpFile, hSrcDS,
-                                                      FALSE, apszOptions, NULL, NULL);
-                    if( hDS )
-                    {
-                        GDALClose(hDS);
-                        psGMLFile = CPLParseXMLFile(osTmpFile);
-                        aoGMLFiles[i].osFile = osTmpFile;
-                        VSIUnlink(osTmpFile);
-                        aosTmpFiles.push_back(CPLResetExtension(osTmpFile, "xsd"));
-                    }
-                    else
+                    hDrv = GDALIdentifyDriver(aoGMLFiles[i].osFile, NULL);
+                    if( hDrv == NULL )
                     {
                         CPLError(CE_Failure, CPLE_AppDefined,
-                                 "Conversion of %s to GML failed",
-                                 aoGMLFiles[i].osFile.c_str());
+                                "%s is no a GDAL recognized file",
+                                aoGMLFiles[i].osFile.c_str());
+                        continue;
                     }
                 }
-                GDALClose(hSrcDS);
-            }
-            if( psGMLFile == NULL )
-                continue;
+                GDALDriverH hGMLDrv = GDALGetDriverByName("GML");
+                if( psGMLFile == NULL && hDrv == hGMLDrv )
+                {
+                    // Yes, parse it
+                    psGMLFile = CPLParseXMLFile(aoGMLFiles[i].osFile);
+                }
+                else if( psGMLFile == NULL )
+                {
+                    if( hGMLDrv == NULL )
+                    {
+                        CPLError(CE_Failure, CPLE_AppDefined,
+                                "Cannot translate %s to GML",
+                                aoGMLFiles[i].osFile.c_str());
+                        continue;
+                    }
 
-            CPLXMLNode* psGMLFileRoot = GDALGMLJP2GetXMLRoot(psGMLFile);
-            if( psGMLFileRoot ) 
+                    // On-the-fly translation to GML 3.2
+                    GDALDatasetH hSrcDS = GDALOpenEx(aoGMLFiles[i].osFile, 0, NULL, NULL, NULL);
+                    if( hSrcDS )
+                    {
+                        CPLString osTmpFile = CPLSPrintf("/vsimem/gmljp2/%p/%d/%s.gml",
+                                                        this,
+                                                        i,
+                                                        CPLGetBasename(aoGMLFiles[i].osFile));
+                        char* apszOptions[2];
+                        apszOptions[0] = (char*) "FORMAT=GML3.2";
+                        apszOptions[1] = NULL;
+                        GDALDatasetH hDS = GDALCreateCopy(hGMLDrv, osTmpFile, hSrcDS,
+                                                        FALSE, apszOptions, NULL, NULL);
+                        if( hDS )
+                        {
+                            GDALClose(hDS);
+                            psGMLFile = CPLParseXMLFile(osTmpFile);
+                            aoGMLFiles[i].osFile = osTmpFile;
+                            VSIUnlink(osTmpFile);
+                            aosTmpFiles.push_back(CPLResetExtension(osTmpFile, "xsd"));
+                        }
+                        else
+                        {
+                            CPLError(CE_Failure, CPLE_AppDefined,
+                                    "Conversion of %s to GML failed",
+                                    aoGMLFiles[i].osFile.c_str());
+                        }
+                    }
+                    GDALClose(hSrcDS);
+                }
+                if( psGMLFile == NULL )
+                    continue;
+            }
+
+            CPLXMLNode* psGMLFileRoot = psGMLFile ? GDALGMLJP2GetXMLRoot(psGMLFile) : NULL;
+            if( psGMLFileRoot || aoGMLFiles[i].osRemoteResource.size() ) 
             {
                 CPLXMLNode *node_f;
                 if( aoGMLFiles[i].bParentCoverageCollection )
@@ -2285,8 +2518,25 @@ GDALJP2Box *GDALJP2Metadata::CreateGMLJP2V2( int nXSize, int nYSize,
                     node_f = CPLCreateXMLNode( psGridCoverage, CXT_Element, "gmljp2:feature"  );
                 }
 
+                if( !aoGMLFiles[i].bInline || aoGMLFiles[i].osRemoteResource.size() )
+                {
+                    if( !bRootHasXLink )
+                    {
+                        bRootHasXLink = TRUE;
+                        CPLSetXMLValue(psGMLJP2CoverageCollection, "#xmlns:xlink",
+                                       "http://www.w3.org/1999/xlink");
+                    }
+                }
+
+                if( aoGMLFiles[i].osRemoteResource.size() )
+                {
+                    CPLSetXMLValue(node_f, "#xlink:href",
+                                   aoGMLFiles[i].osRemoteResource.c_str());
+                    continue;
+                }
+
                 CPLString osTmpFile;
-                if( !aoGMLFiles[i].bInline )
+                if( !aoGMLFiles[i].bInline || aoGMLFiles[i].osRemoteResource.size() )
                 {
                     osTmpFile = CPLSPrintf("/vsimem/gmljp2/%p/%d/%s.gml",
                                            this,
@@ -2299,15 +2549,8 @@ GDALJP2Box *GDALJP2Metadata::CreateGMLJP2V2( int nXSize, int nYSize,
                     oDesc.osLabel = CPLGetFilename(oDesc.osFile);
                     aoBoxes.push_back(oDesc);
 
-                    if( !bRootHasXLink )
-                    {
-                        bRootHasXLink = TRUE;
-                        CPLSetXMLValue(psGMLJP2CoverageCollection, "#xmlns:xlink",
-                                       "http://www.w3.org/1999/xlink");
-                    }
-
                     CPLSetXMLValue(node_f, "#xlink:href",
-                                   CPLSPrintf("gmljp2://xml/%s", oDesc.osLabel.c_str()));
+                            CPLSPrintf("gmljp2://xml/%s", oDesc.osLabel.c_str()));
                 }
 
                 if( CPLGetXMLNode(psGMLFileRoot, "xmlns") == NULL &&
@@ -2514,6 +2757,80 @@ GDALJP2Box *GDALJP2Metadata::CreateGMLJP2V2( int nXSize, int nYSize,
                 CPLAddXMLChild(psAnnotation, CPLCloneXMLTree(psKMLFileRoot));
             }
             CPLDestroyXMLNode(psKMLFile);
+        }
+
+        // Add styles
+        for( int i=0; i < (int)aoStyles.size(); i++ )
+        {
+            CPLXMLNode* psStyle = CPLParseXMLFile(aoStyles[i].osFile);
+            if( psStyle == NULL )
+                continue;
+
+            CPLXMLNode* psStyleRoot = GDALGMLJP2GetXMLRoot(psStyle);
+            if( psStyleRoot ) 
+            {
+                CPLXMLNode *psGMLJP2Style;
+                if( aoStyles[i].bParentCoverageCollection )
+                {
+                    psGMLJP2Style = CPLCreateXMLNode( psGMLJP2CoverageCollection, CXT_Element, "gmljp2:style"  );
+                }
+                else
+                {
+                    CPLXMLNode* psFeatureMemberOfGridCoverage =
+                        CPLGetXMLNode(psGMLJP2CoverageCollection, "gmljp2:featureMember");
+                    CPLAssert(psFeatureMemberOfGridCoverage);
+                    CPLXMLNode* psGridCoverage = psFeatureMemberOfGridCoverage->psChild;
+                    CPLAssert(psGridCoverage);
+                    psGMLJP2Style = CPLCreateXMLNode( psGridCoverage, CXT_Element, "gmljp2:style"  );
+                }
+
+                // Add dummy namespace for validation purposes if needed
+                if( strchr(psStyleRoot->pszValue, ':') == NULL &&
+                    CPLGetXMLValue(psStyleRoot, "xmlns", NULL) == NULL )
+                {
+                    CPLSetXMLValue(psStyleRoot, "#xmlns", "http://undefined_namespace");
+                }
+
+                CPLAddXMLChild( psGMLJP2Style, CPLCloneXMLTree(psStyleRoot) );
+            }
+            CPLDestroyXMLNode(psStyle);
+        }
+
+        // Add extensions
+        for( int i=0; i < (int)aoExtensions.size(); i++ )
+        {
+            CPLXMLNode* psExtension = CPLParseXMLFile(aoExtensions[i].osFile);
+            if( psExtension == NULL )
+                continue;
+
+            CPLXMLNode* psExtensionRoot = GDALGMLJP2GetXMLRoot(psExtension);
+            if( psExtensionRoot ) 
+            {
+                CPLXMLNode *psGMLJP2Extension;
+                if( aoExtensions[i].bParentCoverageCollection )
+                {
+                    psGMLJP2Extension = CPLCreateXMLNode( psGMLJP2CoverageCollection, CXT_Element, "gmljp2:extension"  );
+                }
+                else
+                {
+                    CPLXMLNode* psFeatureMemberOfGridCoverage =
+                        CPLGetXMLNode(psGMLJP2CoverageCollection, "gmljp2:featureMember");
+                    CPLAssert(psFeatureMemberOfGridCoverage);
+                    CPLXMLNode* psGridCoverage = psFeatureMemberOfGridCoverage->psChild;
+                    CPLAssert(psGridCoverage);
+                    psGMLJP2Extension = CPLCreateXMLNode( psGridCoverage, CXT_Element, "gmljp2:extension"  );
+                }
+
+                // Add dummy namespace for validation purposes if needed
+                if( strchr(psExtensionRoot->pszValue, ':') == NULL &&
+                    CPLGetXMLValue(psExtensionRoot, "xmlns", NULL) == NULL )
+                {
+                    CPLSetXMLValue(psExtensionRoot, "#xmlns", "http://undefined_namespace");
+                }
+
+                CPLAddXMLChild( psGMLJP2Extension, CPLCloneXMLTree(psExtensionRoot) );
+            }
+            CPLDestroyXMLNode(psExtension);
         }
 
         char* pszRoot = CPLSerializeXMLTree(psRoot);

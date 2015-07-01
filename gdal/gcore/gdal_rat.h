@@ -30,6 +30,7 @@
 #ifndef GDAL_RAT_H_INCLUDED
 #define GDAL_RAT_H_INCLUDED
 
+#include "gdal_priv.h"
 #include "cpl_minixml.h"
 
 // Clone and Serialize are allowed to fail if GetRowCount()*GetColCount() greater
@@ -254,6 +255,7 @@ public:
      * (GetRowCount() * GetColCount() > RAT_MAX_ELEM_FOR_CLONE)
      */
     virtual CPLXMLNode   *Serialize() const;
+    virtual void   *SerializeJSON() const;
     virtual CPLErr        XMLInit( CPLXMLNode *, const char * );
 
     virtual CPLErr        InitializeFromColorTable( const GDALColorTable * );

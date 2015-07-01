@@ -1432,7 +1432,7 @@ def find_lib_linux(libname):
     f.close()
 
     for line in lines:
-        if line.rfind('/lib' + libname) == -1 or line.find('.so') == -1:
+        if line.rfind('/lib' + libname + '.so') == -1:
             continue
 
         i = line.find(' ')
@@ -1474,7 +1474,7 @@ def find_lib_sunos(libname):
     (lines, err) = runexternal_out_and_err('pmap %d' % pid)
     
     for line in lines.split('\n'):
-        if line.rfind('/lib' + libname) == -1 or line.find('.so') == -1:
+        if line.rfind('/lib' + libname + '.so') == -1:
             continue
 
         i = line.find('/')
@@ -1567,7 +1567,7 @@ def find_lib_windows(libname):
             continue
 
         i = path.rfind('\\' + libname)
-        if i < 0:
+        if i < 0 or path.rfind('\\' + libname + '_') >= 0:
             continue
         if path[i+1:].find('\\') >= 0:
             continue

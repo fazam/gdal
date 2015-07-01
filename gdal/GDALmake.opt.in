@@ -88,9 +88,11 @@ GDAL_INCLUDE	=	-I$(GDAL_ROOT)/port -I$(GDAL_ROOT)/gcore \
 
 # libtool targets and help variables
 LIBGDAL	:=		libgdal.la
-LIBGDAL_CURRENT	:=	19
+LIBGDAL_CURRENT	:=	20
 LIBGDAL_REVISION	:=	0
-LIBGDAL_AGE	:=	18
+LIBGDAL_AGE	:=	0
+
+LIBGDAL_UTILS := libgdalutils.la
 
 # native build targets and variables
 GDAL_VER	=	@GDAL_VER@
@@ -103,6 +105,10 @@ GDAL_VERSION_REV   =    @GDAL_VERSION_REV@
 GDAL_LIB	= 	$(GDAL_ROOT)/libgdal.a
 GDAL_SLIB	=	$(GDAL_ROOT)/libgdal.$(SO_EXT)
 GDAL_SLIB_LINK	=	-L$(GDAL_ROOT) -lgdal
+
+GDAL_UTILS_LIB = $(GDAL_ROOT)/libgdalutils.a
+GDAL_UTILS_SLIB = $(GDAL_ROOT)/libgdalutils.$(SO_EXT)
+GDAL_UTILS_SLIB_LINK = -L$(GDAL_ROOT) -lgdalutils
 
 # Mac OS X Framework definition
 MACOSX_FRAMEWORK = @MACOSX_FRAMEWORK@
@@ -529,6 +535,7 @@ endif
 ifeq ($(HAVE_LIBTOOL), yes)
 
 CONFIG_LIBS	=	$(GDAL_ROOT)/$(LIBGDAL)
+CONFIG_LIB_UTILS =      $(GDAL_ROOT)/$(LIBGDAL_UTILS)
 ifeq ($(MACOSX_FRAMEWORK),yes)
 CONFIG_LIBS_INS	=	-L$(INST_LIB)/unix/lib -lgdal
 else
@@ -542,6 +549,7 @@ else # HAVE_LIBTOOL
 
 ifeq ($(HAVE_LD_SHARED),yes)
 CONFIG_LIBS	=	$(GDAL_SLIB_LINK) $(LIBS)
+CONFIG_LIB_UTILS =      $(GDAL_UTILS_SLIB_LINK)
 ifeq ($(MACOSX_FRAMEWORK),yes)
 CONFIG_LIBS_INS	=	-L$(INST_LIB)/unix/lib -lgdal
 else
@@ -550,6 +558,7 @@ endif
 EXE_DEP_LIBS	=	$(GDAL_SLIB)
 else
 CONFIG_LIBS	=	$(GDAL_LIBS) $(LIBS)
+CONFIG_LIB_UTILS =      $(LIBGDAL_UTILS)
 CONFIG_LIBS_INS	=	$(foreach LF,$(GDAL_LIBS),$(INST_LIB)/$(notdir $(LF)))\
 			 $(LIBS)
 EXE_DEP_LIBS	=	$(GDAL_LIB)

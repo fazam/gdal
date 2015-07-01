@@ -84,7 +84,8 @@ gdalwarp [--help-general] [--formats]
     [-s_srs srs_def] [-t_srs srs_def] [-to "NAME=VALUE"]
     [-order n | -tps | -rpc | -geoloc] [-et err_threshold]
     [-refine_gcps tolerance [minimum_gcps]]
-    [-te xmin ymin xmax ymax] [-tr xres yres] [-tap] [-ts width height]
+    [-te xmin ymin xmax ymax] [-te_srs srs_def]
+    [-tr xres yres] [-tap] [-ts width height]
     [-ovr level|AUTO|AUTO-n|NONE] [-wo "NAME=VALUE"] [-ot Byte/Int16/...] [-wt Byte/Int16]
     [-srcnodata "value [value...]"] [-dstnodata "value [value...]"] -dstalpha
     [-r resampling_method] [-wm memory_in_mb] [-multi] [-q]
@@ -133,7 +134,17 @@ Not that GCP refinement only works with polynomial interpolation.
 The tolerance is in pixel units if no projection is available, otherwise it is in SRS units.
 If minimum_gcps is not provided, the minimum GCPs according to the polynomial model is used.</dd>
 <dt> <b>-te</b> <em>xmin ymin xmax ymax</em>:</dt><dd> set georeferenced
-extents of output file to be created (in target SRS).</dd>
+extents of output file to be created (in target SRS by default, or in the SRS
+specified with -te_srs)
+</dd>
+<dt> <b>-te_srs</b> <i>srs_def</i>:</dt><dd> (GDAL >= 2.0) Specifies the SRS in
+which to interpret the coordinates given with -te. The <i>srs_def</i> may
+be any of the usual GDAL/OGR forms, complete WKT, PROJ.4, EPSG:n or a file
+containing the WKT.
+This must not be confused with -t_srs which is the target SRS of the output
+dataset. -te_srs is a conveniency e.g. when knowing the output coordinates in a
+geodetic long/lat SRS, but still wanting a result in a projected coordinate system.
+</dd>
 <dt> <b>-tr</b> <em>xres yres</em>:</dt><dd> set output file resolution (in
 target georeferenced units)</dd>
 <dt> <b>-tap</b>:</dt><dd> (GDAL >= 1.8.0) (target aligned pixels) align
@@ -353,6 +364,198 @@ char *SanitizeSRS( const char *pszUserInput )
     return pszResult;
 }
 
+#ifdef OGR_ENABLED
+
+static double GetAverageSegmentLength(OGRGeometryH hGeom)
+{
+    if( hGeom == NULL )
+        return 0;
+    switch(wkbFlatten(OGR_G_GetGeometryType(hGeom)))
+    {
+        case wkbLineString:
+        {
+            if( OGR_G_GetPointCount(hGeom) == 0 )
+                return 0;
+            double dfSum = 0;
+            for(int i=0;i<OGR_G_GetPointCount(hGeom)-1;i++)
+            {
+                double dfX1 = OGR_G_GetX(hGeom, i);
+                double dfY1 = OGR_G_GetY(hGeom, i);
+                double dfX2 = OGR_G_GetX(hGeom, i+1);
+                double dfY2 = OGR_G_GetY(hGeom, i+1);
+                double dfDX = dfX2 - dfX1;
+                double dfDY = dfY2 - dfY1;
+                dfSum += sqrt(dfDX * dfDX + dfDY * dfDY);
+            }
+            return dfSum / OGR_G_GetPointCount(hGeom);
+        }
+
+        case wkbPolygon:
+        case wkbMultiPolygon:
+        case wkbMultiLineString:
+        case wkbGeometryCollection:
+        {
+            if( OGR_G_GetGeometryCount(hGeom) == 0 )
+                return 0;
+            double dfSum = 0;
+            for(int i=0; i< OGR_G_GetGeometryCount(hGeom); i++)
+            {
+                dfSum += GetAverageSegmentLength(OGR_G_GetGeometryRef(hGeom, i));
+            }
+            return dfSum / OGR_G_GetGeometryCount(hGeom);
+        }
+        
+        default:
+            return 0;
+    }
+}
+
+/************************************************************************/
+/*                           CropToCutline()                            */
+/************************************************************************/
+
+static void CropToCutline( void* hCutline, char** papszTO, char** papszSrcFiles,
+                           char** papszOpenOptions,
+                           double& dfMinX, double& dfMinY, double& dfMaxX, double &dfMaxY )
+{
+    OGRGeometryH hCutlineGeom = OGR_G_Clone( (OGRGeometryH) hCutline );
+    OGRSpatialReferenceH hCutlineSRS = OGR_G_GetSpatialReference( hCutlineGeom );
+    const char *pszThisTargetSRS = CSLFetchNameValue( papszTO, "DST_SRS" );
+    const char *pszThisSourceSRS = CSLFetchNameValue(papszTO, "SRC_SRS");
+    OGRCoordinateTransformationH hCTCutlineToSrc = NULL;
+    OGRCoordinateTransformationH hCTSrcToDst = NULL;
+    OGRSpatialReferenceH hSrcSRS = NULL, hDstSRS = NULL;
+
+    if( pszThisSourceSRS != NULL )
+    {
+        hSrcSRS = OSRNewSpatialReference(NULL);
+        if( OSRImportFromWkt( hSrcSRS, (char **)&pszThisSourceSRS ) != CE_None )
+        {
+            fprintf(stderr, "Cannot compute bounding box of cutline.\n");
+            GDALExit(1);
+        }
+    }
+    else if( papszSrcFiles[0] != NULL )
+    {
+        GDALDatasetH hSrcDS = GDALOpenEx( papszSrcFiles[0], GDAL_OF_RASTER, NULL,
+                    (const char* const* )papszOpenOptions, NULL );
+        if (hSrcDS == NULL)
+        {
+            fprintf(stderr, "Cannot compute bounding box of cutline.\n");
+            GDALExit(1);
+        }
+
+        const char *pszProjection = NULL;
+
+        if( GDALGetProjectionRef( hSrcDS ) != NULL
+            && strlen(GDALGetProjectionRef( hSrcDS )) > 0 )
+            pszProjection = GDALGetProjectionRef( hSrcDS );
+        else if( GDALGetGCPProjection( hSrcDS ) != NULL )
+            pszProjection = GDALGetGCPProjection( hSrcDS );
+
+        if( pszProjection == NULL )
+        {
+            fprintf(stderr, "Cannot compute bounding box of cutline.\n");
+            GDALExit(1);
+        }
+
+        hSrcSRS = OSRNewSpatialReference(NULL);
+        if( OSRImportFromWkt( hSrcSRS, (char **)&pszProjection ) != CE_None )
+        {
+            fprintf(stderr, "Cannot compute bounding box of cutline.\n");
+            GDALExit(1);
+        }
+
+        GDALClose(hSrcDS);
+    }
+    else
+    {
+        fprintf(stderr, "Cannot compute bounding box of cutline.\n");
+        GDALExit(1);
+    }
+
+    if ( pszThisTargetSRS != NULL )
+    {
+        hDstSRS = OSRNewSpatialReference(NULL);
+        if( OSRImportFromWkt( hDstSRS, (char **)&pszThisTargetSRS ) != CE_None )
+        {
+            fprintf(stderr, "Cannot compute bounding box of cutline.\n");
+            GDALExit(1);
+        }
+    }
+    else
+        hDstSRS = OSRClone(hSrcSRS);
+
+    OGRSpatialReferenceH hCutlineOrTargetSRS = hCutlineSRS ? hCutlineSRS : hDstSRS;
+
+    if( !OSRIsSame(hCutlineOrTargetSRS, hSrcSRS) )
+        hCTCutlineToSrc = OCTNewCoordinateTransformation(hCutlineOrTargetSRS, hSrcSRS);
+    if( !OSRIsSame(hSrcSRS, hDstSRS) )
+        hCTSrcToDst = OCTNewCoordinateTransformation(hSrcSRS, hDstSRS);
+
+    OSRDestroySpatialReference(hSrcSRS);
+    hSrcSRS = NULL;
+
+    OSRDestroySpatialReference(hDstSRS);
+    hDstSRS = NULL;
+
+    // Reproject cutline to target SRS, by doing intermediate vertex densifications
+    // in source SRS.
+    if( hCTSrcToDst != NULL || hCTCutlineToSrc != NULL )
+    {
+        OGREnvelope sLastEnvelope, sCurEnvelope;
+        OGRGeometryH hTransformedGeom = NULL;
+        OGRGeometryH hGeomInSrcSRS = OGR_G_Clone(hCutlineGeom);
+        if( hCTCutlineToSrc != NULL )
+            OGR_G_Transform( hGeomInSrcSRS, hCTCutlineToSrc );
+
+        for(int nIter=0;nIter<10;nIter++)
+        {
+            if( hTransformedGeom != NULL )
+                OGR_G_DestroyGeometry(hTransformedGeom);
+            hTransformedGeom = OGR_G_Clone(hGeomInSrcSRS);
+            if( hCTSrcToDst != NULL )
+                OGR_G_Transform( hTransformedGeom, hCTSrcToDst );
+            OGR_G_GetEnvelope(hTransformedGeom, &sCurEnvelope);
+            if( nIter > 0 || hCTSrcToDst == NULL )
+            {
+                if( sCurEnvelope.MinX == sLastEnvelope.MinX &&
+                    sCurEnvelope.MinY == sLastEnvelope.MinY &&
+                    sCurEnvelope.MaxX == sLastEnvelope.MaxX &&
+                    sCurEnvelope.MaxY == sLastEnvelope.MaxY )
+                {
+                    break;
+                }
+            }
+            double dfAverageSegmentLength = GetAverageSegmentLength(hGeomInSrcSRS);
+            OGR_G_Segmentize(hGeomInSrcSRS, dfAverageSegmentLength/4);
+
+            memcpy(&sLastEnvelope, &sCurEnvelope, sizeof(OGREnvelope));
+        }
+        
+        OGR_G_DestroyGeometry(hGeomInSrcSRS);
+
+        OGR_G_DestroyGeometry(hCutlineGeom);
+        hCutlineGeom = hTransformedGeom;
+    }
+
+    if( hCTCutlineToSrc) 
+        OCTDestroyCoordinateTransformation(hCTCutlineToSrc);
+    if( hCTSrcToDst )
+        OCTDestroyCoordinateTransformation(hCTSrcToDst);
+
+    OGREnvelope sEnvelope;
+    OGR_G_GetEnvelope(hCutlineGeom, &sEnvelope);
+
+    dfMinX = sEnvelope.MinX;
+    dfMinY = sEnvelope.MinY;
+    dfMaxX = sEnvelope.MaxX;
+    dfMaxY = sEnvelope.MaxY;
+    
+    OGR_G_DestroyGeometry(hCutlineGeom);
+}
+#endif /* OGR_ENABLED */
+
 /************************************************************************/
 /*                                main()                                */
 /************************************************************************/
@@ -394,6 +597,7 @@ int main( int argc, char ** argv )
     int                  bSetColorInterpretation = FALSE;
     char               **papszOpenOptions = NULL;
     int                  nOvLevel = -2;
+    CPLString            osTE_SRS;
 
     /* Check that we are running against at least GDAL 1.6 */
     /* Note to developers : if we use newer API, please change the requirement */
@@ -645,6 +849,14 @@ int main( int argc, char ** argv )
             dfMaxY = CPLAtofM(argv[++i]);
             bCreateOutput = TRUE;
         }
+        else if( EQUAL(argv[i],"-te_srs") )
+        {
+            CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
+            char *pszSRS = SanitizeSRS(argv[++i]);
+            osTE_SRS = pszSRS;
+            CPLFree(pszSRS);
+            bCreateOutput = TRUE;
+        }
         else if( EQUAL(argv[i],"-rn") )
             eResampleAlg = GRA_NearestNeighbour;
 
@@ -786,6 +998,14 @@ int main( int argc, char ** argv )
     {
         Usage("-tap option cannot be used without using -tr.");
     }
+    
+    if( !bQuiet && !(dfMinX == 0.0 && dfMinY == 0.0 && dfMaxX == 0.0 && dfMaxY == 0.0)  )
+    {
+        if( dfMinX >= dfMaxX )
+            printf("-ts values have minx >= maxx. This will result in a horizontally flipped image.\n");
+        if( dfMinY >= dfMaxY )
+            printf("-ts values have miny >= maxy. This will result in a vertically flipped image.\n");
+    }
 
 /* -------------------------------------------------------------------- */
 /*      The last filename in the file list is really our destination    */
@@ -888,6 +1108,68 @@ int main( int argc, char ** argv )
     }
 
 /* -------------------------------------------------------------------- */
+/*      -te_srs option                                                  */
+/* -------------------------------------------------------------------- */
+    if( osTE_SRS.size() )
+    {
+        if( dfMinX == 0.0 && dfMinY == 0.0 && dfMaxX == 0.0 && dfMaxY == 0.0 )
+        {
+            fprintf( stderr, "-te_srs ignored since -te is not specified.\n");
+        }
+        else
+        {
+            OGRSpatialReference oSRSIn;
+            oSRSIn.SetFromUserInput(osTE_SRS);
+            OGRSpatialReference oSRSDS;
+            int bOK = FALSE;
+            if( CSLFetchNameValue( papszTO, "DST_SRS" ) != NULL )
+            {
+                oSRSDS.SetFromUserInput( CSLFetchNameValue( papszTO, "DST_SRS" ) );
+                bOK = TRUE;
+            }
+            else if( CSLFetchNameValue( papszTO, "SRC_SRS" ) != NULL )
+            {
+                oSRSDS.SetFromUserInput( CSLFetchNameValue( papszTO, "SRC_SRS" ) );
+                bOK = TRUE;
+            }
+            else
+            {
+                if( papszSrcFiles[0] != NULL )
+                {
+                    GDALDatasetH hSrcDS = GDALOpen( papszSrcFiles[0], GA_ReadOnly );
+                    if( hSrcDS && GDALGetProjectionRef(hSrcDS) && GDALGetProjectionRef(hSrcDS)[0] )
+                    {
+                        oSRSDS.SetFromUserInput( GDALGetProjectionRef(hSrcDS) );
+                        bOK = TRUE;
+                    }
+                    GDALClose(hSrcDS);
+                }
+            }
+            if( !bOK )
+            {
+                fprintf( stderr, "-te_srs ignored since none of -t_srs, -s_srs is specified or the input dataset has no projection.\n");
+                GDALClose(hDstDS);
+                GDALExit( 1 );
+            }
+            if( !oSRSIn.IsSame(&oSRSDS) )
+            {
+                OGRCoordinateTransformation* poCT = OGRCreateCoordinateTransformation(&oSRSIn, &oSRSDS);
+                if( !(poCT &&
+                    poCT->Transform(1, &dfMinX, &dfMinY) &&
+                    poCT->Transform(1, &dfMaxX, &dfMaxY)) )
+                {
+                    OGRCoordinateTransformation::DestroyCT(poCT);
+
+                    fprintf( stderr, "-te_srs ignored since coordinate transformation failed.\n");
+                    GDALClose(hDstDS);
+                    GDALExit( 1 );
+                }
+                delete poCT;
+            }
+        }
+    }
+
+/* -------------------------------------------------------------------- */
 /*      If we have a cutline datasource read it and attach it in the    */
 /*      warp options.                                                   */
 /* -------------------------------------------------------------------- */
@@ -900,90 +1182,8 @@ int main( int argc, char ** argv )
 #ifdef OGR_ENABLED
     if ( bCropToCutline && hCutline != NULL )
     {
-        OGRGeometryH hCutlineGeom = OGR_G_Clone( (OGRGeometryH) hCutline );
-        OGRSpatialReferenceH hCutlineSRS = OGR_G_GetSpatialReference( hCutlineGeom );
-        const char *pszThisTargetSRS = CSLFetchNameValue( papszTO, "DST_SRS" );
-        OGRCoordinateTransformationH hCT = NULL;
-        if (hCutlineSRS == NULL)
-        {
-            /* We suppose it is in target coordinates */
-        }
-        else if (pszThisTargetSRS != NULL)
-        {
-            OGRSpatialReferenceH hTargetSRS = OSRNewSpatialReference(NULL);
-            if( OSRImportFromWkt( hTargetSRS, (char **)&pszThisTargetSRS ) != CE_None )
-            {
-                fprintf(stderr, "Cannot compute bounding box of cutline.\n");
-                GDALExit(1);
-            }
-
-            hCT = OCTNewCoordinateTransformation(hCutlineSRS, hTargetSRS);
-
-            OSRDestroySpatialReference(hTargetSRS);
-        }
-        else if (pszThisTargetSRS == NULL)
-        {
-            if (papszSrcFiles[0] != NULL)
-            {
-                GDALDatasetH hSrcDS = GDALOpenEx( papszSrcFiles[0], GDAL_OF_RASTER, NULL,
-                           (const char* const* )papszOpenOptions, NULL );
-                if (hSrcDS == NULL)
-                {
-                    fprintf(stderr, "Cannot compute bounding box of cutline.\n");
-                    GDALExit(1);
-                }
-
-                OGRSpatialReferenceH  hRasterSRS = NULL;
-                const char *pszProjection = NULL;
-
-                if( GDALGetProjectionRef( hSrcDS ) != NULL
-                    && strlen(GDALGetProjectionRef( hSrcDS )) > 0 )
-                    pszProjection = GDALGetProjectionRef( hSrcDS );
-                else if( GDALGetGCPProjection( hSrcDS ) != NULL )
-                    pszProjection = GDALGetGCPProjection( hSrcDS );
-
-                if( pszProjection == NULL )
-                {
-                    fprintf(stderr, "Cannot compute bounding box of cutline.\n");
-                    GDALExit(1);
-                }
-
-                hRasterSRS = OSRNewSpatialReference(NULL);
-                if( OSRImportFromWkt( hRasterSRS, (char **)&pszProjection ) != CE_None )
-                {
-                    fprintf(stderr, "Cannot compute bounding box of cutline.\n");
-                    GDALExit(1);
-                }
-
-                hCT = OCTNewCoordinateTransformation(hCutlineSRS, hRasterSRS);
-
-                OSRDestroySpatialReference(hRasterSRS);
-
-                GDALClose(hSrcDS);
-            }
-            else
-            {
-                fprintf(stderr, "Cannot compute bounding box of cutline.\n");
-                GDALExit(1);
-            }
-        }
-
-        if (hCT)
-        {
-            OGR_G_Transform( hCutlineGeom, hCT );
-
-            OCTDestroyCoordinateTransformation(hCT);
-        }
-
-        OGREnvelope sEnvelope;
-        OGR_G_GetEnvelope(hCutlineGeom, &sEnvelope);
-
-        dfMinX = sEnvelope.MinX;
-        dfMinY = sEnvelope.MinY;
-        dfMaxX = sEnvelope.MaxX;
-        dfMaxY = sEnvelope.MaxY;
-        
-        OGR_G_DestroyGeometry(hCutlineGeom);
+        CropToCutline( hCutline, papszTO, papszSrcFiles, papszOpenOptions,
+                       dfMinX, dfMinY, dfMaxX, dfMaxY );
     }
 #endif
     

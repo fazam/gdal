@@ -11,10 +11,17 @@ GDAL_OBJ += $(GDAL_ROOT)/ogr/ogrsf_frmts/o/*.o
 include ./ogr/file.lst
 GDAL_OBJ += $(addprefix ./ogr/,$(OBJ))
 
+GDAL_UTILS_OBJ = $(GDAL_ROOT)/apps/gdalinfo_lib.o $(GDAL_ROOT)/apps/gdal_translate_lib.o
+
 LIBGDAL-yes	:=	$(GDAL_LIB)
 LIBGDAL-$(HAVE_LD_SHARED)	+=	$(GDAL_SLIB)
 # override if we are using libtool
 LIBGDAL-$(HAVE_LIBTOOL)	:= $(LIBGDAL)
+
+LIBGDAL_UTILS-yes := $(GDAL_UTILS_LIB)
+LIBGDAL_UTILS-$(HAVE_LD_SHARED) += $(GDAL_UTILS_SLIB)
+# override if we are using libtool
+LIBGDAL_UTILS-$(HAVE_LIBTOOL) := $(LIBGDAL_UTILS)
 
 default:	lib-target apps-target swig-target gdal.pc
 
@@ -44,8 +51,27 @@ ifeq ($(MACOSX_FRAMEWORK),yes)
 	install_name_tool -id ${OSX_VERSION_FRAMEWORK_PREFIX}/GDAL .libs/libgdal.dylib
 endif
 
-check-lib:	port-target core-target frmts-target ogr-target
+$(GDAL_UTILS_LIB): $(GDAL_UTILS_OBJ) GDALmake.opt
+	rm -f libgdalutils.a
+	$(AR) r $(GDAL_UTILS_LIB) $(GDAL_UTILS_OBJ)
+	$(RANLIB) $(GDAL_UTILS_LIB)
+
+$(GDAL_UTILS_SLIB): $(GDAL_UTILS_OBJ) $(GDAL_UTILS_LIB)
+	$(LD_SHARED) $(GDAL_UTILS_SLIB_SONAME) $(GDAL_UTILS_OBJ) $(GDAL_UTILS_LIB) \
+		-o $(GDAL_UTILS_SLIB)
+
+$(LIBGDAL_UTILS): $(GDAL_UTILS_OBJ:.o=.lo)
+	$(LD) $(LDFLAGS) $(LIBS) -o $@ $(GDAL_UTILS_OBJ:.o=.lo) \
+		-rpath $(INST_LIB) \
+		-no-undefined \
+		-version-info $(LIBGDAL_CURRENT):$(LIBGDAL_REVISION):$(LIBGDAL_AGE)	
+
+check-lib:	port-target core-target frmts-target ogr-target appslib-target
 	$(MAKE) $(LIBGDAL-yes)
+	$(MAKE) $(LIBGDAL_UTILS-yes)
+
+appslib-target:
+	(cd apps; $(MAKE) appslib)
 
 port-target:
 	(cd port; $(MAKE))
@@ -124,8 +150,8 @@ docs:
 	cp doc/images/*.* html
 	cp doc/grid/*.png html
 	cp frmts/*.html frmts/*/frmt_*.html html
-	cp frmts/wms/frmt_wms_*.xml html
-	cp frmts/wms/frmt_twms_*.xml html
+	cp frmts/openjpeg/*.xml html
+	cp frmts/wms/frmt_*.xml html
 	cp ogr/ogrsf_frmts/*/drv_*.html html
 	cp ogr/ogrsf_frmts/ogr_formats.html html
 	cp ogr/ogr_feature_style.html html
@@ -189,7 +215,7 @@ ifeq ($(HAVE_LIBTOOL),yes)
 
 install-lib:
 	$(INSTALL_DIR) $(DESTDIR)$(INST_LIB)
-	for f in $(LIBGDAL-yes) ; do $(INSTALL_LIB) $$f $(DESTDIR)$(INST_LIB) ; done
+	for f in $(LIBGDAL-yes) $(LIBGDAL_UTILS-yes) ; do $(INSTALL_LIB) $$f $(DESTDIR)$(INST_LIB) ; done
 ifeq ($(MACOSX_FRAMEWORK),yes)
 	if [ -f "$(DESTDIR)$(INST_LIB)/libgdal.$(GDAL_VERSION_MAJOR).$(LIBGDAL_AGE).$(LIBGDAL_REVISION).dylib" ] ; then mv -f $(DESTDIR)$(INST_LIB)/libgdal.$(GDAL_VERSION_MAJOR).$(LIBGDAL_AGE).$(LIBGDAL_REVISION).dylib $(DESTDIR)${OSX_VERSION_FRAMEWORK_PREFIX}/GDAL ; fi
 	if [ -f "$(DESTDIR)$(INST_LIB)/libgdal.$(GDAL_VERSION_MAJOR).$(LIBGDAL_AGE).dylib" ] ; then mv -f $(DESTDIR)$(INST_LIB)/libgdal.$(GDAL_VERSION_MAJOR).$(LIBGDAL_AGE).dylib $(DESTDIR)${OSX_VERSION_FRAMEWORK_PREFIX}/GDAL ; fi

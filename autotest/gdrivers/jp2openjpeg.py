@@ -2481,6 +2481,24 @@ def jp2openjpeg_45():
                     "schema_location": "gmljp2://xml/schema_that_does_not_exist.xsd"
                 },
             ],
+
+            "styles": [
+                "/vsimem/i_dont_exist.xml",
+                "../gcore/data/byte.tif",
+                {
+                    "file": "/vsimem/i_dont_exist.xml",
+                    "parent_node": "invalid_value"
+                }
+            ],
+
+            "extensions": [
+                "/vsimem/i_dont_exist.xml",
+                "../gcore/data/byte.tif",
+                {
+                    "file": "/vsimem/i_dont_exist.xml",
+                    "parent_node": "invalid_value"
+                }
+            ]
     },
 
     "boxes" : [
@@ -2606,6 +2624,17 @@ def jp2openjpeg_45():
     <Document id="empty_doc"/>
 </kml>
 """)
+
+    gdal.FileFromMemBuffer("/vsimem/style1.xml", '<style1 xmlns="http://dummy" />')
+    gdal.FileFromMemBuffer("/vsimem/style2.xml", '<mydummyns:style2 xmlns:mydummyns="http://dummy" />')
+    gdal.FileFromMemBuffer("/vsimem/style3.xml", '<style3 />')
+    gdal.FileFromMemBuffer("/vsimem/style4.xml", '<style4 />')
+
+    gdal.FileFromMemBuffer("/vsimem/extension1.xml", '<extension1 xmlns="http://dummy" />')
+    gdal.FileFromMemBuffer("/vsimem/extension2.xml", '<mydummyns:extension2 xmlns:mydummyns="http://dummy" />')
+    gdal.FileFromMemBuffer("/vsimem/extension3.xml", '<extension3 />')
+    gdal.FileFromMemBuffer("/vsimem/extension4.xml", '<extension4 />')
+
     # So that the Python text is real JSon
     false = False
 
@@ -2675,6 +2704,36 @@ def jp2openjpeg_45():
                     "schema_location": "gmljp2://xml/a_schema.xsd"
                 }
             ],
+
+            "styles" : [
+                "/vsimem/style1.xml",
+                {
+                    "file": "/vsimem/style2.xml",
+                    "parent_node": "GridCoverage"
+                },
+                {
+                    "file": "/vsimem/style3.xml",
+                    "parent_node": "CoverageCollection"
+                },
+                {
+                    "file": "/vsimem/style4.xml"
+                }
+            ],
+
+            "extensions" : [
+                "/vsimem/extension1.xml",
+                {
+                    "file": "/vsimem/extension2.xml",
+                    "parent_node": "GridCoverage"
+                },
+                {
+                    "file": "/vsimem/extension3.xml",
+                    "parent_node": "CoverageCollection"
+                },
+                {
+                    "file": "/vsimem/extension4.xml"
+                }
+            ]
     },
 
     "boxes" : [
@@ -2731,6 +2790,14 @@ def jp2openjpeg_45():
     gdal.Unlink("/vsimem/feature3.gml")
     gdal.Unlink("/vsimem/empty.kml")
     gdal.Unlink("/vsimem/a_schema.xsd")
+    gdal.Unlink("/vsimem/style1.xml")
+    gdal.Unlink("/vsimem/style2.xml")
+    gdal.Unlink("/vsimem/style3.xml")
+    gdal.Unlink("/vsimem/style4.xml")
+    gdal.Unlink("/vsimem/extension1.xml")
+    gdal.Unlink("/vsimem/extension2.xml")
+    gdal.Unlink("/vsimem/extension3.xml")
+    gdal.Unlink("/vsimem/extension4.xml")
     del out_ds
 
     # Now do the checks
@@ -2758,11 +2825,21 @@ def jp2openjpeg_45():
     feature3_pos = gmljp2.find("""<gmljp2:feature xlink:href="gmljp2://xml/feature3.gml" """)
     myshape_kml_pos = gmljp2.find("""<Document id="root_doc">""")
     empty_kml_pos = gmljp2.find("""<Document id="empty_doc" />""")
+    style1_pos = gmljp2.find("""<style1 xmlns="http://dummy" />""")
+    style2_pos = gmljp2.find("""<mydummyns:style2 xmlns:mydummyns="http://dummy" />""")
+    style3_pos = gmljp2.find("""<style3 xmlns="http://undefined_namespace" />""")
+    style4_pos = gmljp2.find("""<style4 xmlns="http://undefined_namespace" />""")
+    extension1_pos = gmljp2.find("""<extension1 xmlns="http://dummy" />""")
+    extension2_pos = gmljp2.find("""<mydummyns:extension2 xmlns:mydummyns="http://dummy" />""")
+    extension3_pos = gmljp2.find("""<extension3 xmlns="http://undefined_namespace" />""")
+    extension4_pos = gmljp2.find("""<extension4 xmlns="http://undefined_namespace" />""")
 
     if first_metadata_pos < 0 or second_metadata_pos < 0 or third_metadata_pos < 0 or \
        GMLJP2RectifiedGridCoverage_pos < 0 or fourth_metadata_pos < 0 or \
        feature_pos < 0 or myshape_gml_pos < 0 or myshape2_gml_pos < 0 or \
        feature2_pos < 0 or myshape_kml_pos < 0 or empty_kml_pos < 0 or \
+       style1_pos < 0 or style2_pos < 0 or style3_pos < 0 or style4_pos < 0 or \
+       extension1_pos < 0 or extension2_pos < 0 or extension3_pos < 0 or extension4_pos < 0 or \
        not( first_metadata_pos < second_metadata_pos and \
             second_metadata_pos < third_metadata_pos and \
             third_metadata_pos < GMLJP2RectifiedGridCoverage_pos and \
@@ -2771,10 +2848,18 @@ def jp2openjpeg_45():
             fourth_metadata_pos < feature_pos  and \
             myshape2_gml_pos < myshape_kml_pos and \
             myshape_kml_pos < empty_kml_pos and \
-            empty_kml_pos < feature_pos and \
+            empty_kml_pos < style2_pos and \
+            style2_pos < extension2_pos and \
+            extension2_pos < feature_pos and \
             feature_pos < myshape_gml_pos and \
             myshape_gml_pos < feature2_pos and \
-            feature2_pos < feature3_pos ):
+            feature2_pos < feature3_pos and \
+            feature3_pos < style1_pos and \
+            style1_pos < style3_pos and \
+            style3_pos < style4_pos and \
+            style4_pos < extension1_pos and \
+            extension1_pos < extension3_pos and \
+            extension3_pos < extension4_pos):
         gdaltest.post_reason('fail')
         print(gmljp2)
         return 'fail'
@@ -2897,6 +2982,33 @@ def jp2openjpeg_45():
     ds = None
 
     gdal.Unlink('/vsimem/jp2openjpeg_45.jp2')
+    
+    
+    # Test writing&reading a gmljp2:featureMember pointing to a remote resource
+    conf = {"root_instance":{"gml_filelist": [ { "remote_resource":"http://svn.osgeo.org/gdal/trunk/autotest/ogr/data/expected_gml_gml32.gml" } ]  }}
+    out_ds = gdaltest.jp2openjpeg_drv.CreateCopy('/vsimem/jp2openjpeg_45.jp2', src_ds, options = ['GMLJP2V2_DEF=' + json.dumps(conf)])
+    del out_ds
+
+    # Nothing should be reported by default
+    ds = ogr.Open('/vsimem/jp2openjpeg_45.jp2')
+    if ds is not None:
+        gdaltest.post_reason('fail')
+        return 'fail'
+    ds = None
+    
+    # We have to explicitely allow it
+    ds = gdal.OpenEx('/vsimem/jp2openjpeg_45.jp2', open_options = ['OPEN_REMOTE_GML=YES'])
+    gdal.Unlink('/vsimem/jp2openjpeg_45.jp2')
+
+    if ds is None:
+        if gdaltest.gdalurlopen('http://svn.osgeo.org/gdal/trunk/autotest/ogr/data/expected_gml_gml32.gml') is None:
+            return 'skip'
+        gdaltest.post_reason('fail')
+        return 'fail'
+    if ds.GetLayerCount() != 1:
+        gdaltest.post_reason('fail')
+        return 'fail'
+    ds = None
 
     return 'success'
 

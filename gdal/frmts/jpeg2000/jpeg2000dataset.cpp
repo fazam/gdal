@@ -797,7 +797,8 @@ GDALDataset *JPEG2000Dataset::Open( GDALOpenInfo * poOpenInfo )
 /* -------------------------------------------------------------------- */
     if( poOpenInfo->nOpenFlags & GDAL_OF_VECTOR )
     {
-        poDS->LoadVectorLayers();
+        poDS->LoadVectorLayers(
+            CSLFetchBoolean(poOpenInfo->papszOpenOptions, "OPEN_REMOTE_GML", FALSE));
 
         // If file opened in vector-only mode and there's no vector,
         // return
@@ -1355,7 +1356,7 @@ void GDALRegister_JPEG2000()
         poDriver->SetMetadataItem( GDAL_DCAP_RASTER, "YES" );
         poDriver->SetMetadataItem( GDAL_DCAP_VECTOR, "YES" );
         poDriver->SetMetadataItem( GDAL_DMD_LONGNAME, 
-                                   "JPEG-2000 part 1 (ISO/IEC 15444-1)" );
+                                   "JPEG-2000 part 1 (ISO/IEC 15444-1), based on Jasper library" );
         poDriver->SetMetadataItem( GDAL_DMD_HELPTOPIC, 
                                    "frmt_jpeg2000.html" );
         poDriver->SetMetadataItem( GDAL_DMD_CREATIONDATATYPES, 
@@ -1368,6 +1369,7 @@ void GDALRegister_JPEG2000()
         poDriver->SetMetadataItem( GDAL_DMD_OPENOPTIONLIST, 
 "<OpenOptionList>"
 "   <Option name='1BIT_ALPHA_PROMOTION' type='boolean' description='Whether a 1-bit alpha channel should be promoted to 8-bit' default='YES'/>"
+"   <Option name='OPEN_REMOTE_GML' type='boolean' description='Whether to load remote vector layers referenced by a link in a GMLJP2 v2 box' default='NO'/>"
 "</OpenOptionList>" );
 
         poDriver->SetMetadataItem( GDAL_DMD_CREATIONOPTIONLIST,

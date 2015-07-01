@@ -99,6 +99,8 @@ class FGdbDataSource;
 
 class FGdbLayer : public FGdbBaseLayer
 {
+  friend class FGdbDataSource;
+
   int                 m_bBulkLoadAllowed;
   int                 m_bBulkLoadInProgress;
 
@@ -176,8 +178,6 @@ public:
   // can be used by external code for specific purposes.
   OGRErr              GetLayerXML ( char **poXml );
   OGRErr              GetLayerMetadataXML ( char **poXmlMeta );
-  
-  void                ReadoptOldFeatureDefn(OGRFeatureDefn* poFeatureDefn);
   
 protected:
 
@@ -323,7 +323,6 @@ public:
   virtual OGRErr StartTransaction(OGRDataSource*& poDSInOut, int& bOutHasReopenedDS);
   virtual OGRErr CommitTransaction(OGRDataSource*& poDSInOut, int& bOutHasReopenedDS);
   virtual OGRErr RollbackTransaction(OGRDataSource*& poDSInOut, int& bOutHasReopenedDS);
-  virtual void   ReadoptOldFeatureDefn(OGRDataSource* poDS, OGRLayer* poLayer, OGRFeatureDefn* poFeatureDefn);
 
   void Release(const char* pszName);
   CPLMutex* GetMutex() { return hMutex; }

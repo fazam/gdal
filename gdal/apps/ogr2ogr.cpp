@@ -43,6 +43,7 @@ CPL_CVSID("$Id$");
 
 static int bSkipFailures = FALSE;
 static int bLayerTransaction = -1;
+static int bForceTransaction = FALSE;
 static int nGroupTransactions = 20000;
 static GIntBig nFIDToFetch = OGRNullFID;
 
@@ -837,21 +838,38 @@ public:
 /************************************************************************/
 
 void ApplySpatialFilter(OGRLayer* poLayer, OGRGeometry* poSpatialFilter,
-                        const char* pszGeomField)
+                        OGRSpatialReference* poSpatSRS,
+                        const char* pszGeomField,
+                        OGRSpatialReference* poSourceSRS)
 {
     if( poSpatialFilter != NULL )
     {
+        OGRGeometry* poSpatialFilterReprojected = NULL;
+        if( poSpatSRS )
+        {
+            poSpatialFilterReprojected = poSpatialFilter->clone();
+            poSpatialFilterReprojected->assignSpatialReference(poSpatSRS);
+            OGRSpatialReference* poSpatialFilterTargetSRS  = poSourceSRS ? poSourceSRS : poLayer->GetSpatialRef();
+            if( poSpatialFilterTargetSRS )
+                poSpatialFilterReprojected->transformTo(poSpatialFilterTargetSRS);
+            else
+                fprintf(stderr, "Warning: cannot determine layer SRS for %s.\n", poLayer->GetDescription());
+        }
+
         if( pszGeomField != NULL )
         {
             int iGeomField = poLayer->GetLayerDefn()->GetGeomFieldIndex(pszGeomField);
             if( iGeomField >= 0 )
-                poLayer->SetSpatialFilter( iGeomField, poSpatialFilter );
+                poLayer->SetSpatialFilter( iGeomField,
+                    poSpatialFilterReprojected ? poSpatialFilterReprojected : poSpatialFilter );
             else
                 printf("WARNING: Cannot find geometry field %s.\n",
                     pszGeomField);
         }
         else
-            poLayer->SetSpatialFilter( poSpatialFilter );
+            poLayer->SetSpatialFilter( poSpatialFilterReprojected ? poSpatialFilterReprojected : poSpatialFilter );
+
+        delete poSpatialFilterReprojected;
     }
 }
              
@@ -983,6 +1001,8 @@ int main( int nArgc, char ** papszArgv )
     int          bPreserveFID = FALSE;
     int          bCopyMD = TRUE;
     char       **papszMetadataOptions = NULL;
+    CPLString    osSpatSRSDef;
+    OGRSpatialReference* poSpatSRS = NULL;
 
     int          nGCPCount = 0;
     GDAL_GCP    *pasGCPs = NULL;
@@ -1174,10 +1194,10 @@ int main( int nArgc, char ** papszArgv )
             else
                 nGroupTransactions = atoi(papszArgv[iArg]);
         }
-        /* Undocumented. Just a provision. Default behaviour should be OK */
         else if ( EQUAL(papszArgv[iArg],"-ds_transaction") )
         {
             bLayerTransaction = FALSE;
+            bForceTransaction = TRUE;
         }
         /* Undocumented. Just a provision. Default behaviour should be OK */
         else if ( EQUAL(papszArgv[iArg],"-lyr_transaction") )
@@ -1220,6 +1240,11 @@ int main( int nArgc, char ** papszArgv )
             poSpatialFilter = OGRGeometryFactory::createGeometry(wkbPolygon);
             ((OGRPolygon *) poSpatialFilter)->addRing( &oRing );
             iArg += 4;
+        }
+        else if( EQUAL(papszArgv[iArg],"-spat_srs") )
+        {
+            CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
+            osSpatSRSDef = papszArgv[++iArg];
         }
         else if( EQUAL(papszArgv[iArg],"-geomfield") )
         {
@@ -1570,9 +1595,9 @@ int main( int nArgc, char ** papszArgv )
         Usage("-fieldTypeToString and -mapFieldType are exclusive.");
     }
 
-    if( pszSourceSRSDef != NULL && pszOutputSRSDef == NULL )
+    if( pszSourceSRSDef != NULL && pszOutputSRSDef == NULL && osSpatSRSDef.size() == 0 )
     {
-        Usage("if -s_srs is specified, -t_srs must also be specified");
+        Usage("if -s_srs is specified, -t_srs and/or -spat_srs must also be specified.");
     }
 
     if( bClipSrc && pszClipSrcDS != NULL)
@@ -1754,6 +1779,11 @@ int main( int nArgc, char ** papszArgv )
                     pszFormat );
             exit( 1 );
         }
+        
+        if( papszDestOpenOptions != NULL )
+        {
+            fprintf(stderr, "-doo ignored when creating the output datasource.\n");
+        }
 
 /* -------------------------------------------------------------------- */
 /*      Special case to improve user experience when translating        */
@@ -1847,7 +1877,28 @@ int main( int nArgc, char ** papszArgv )
             exit( 1 );
         }
     }
- 
+
+/* -------------------------------------------------------------------- */
+/*      Parse spatial filter SRS if needed.                             */
+/* -------------------------------------------------------------------- */
+    if( poSpatialFilter != NULL && osSpatSRSDef.size() )
+    {
+        if( pszSQLStatement )
+        {
+            fprintf(stderr, "-spat_srs not compatible with -sql.\n");
+            exit(1);
+        }
+        OGREnvelope sEnvelope;
+        poSpatialFilter->getEnvelope(&sEnvelope);
+        poSpatSRS = new OGRSpatialReference();
+        if( poSpatSRS->SetFromUserInput( osSpatSRSDef ) != OGRERR_NONE )
+        {
+            fprintf( stderr,  "Failed to process SRS definition: %s\n", 
+                    osSpatSRSDef.c_str() );
+            exit( 1 );
+        }
+    }
+
 /* -------------------------------------------------------------------- */
 /*      Create a transformation object from the source to               */
 /*      destination coordinate system.                                  */
@@ -1930,7 +1981,7 @@ int main( int nArgc, char ** papszArgv )
     if( nGroupTransactions )
     {
         if( !bLayerTransaction )
-            poODS->StartTransaction();
+            poODS->StartTransaction(bForceTransaction);
     }
 
 /* -------------------------------------------------------------------- */
@@ -2139,7 +2190,7 @@ int main( int nArgc, char ** papszArgv )
                     }
                 }
 
-                ApplySpatialFilter(poLayer, poSpatialFilter, pszGeomField);
+                ApplySpatialFilter(poLayer, poSpatialFilter, poSpatSRS, pszGeomField, poSourceSRS );
 
                 TargetLayerInfo* psInfo = oSetup.Setup(poLayer,
                                                        pszNewLayerName);
@@ -2312,7 +2363,7 @@ int main( int nArgc, char ** papszArgv )
                 }
             }
 
-            ApplySpatialFilter(poLayer, poSpatialFilter, pszGeomField);
+            ApplySpatialFilter(poLayer, poSpatialFilter, poSpatSRS, pszGeomField, poSourceSRS);
 
             if (bDisplayProgress && !bSrcIsOSM)
             {
@@ -2459,6 +2510,7 @@ int main( int nArgc, char ** papszArgv )
     /* Destroy them after the last potential user */
     OGRSpatialReference::DestroySpatialReference(poOutputSRS);
     OGRSpatialReference::DestroySpatialReference(poSourceSRS);
+    OGRSpatialReference::DestroySpatialReference(poSpatSRS);
 
     CSLDestroy(papszSelFields);
     CSLDestroy( papszFieldMap );
@@ -2501,7 +2553,7 @@ static void Usage(const char* pszAdditionalMsg, int bShort)
             "               [-select field_list] [-where restricted_where]\n"
             "               [-progress] [-sql <sql statement>] [-dialect dialect]\n"
             "               [-preserve_fid] [-fid FID]\n"
-            "               [-spat xmin ymin xmax ymax] [-geomfield field]\n"
+            "               [-spat xmin ymin xmax ymax] [-spat_srs srs_def] [-geomfield field]\n"
             "               [-a_srs srs_def] [-t_srs srs_def] [-s_srs srs_def]\n"
             "               [-f format_name] [-overwrite] [[-dsco NAME=VALUE] ...]\n"
             "               dst_datasource_name src_datasource_name\n"
@@ -2510,7 +2562,7 @@ static void Usage(const char* pszAdditionalMsg, int bShort)
             "               [-dim 2|3|layer_dim] [layer [layer ...]]\n"
             "\n"
             "Advanced options :\n"
-            "               [-gt n]\n"
+            "               [-gt n] [-ds_transaction]\n"
             "               [[-oo NAME=VALUE] ...] [[-doo NAME=VALUE] ...]\n"
             "               [-clipsrc [xmin ymin xmax ymax]|WKT|datasource|spat_extent]\n"
             "               [-clipsrcsql sql_statement] [-clipsrclayer layer]\n"
@@ -2564,7 +2616,7 @@ static void Usage(const char* pszAdditionalMsg, int bShort)
             " -sql statement: Execute given SQL statement and save result.\n"
             " -dialect value: select a dialect, usually OGRSQL to avoid native sql.\n"
             " -skipfailures: skip features or layers that fail to convert\n"
-            " -gt n: group n features per transaction (default 20000)\n"
+            " -gt n: group n features per transaction (default 20000). n can be set to unlimited\n"
             " -spat xmin ymin xmax ymax: spatial query extents\n"
             " -simplify tolerance: distance tolerance for simplification.\n"
             " -segmentize max_dist: maximum distance between 2 nodes.\n"
@@ -3749,21 +3801,13 @@ int LayerTranslator::Translate( TargetLayerInfo* psInfo,
                                         psInfo->iRequestedSrcGeomField);
             else
                 poSrcGeometry = poFeature->GetGeometryRef();
-            if (poSrcGeometry)
+            if (poSrcGeometry &&
+                OGR_GT_IsSubClassOf(poSrcGeometry->getGeometryType(), wkbGeometryCollection) )
             {
-                switch (wkbFlatten(poSrcGeometry->getGeometryType()))
-                {
-                    case wkbMultiPoint:
-                    case wkbMultiLineString:
-                    case wkbMultiPolygon:
-                    case wkbGeometryCollection:
-                        nParts = ((OGRGeometryCollection*)poSrcGeometry)->getNumGeometries();
-                        nIters = nParts;
-                        if (nIters == 0)
-                            nIters = 1;
-                    default:
-                        break;
-                }
+                nParts = ((OGRGeometryCollection*)poSrcGeometry)->getNumGeometries();
+                nIters = nParts;
+                if (nIters == 0)
+                    nIters = 1;
             }
         }
 
@@ -3779,7 +3823,7 @@ int LayerTranslator::Translate( TargetLayerInfo* psInfo,
                 else
                 {
                     poODS->CommitTransaction();
-                    poODS->StartTransaction();
+                    poODS->StartTransaction(bForceTransaction);
                 }
                 nFeaturesInTransaction = 0;
             }
@@ -3933,6 +3977,9 @@ int LayerTranslator::Translate( TargetLayerInfo* psInfo,
 
                 if (poClipDst)
                 {
+                    if( poDstGeometry == NULL )
+                        goto end_loop;
+
                     OGRGeometry* poClipped = poDstGeometry->Intersection(poClipDst);
                     if (poClipped == NULL || poClipped->IsEmpty())
                     {

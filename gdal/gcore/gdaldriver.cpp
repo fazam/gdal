@@ -86,9 +86,8 @@ GDALDriver::~GDALDriver()
 void CPL_STDCALL GDALDestroyDriver( GDALDriverH hDriver )
 
 {
-    VALIDATE_POINTER0( hDriver, "GDALDestroyDriver" );
-
-    delete ((GDALDriver *) hDriver);
+    if( hDriver != NULL )
+        delete ((GDALDriver *) hDriver);
 }
 
 /************************************************************************/
@@ -1485,6 +1484,12 @@ int GDALValidateOptions( const char* pszOptionList,
             continue;
         }
 
+        if( EQUAL(pszKey, "VALIDATE_OPEN_OPTIONS") )
+        {
+            papszOptionsToValidate ++;
+            continue;
+        }
+
         CPLXMLNode* psChildNode = psNode->psChild;
         while(psChildNode)
         {
@@ -1524,14 +1529,18 @@ int GDALValidateOptions( const char* pszOptionList,
         }
         if (psChildNode == NULL)
         {
-            CPLError(CE_Warning, CPLE_NotSupported,
-                     "%s does not support %s %s",
-                     pszErrorMessageContainerName,
-                     pszErrorMessageOptionType,
-                     pszKey);
-            CPLFree(pszKey);
-            bRet = FALSE;
+            if( !EQUAL(pszErrorMessageOptionType, "open option") ||
+                CSLFetchBoolean((char**)papszOptionsToValidate, "VALIDATE_OPEN_OPTIONS", TRUE) )
+            {
+                CPLError(CE_Warning, CPLE_NotSupported,
+                        "%s does not support %s %s",
+                        pszErrorMessageContainerName,
+                        pszErrorMessageOptionType,
+                        pszKey);
+                bRet = FALSE;
+            }
 
+            CPLFree(pszKey);
             papszOptionsToValidate ++;
             continue;
         }

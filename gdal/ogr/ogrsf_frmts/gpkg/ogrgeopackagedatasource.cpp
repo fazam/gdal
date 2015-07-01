@@ -670,7 +670,15 @@ int GDALGeoPackageDataset::Open( GDALOpenInfo* poOpenInfo )
         bRet = TRUE;
     }
     
-    if(  poOpenInfo->nOpenFlags & GDAL_OF_RASTER )
+    int bHasTileMatrixSet = FALSE;
+    if( poOpenInfo->nOpenFlags & GDAL_OF_RASTER )
+    {
+        SQLResult oResult;
+        err = SQLQuery(hDB, "pragma table_info('gpkg_tile_matrix_set')", &oResult);
+        bHasTileMatrixSet = (err == OGRERR_NONE && oResult.nRowCount > 0);
+        SQLResultFree(&oResult);
+    }
+    if( bHasTileMatrixSet )
     {
         SQLResult oResult;
         std::string osSQL =
@@ -4250,6 +4258,11 @@ int GDALGeoPackageDataset::OpenOrCreateDB(int flags)
 
 #ifdef SPATIALITE_412_OR_LATER
     InitNewSpatialite();
+
+    // Enable Spatialite 4.3 "amphibious" mode, i.e. that spatialite functions
+    // that take geometries will accept GPKG encoded gometries without
+    // explicit conversion
+    sqlite3_exec(hDB, "SELECT EnableGpkgAmphibiousMode()", NULL, NULL, NULL);
 #endif
 
     /* Used by RTree Spatial Index Extension */

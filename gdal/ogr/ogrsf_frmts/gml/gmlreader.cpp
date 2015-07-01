@@ -184,10 +184,10 @@ CPL_UNUSED
 
     m_bSetWidthFlag = TRUE;
 
-    m_bReportAllAttributes = CSLTestBoolean(
-                    CPLGetConfigOption("GML_ATTRIBUTES_TO_OGR_FIELDS", "NO"));
+    m_bReportAllAttributes = FALSE;
 
     m_bIsWFSJointLayer = FALSE;
+    m_bEmptyAsNull = TRUE;
 }
 
 /************************************************************************/
@@ -1413,7 +1413,7 @@ int GMLReader::PrescanForSchema( int bGetExtents,
         }
 
 #ifdef SUPPORT_GEOMETRY
-        if( bGetExtents )
+        if( bGetExtents && papsGeometry != NULL )
         {
             OGRGeometry *poGeometry = GML_BuildOGRGeometryFromList(
                 papsGeometry, TRUE, m_bInvertAxisOrderIfLatLong,

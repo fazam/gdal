@@ -726,3 +726,39 @@ CPLErr ReadRaster1(  int xoff, int yoff, int xsize, int ysize,
 }
 
 %include "callback.i"
+
+%pythoncode %{
+
+def Info(ds, options = None, format = _gdal.INFO_FORMAT_TEXT, deserialize = True,
+         computeMinMax = False, reportHistograms = False, reportProj4 = False,
+         stats = False, approxStats = True, sample = False, computeChecksum = False,
+         showGCPs = True, showMetadata = True, showRAT = True, showColorTable = True,
+         listMDD = False, showFileList = True, allMetadata = False,
+         extraMDDomains = None):
+    """ If options is provided as a gdal.InfoOptions() object, format and other keywords (except deserialize) are ignored. """
+    if options is None:
+        options = InfoOptions()
+        options.format = format
+        options.computeMinMax = computeMinMax
+        options.reportHistograms = reportHistograms
+        options.reportProj4 = reportProj4
+        options.stats = stats
+        options.approxStats = approxStats
+        options.sample = sample
+        options.computeChecksum = computeChecksum
+        options.showGCPs = showGCPs
+        options.showMetadata = showMetadata
+        options.showRAT = showRAT
+        options.showColorTable = showColorTable
+        options.listMDD = listMDD
+        options.showFileList = showFileList
+        options.allMetadata = allMetadata
+        if extraMDDomains is not None:
+            options.extraMDDomains = extraMDDomains
+    ret = InfoInternal(ds, options)
+    if options.format == _gdal.INFO_FORMAT_JSON and deserialize:
+        import json
+        ret = json.loads(ret)
+    return ret
+
+%}

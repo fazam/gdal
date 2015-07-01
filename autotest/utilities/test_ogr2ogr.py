@@ -2445,6 +2445,61 @@ def test_ogr2ogr_59():
 
     return 'success'
 
+###############################################################################
+# Test forced datasource transactions
+
+def test_ogr2ogr_60():
+    if test_cli_utilities.get_ogr2ogr_path() is None:
+        return 'skip'
+    if ogr.GetDriverByName('FileGDB') is None:
+        return 'skip'
+
+    gdaltest.runexternal(test_cli_utilities.get_ogr2ogr_path() + ' -ds_transaction -f FileGDB tmp/test_ogr2ogr_60.gdb ../ogr/data/poly.shp -mapFieldType Integer64=Integer')
+
+    ds = ogr.Open('tmp/test_ogr2ogr_60.gdb')
+    lyr = ds.GetLayer(0)
+    if lyr.GetFeatureCount() != 10:
+        gdaltest.post_reason('fail')
+        return 'fail'
+    ds = None
+
+    ogr.GetDriverByName('FileGDB').DeleteDataSource('tmp/test_ogr2ogr_60.gdb')
+
+    return 'success'
+
+###############################################################################
+# Test -spat_srs
+
+def test_ogr2ogr_61():
+    if test_cli_utilities.get_ogr2ogr_path() is None:
+        return 'skip'
+
+    f = open('tmp/test_ogr2ogr_61.csv', 'wt')
+    f.write('foo,WKT\n')
+    f.write('1,"POINT(2 49)"\n')
+    f.close()
+
+    gdaltest.runexternal(test_cli_utilities.get_ogr2ogr_path() + ' tmp/test_ogr2ogr_61.shp tmp/test_ogr2ogr_61.csv -spat 426857 5427937 426858 5427938 -spat_srs EPSG:32631 -s_srs EPSG:4326 -a_srs EPSG:4326')
+
+    ds = ogr.Open('tmp/test_ogr2ogr_61.shp')
+    if ds is None or ds.GetLayer(0).GetFeatureCount() != 1:
+        gdaltest.post_reason('fail')
+        return 'fail'
+    ds.Destroy()
+
+    gdaltest.runexternal(test_cli_utilities.get_ogr2ogr_path() + ' tmp/test_ogr2ogr_61_2.shp tmp/test_ogr2ogr_61.shp -spat 426857 5427937 426858 5427938 -spat_srs EPSG:32631')
+
+    ds = ogr.Open('tmp/test_ogr2ogr_61_2.shp')
+    if ds is None or ds.GetLayer(0).GetFeatureCount() != 1:
+        gdaltest.post_reason('fail')
+        return 'fail'
+    ds.Destroy()
+
+    ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/test_ogr2ogr_61.shp')
+    ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/test_ogr2ogr_61_2.shp')
+    os.unlink('tmp/test_ogr2ogr_61.csv')
+
+    return 'success'
 
 gdaltest_list = [
     test_ogr2ogr_1,
@@ -2506,7 +2561,9 @@ gdaltest_list = [
     test_ogr2ogr_56,
     test_ogr2ogr_57,
     test_ogr2ogr_58,
-    test_ogr2ogr_59
+    test_ogr2ogr_59,
+    test_ogr2ogr_60,
+    test_ogr2ogr_61
     ]
 
 if __name__ == '__main__':

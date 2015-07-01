@@ -192,6 +192,9 @@ OGRWFSDataSource::OGRWFSDataSource()
     bKeepLayerNamePrefix = FALSE;
     apszGetCapabilities[0] = NULL;
     apszGetCapabilities[1] = NULL;
+    bEmptyAsNull = TRUE;
+    
+    bInvertAxisOrderIfLatLong = TRUE;
 }
 
 /************************************************************************/
@@ -899,6 +902,8 @@ int OGRWFSDataSource::Open( const char * pszFilename, int bUpdateIn,
     CPLString osTypeName;
     const char* pszBaseURL = NULL;
 
+    bEmptyAsNull = CSLFetchBoolean(papszOpenOptions, "EMPTY_AS_NULL", TRUE);
+
     if (psXML == NULL)
     {
         if (!EQUALN(pszFilename, "WFS:", 4) &&
@@ -1095,8 +1100,14 @@ int OGRWFSDataSource::Open( const char * pszFilename, int bUpdateIn,
         }
     }
 
-    int bInvertAxisOrderIfLatLong = CSLTestBoolean(CPLGetConfigOption(
-                                  "GML_INVERT_AXIS_ORDER_IF_LAT_LONG", "YES"));
+    bInvertAxisOrderIfLatLong =
+        CSLTestBoolean(CSLFetchNameValueDef(papszOpenOptions,
+            "INVERT_AXIS_ORDER_IF_LAT_LONG",
+            CPLGetConfigOption("GML_INVERT_AXIS_ORDER_IF_LAT_LONG", "YES")));
+    osConsiderEPSGAsURN =
+        CSLFetchNameValueDef(papszOpenOptions,
+            "CONSIDER_EPSG_AS_URN",
+            CPLGetConfigOption("GML_CONSIDER_EPSG_AS_URN", "AUTO"));
 
     CPLXMLNode* psStrippedXML = CPLCloneXMLTree(psXML);
     CPLStripXMLNamespace( psStrippedXML, NULL, TRUE );

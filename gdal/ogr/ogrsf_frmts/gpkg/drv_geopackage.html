@@ -40,10 +40,12 @@ following non-linear geometry types :CIRCULARSTRING, COMPOUNDCURVE, CURVEPOLYGON
 <p>
   Starting with GDAL 2.0, SQL SELECT statements passed to ExecuteSQL() are
   also executed directly against the database. If Spatialite is used, a recent
-  version (4.2.0) is needed and use of explicit cast operators AsGPB(), GeomFromGPB()
-  are required. It is also possible to use with any Spatialite version, but in
+  version (4.2.0) is needed and use of explicit cast operators AsGPB() is required
+  to transform GeoPackage geometries to Spatialite geometries (the reverse conversion
+  from Spatialite geometries is automatically done by the GPKG driver).
+  It is also possible to use with any Spatialite version, but in
   a slower way, by specifying the "INDIRECT_SQLITE" dialect. In which case,
-  GeoPackage geometries appear as Spatialite geometries after translation by OGR.
+  GeoPackage geometries automatically appear as Spatialite geometries after translation by OGR.
 </p>
 
 <h3>SQL functions</h3>
@@ -70,13 +72,19 @@ The following functions, with identical syntax and semantics as in Spatialite, a
 
 <h3>Link with Spatialite</h3>
 
-Starting with GDAL 2.0, if it has been compiled against Spatialite 4.2 or later, it is also possible
-to use Spatialite SQL functions. Explicit transformation from GPKG geometry binary
-encoding to/from Spatialite geometry binary encoding must be done.
+<p>
+Starting with GDAL 2.0, if it has been compiled against Spatialite 4.2 or later,
+it is also possible to use Spatialite SQL functions. Explicit transformation
+from GPKG geometry binary encoding to Spatialite geometry binary encoding must be done.
+</p>
 
 <pre>
-ogrinfo poly.gpkg -sql "SELECT AsGPB(ST_Buffer(CastAutomagic(geom),5)) FROM poly"
+ogrinfo poly.gpkg -sql "SELECT ST_Buffer(CastAutomagic(geom),5) FROM poly"
 </pre>
+
+<p>
+Starting with Spatialite 4.3, CastAutomagic is no longer needed.
+</p>
 
 <h2>Transaction support (GDAL &gt;= 2.0)</h2>
 
