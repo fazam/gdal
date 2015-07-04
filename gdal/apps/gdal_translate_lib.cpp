@@ -590,7 +590,7 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
             if(psOptions->nOXSizePixel != 0)
                 nOXSize = psOptions->nOXSizePixel;
             else
-                nOXSize = (int) psOptions->dfOXSizePct/100*psOptions->anSrcWin[2];
+                nOXSize = (int) (psOptions->dfOXSizePct/100*psOptions->anSrcWin[2]);
         }
 
         if( !(psOptions->nOYSizePixel == 0 && psOptions->dfOYSizePct == 0.0) )
@@ -598,7 +598,7 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
             if(psOptions->nOYSizePixel != 0)
                 nOYSize = psOptions->nOYSizePixel;
             else
-                nOYSize = (int) psOptions->dfOYSizePct/100*psOptions->anSrcWin[3];
+                nOYSize = (int) (psOptions->dfOYSizePct/100*psOptions->anSrcWin[3]);
         }
 
         if( psOptions->nOXSizePixel == 0 && psOptions->dfOXSizePct == 0.0 )

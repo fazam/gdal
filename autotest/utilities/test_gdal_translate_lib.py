@@ -161,6 +161,34 @@ def test_gdal_translate_lib_5():
     return 'success'
 
 ###############################################################################
+# Test outputSRS and GCPs options
+
+def test_gdal_translate_lib_6():
+
+    gcpList = [gdal.GCP(440720.000,3751320.000,0,0,0), gdal.GCP(441920.000,3751320.000,0,20,0), gdal.GCP(441920.000,3750120.000,0,20,20), gdal.GCP(440720.000,3750120.000,0,0,20)]
+    ds = gdal.Open('../gcore/data/byte.tif')
+    ds = gdal.Translate('tmp/test6.tif', ds, outputSRS = 'EPSG:26711', gcps = gcpList)
+    if ds is None:
+        return 'fail'
+
+    if ds.GetRasterBand(1).Checksum() != 4672:
+        gdaltest.post_reason('Bad checksum')
+        return 'fail'
+
+    gcps = ds.GetGCPs()
+    if len(gcps) != 4:
+        gdaltest.post_reason( 'GCP count wrong.' )
+        return 'fail'
+
+    if ds.GetGCPProjection().find('26711') == -1:
+        gdaltest.post_reason( 'Bad GCP projection.' )
+        return 'fail'
+
+    ds = None
+
+    return 'success'
+
+###############################################################################
 # Cleanup
 
 def test_gdal_translate_lib_cleanup():
@@ -182,6 +210,7 @@ gdaltest_list = [
     test_gdal_translate_lib_3,
     test_gdal_translate_lib_4,
     test_gdal_translate_lib_5,
+    test_gdal_translate_lib_6,
     test_gdal_translate_lib_cleanup
     ]
 
