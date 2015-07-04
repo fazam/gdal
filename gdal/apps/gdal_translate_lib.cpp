@@ -226,6 +226,7 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
     const char *pszSource = NULL;
     int bGotBounds = FALSE;
     int bDefBands = TRUE;
+    CPLString osProjSRS;
 
     if(bUsageError)
         *bUsageError = FALSE;
@@ -257,6 +258,41 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
         if(bUsageError)
             *bUsageError = TRUE;
         return NULL;
+    }
+
+    if(psOptions->pszProjSRS != NULL)
+    {
+
+        OGRSpatialReference oSRS;
+
+        if( oSRS.SetFromUserInput( psOptions->pszProjSRS ) != OGRERR_NONE )
+        {
+            CPLError( CE_Failure, CPLE_AppDefined, "Failed to process SRS definition: %s\n", 
+                      psOptions->pszProjSRS );
+            return NULL;
+        }
+
+        char* pszSRS = NULL;
+        oSRS.exportToWkt( &pszSRS );
+        if( pszSRS )
+            osProjSRS = pszSRS;
+    }
+
+    if(psOptions->pszOutputSRS != NULL)
+    {
+        OGRSpatialReference oOutputSRS;
+
+        if( oOutputSRS.SetFromUserInput( psOptions->pszOutputSRS ) != OGRERR_NONE )
+        {
+            CPLError( CE_Failure, CPLE_AppDefined, "Failed to process SRS definition: %s\n", 
+                      psOptions->pszOutputSRS );
+            return NULL;
+        }
+
+        CPLFree(psOptions->pszOutputSRS);
+        psOptions->pszOutputSRS = NULL;
+
+        oOutputSRS.exportToWkt( &psOptions->pszOutputSRS );
     }
 
 /* -------------------------------------------------------------------- */
@@ -367,14 +403,14 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
             return NULL;
         }
 
-        if( psOptions->pszProjSRS != NULL )
+        if( osProjSRS.size() )
         {
             pszProjection = GDALGetProjectionRef( hDataset );
             if( pszProjection != NULL && strlen(pszProjection) > 0 )
             {
                 OGRSpatialReference oSRSIn;
                 OGRSpatialReference oSRSDS;
-                oSRSIn.SetFromUserInput(psOptions->pszProjSRS);
+                oSRSIn.SetFromUserInput(osProjSRS);
                 oSRSDS.SetFromUserInput(pszProjection);
                 if( !oSRSIn.IsSame(&oSRSDS) )
                 {
@@ -1321,8 +1357,8 @@ GDALTranslateOptions *GDALTranslateOptionsNew()
     GDALTranslateOptions *psOptions = (GDALTranslateOptions *) CPLCalloc( 1, sizeof(GDALTranslateOptions) );
 
     psOptions->pszFormat = CPLStrdup("GTiff");
-    psOptions->bQuiet = FALSE;
-    psOptions->pfnProgress = GDALTermProgress;
+    psOptions->bQuiet = TRUE;
+    psOptions->pfnProgress = GDALDummyProgress;
     psOptions->pProgressData = NULL;
     psOptions->eOutputType = GDT_Unknown;
     psOptions->eMaskMode = MASK_AUTO;
@@ -1469,4 +1505,25 @@ void GDALTranslateOptionsAddMetadataOptions( GDALTranslateOptions *psOptions,
                                        const char *pszMetadataOption )
 {
     psOptions->papszMetadataOptions = CSLAddString( psOptions->papszMetadataOptions, pszMetadataOption );
+}
+
+/************************************************************************/
+/*                              GDALTranslateOptionsAddBand()           */
+/************************************************************************/
+
+/**
+ * Specify the particular bands which need to be in the converted dataset.
+ *
+ * @param psOptions the options struct for GDALTranslate().
+ * @param nBand the band number.
+ * @param bIsMask TRUE if the band is a mask band.
+ */
+
+void GDALTranslateOptionsAddBand( GDALTranslateOptions *psOptions, int nBand, int bIsMask )
+{
+    psOptions->nBandCount++;
+    psOptions->panBandList = (int *) CPLRealloc(psOptions->panBandList, sizeof(int) * psOptions->nBandCount);
+    psOptions->panBandList[psOptions->nBandCount-1] = nBand;
+    if(bIsMask)
+        psOptions->panBandList[psOptions->nBandCount-1] *= -1;
 }

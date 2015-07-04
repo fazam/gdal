@@ -106,6 +106,7 @@ int main( int argc, char ** argv )
     int                 bParsedMaskArgument = FALSE;
     char              **papszOpenOptions = NULL;
     int bFormatExplicitlySet = FALSE;
+    int bOutsideExplicitlySet = FALSE;
     GDALTranslateOptions *psOptions = NULL;
     int bUsageError;
 
@@ -139,6 +140,9 @@ int main( int argc, char ** argv )
 
     psOptions = GDALTranslateOptionsNew();
 
+    psOptions->pfnProgress = GDALTermProgress;
+    psOptions->bQuiet = FALSE;
+
 /* -------------------------------------------------------------------- */
 /*      Handle command line arguments.                                  */
 /* -------------------------------------------------------------------- */
@@ -158,7 +162,7 @@ int main( int argc, char ** argv )
         }
         else if( EQUAL(argv[i],"-of") && i < argc-1 )
         {
-            psOptions->pszFormat = argv[++i];
+            psOptions->pszFormat = CPLStrdup(argv[++i]);
             bFormatExplicitlySet = TRUE;
         }
 
@@ -346,11 +350,11 @@ int main( int argc, char ** argv )
 
             if( nIndex >= psOptions->nScaleRepeat )
             {
-                psOptions->pasScaleParams = (ScaleParams*)CPLRealloc(psOptions->pasScaleParams,
-                    (nIndex + 1) * sizeof(ScaleParams));
+                psOptions->pasScaleParams = (GDALTranslateScaleParams*)CPLRealloc(psOptions->pasScaleParams,
+                    (nIndex + 1) * sizeof(GDALTranslateScaleParams));
                 if( nIndex > psOptions->nScaleRepeat )
                     memset(psOptions->pasScaleParams + psOptions->nScaleRepeat, 0,
-                        sizeof(ScaleParams) * (nIndex - psOptions->nScaleRepeat));
+                        sizeof(GDALTranslateScaleParams) * (nIndex - psOptions->nScaleRepeat));
                 psOptions->nScaleRepeat = nIndex + 1;
             }
             psOptions->pasScaleParams[nIndex].bScale = TRUE;
@@ -434,6 +438,7 @@ int main( int argc, char ** argv )
                 psOptions->dfOYSizePct = CPLAtofM(argv[i]);
             else
                 psOptions->nOYSizePixel = atoi(argv[i]);
+            bOutsideExplicitlySet = TRUE;
         }
         
         else if( EQUAL(argv[i],"-tr") )
@@ -468,20 +473,7 @@ int main( int argc, char ** argv )
         else if( EQUAL(argv[i],"-projwin_srs") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
-            OGRSpatialReference oSRS;
-
-            if( oSRS.SetFromUserInput( argv[i+1] ) != OGRERR_NONE )
-            {
-                fprintf( stderr, "Failed to process SRS definition: %s\n", 
-                         argv[i+1] );
-                GDALDestroyDriverManager();
-                exit( 1 );
-            }
-
-            char* pszSRS = NULL;
-            oSRS.exportToWkt( &pszSRS );
-            if( pszSRS )
-                psOptions->pszProjSRS = pszSRS;
+            psOptions->pszProjSRS = CPLStrdup(argv[i+1]);
             i++;
         }
 
@@ -499,17 +491,7 @@ int main( int argc, char ** argv )
         else if( EQUAL(argv[i],"-a_srs") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
-            OGRSpatialReference oOutputSRS;
-
-            if( oOutputSRS.SetFromUserInput( argv[i+1] ) != OGRERR_NONE )
-            {
-                fprintf( stderr, "Failed to process SRS definition: %s\n", 
-                         argv[i+1] );
-                GDALDestroyDriverManager();
-                exit( 1 );
-            }
-
-            oOutputSRS.exportToWkt( &psOptions->pszOutputSRS );
+            psOptions->pszOutputSRS = CPLStrdup(argv[i+1]);
             i++;
         }   
 
@@ -553,7 +535,7 @@ int main( int argc, char ** argv )
         else if( EQUAL(argv[i],"-r") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
-            psOptions->pszResampling = argv[++i];
+            psOptions->pszResampling = CPLStrdup(argv[++i]);
         }  
         else if( argv[i][0] == '-' )
         {
@@ -586,6 +568,13 @@ int main( int argc, char ** argv )
     {
         psOptions->bQuiet = TRUE;
         psOptions->pfnProgress = GDALDummyProgress;
+    }
+
+    if( bOutsideExplicitlySet && psOptions->nOXSizePixel == 0 && psOptions->dfOXSizePct == 0.0 && psOptions->nOYSizePixel == 0 && psOptions->dfOYSizePct == 0.0 )
+    {
+        fprintf(stderr, "-outsize %d %d invalid.\n", psOptions->nOXSizePixel, psOptions->nOYSizePixel);
+        GDALDestroyDriverManager();
+        exit(1);
     }
 
 /* -------------------------------------------------------------------- */

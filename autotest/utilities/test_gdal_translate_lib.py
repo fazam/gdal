@@ -40,7 +40,7 @@ import gdaltest
 ###############################################################################
 # Simple test
 
-def test_gdal_translate_1():
+def test_gdal_translate_lib_1():
     
     ds = gdal.Open('../gcore/data/byte.tif')
     options = gdal.TranslateOptions()
@@ -70,9 +70,100 @@ def test_gdal_translate_1():
     return 'success'
 
 ###############################################################################
+# Test bandList option
+
+def test_gdal_translate_lib_2():
+
+    ds = gdal.Open('../gcore/data/rgbsmall.tif')
+    options = gdal.TranslateOptions()
+    options.bandList = [3,2,1]
+
+    ds = gdal.Translate('tmp/test2.tif', ds, options)
+    if ds is None:
+        gdaltest.post_reason('got error/warning')
+        print(err)
+        return 'fail'
+
+    if ds.GetRasterBand(1).Checksum() != 21349:
+        gdaltest.post_reason('Bad checksum')
+        return 'fail'
+
+    if ds.GetRasterBand(2).Checksum() != 21053:
+        gdaltest.post_reason('Bad checksum')
+        return 'fail'
+
+    if ds.GetRasterBand(3).Checksum() != 21212:
+        gdaltest.post_reason('Bad checksum')
+        return 'fail'
+
+    ds = None
+
+    return 'success'
+
+###############################################################################
+# Test oXSizePixel and oYSizePixel option
+
+def test_gdal_translate_lib_3():
+
+    ds = gdal.Open('../gcore/data/byte.tif')
+
+    ds = gdal.Translate('tmp/test3.tif', ds, oXSizePixel = 40, oYSizePixel = 40)
+    if ds is None:
+        return 'fail'
+
+    if ds.GetRasterBand(1).Checksum() != 18784:
+        gdaltest.post_reason('Bad checksum')
+        return 'fail'
+
+    ds = None
+
+    return 'success'
+
+###############################################################################
+# Test oXSizePct and oYSizePct option
+
+def test_gdal_translate_lib_4():
+
+    ds = gdal.Open('../gcore/data/byte.tif')
+    
+    ds = gdal.Translate('tmp/test4.tif', ds, oXSizePct = 200.0, oYSizePct = 200.0)
+    if ds is None:
+        return 'fail'
+
+    if ds.GetRasterBand(1).Checksum() != 18784:
+        gdaltest.post_reason('Bad checksum')
+        return 'fail'
+
+    ds = None
+
+    return 'success'
+
+###############################################################################
+# Test -outputType option
+
+def test_gdal_translate_lib_5():
+    
+    ds = gdal.Open('../gcore/data/byte.tif')
+    ds = gdal.Translate('tmp/test5.tif', ds, outputType = gdal.GDT_Int16)
+    if ds is None:
+        return 'fail'
+
+    if ds.GetRasterBand(1).DataType != gdal.GDT_Int16:
+        gdaltest.post_reason('Bad data type')
+        return 'fail'
+
+    if ds.GetRasterBand(1).Checksum() != 4672:
+        gdaltest.post_reason('Bad checksum')
+        return 'fail'
+
+    ds = None
+
+    return 'success'
+
+###############################################################################
 # Cleanup
 
-def test_gdal_translate_cleanup():
+def test_gdal_translate_lib_cleanup():
     for i in range(1):
         try:
             os.remove('tmp/test' + str(i+1) + '.tif')
@@ -86,8 +177,12 @@ def test_gdal_translate_cleanup():
     return 'success'
 
 gdaltest_list = [
-    test_gdal_translate_1,
-    test_gdal_translate_cleanup
+    test_gdal_translate_lib_1,
+    test_gdal_translate_lib_2,
+    test_gdal_translate_lib_3,
+    test_gdal_translate_lib_4,
+    test_gdal_translate_lib_5,
+    test_gdal_translate_lib_cleanup
     ]
 
 

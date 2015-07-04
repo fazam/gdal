@@ -1170,7 +1170,9 @@ typedef enum
     MASK_USER
 } MaskMode;
 
-struct ScaleParams
+%rename (TranslateScaleParams) GDALTranslateScaleParams;
+
+struct GDALTranslateScaleParams
 {
 %extend {
 %mutable;
@@ -1180,9 +1182,9 @@ struct ScaleParams
     double  scaleDstMin, scaleDstMax;
 %immutable;
     
-    ScaleParams( int scale = 0, int haveScaleSrc = 0, double scaleSrcMin = 0.0,
+    GDALTranslateScaleParams( int scale = 0, int haveScaleSrc = 0, double scaleSrcMin = 0.0,
                  double scaleSrcMax = 0.0, double scaleDstMin = 0.0, double scaleDstMax = 0.0 ) {
-        ScaleParams *self = (ScaleParams*) CPLMalloc( sizeof( ScaleParams ) );
+        GDALTranslateScaleParams *self = (GDALTranslateScaleParams*) CPLMalloc( sizeof( GDALTranslateScaleParams ) );
         self->bScale = scale;
         self->bHaveScaleSrc = haveScaleSrc;
         self->dfScaleSrcMin = scaleSrcMin;
@@ -1192,66 +1194,66 @@ struct ScaleParams
         return self;
     }
 
-    ~ScaleParams() {
+    ~GDALTranslateScaleParams() {
         CPLFree( self );
     }
 } /* extend */
 };
 
-%apply Pointer NONNULL {ScaleParams *scaleParams};
+%apply Pointer NONNULL {GDALTranslateScaleParams *scaleParams};
 %inline %{
     
-bool ScaleParams_scale_get( ScaleParams scaleParams ) {
+bool GDALTranslateScaleParams_scale_get( GDALTranslateScaleParams* scaleParams ) {
     return scaleParams->bScale;
 }
 
-void ScaleParams_scale_set( ScaleParams scaleParams, bool bScale ) {
+void GDALTranslateScaleParams_scale_set( GDALTranslateScaleParams* scaleParams, bool bScale ) {
     scaleParams->bScale = bScale;
 }
 
-bool ScaleParams_haveScaleSrc_get( ScaleParams scaleParams ) {
+bool GDALTranslateScaleParams_haveScaleSrc_get( GDALTranslateScaleParams* scaleParams ) {
     return scaleParams->bHaveScaleSrc;
 }
 
-void ScaleParams_haveScaleSrc_set( ScaleParams scaleParams, bool bHaveScaleSrc ) {
+void GDALTranslateScaleParams_haveScaleSrc_set( GDALTranslateScaleParams* scaleParams, bool bHaveScaleSrc ) {
     scaleParams->bHaveScaleSrc = bHaveScaleSrc;
 }
 
-double ScaleParams_scaleSrcMin_get( ScaleParams scaleParams ) {
+double GDALTranslateScaleParams_scaleSrcMin_get( GDALTranslateScaleParams* scaleParams ) {
     return scaleParams->dfScaleSrcMin;
 }
 
-void ScaleParams_scaleSrcMin_set( ScaleParams scaleParams, double dfScaleSrcMin ) {
+void GDALTranslateScaleParams_scaleSrcMin_set( GDALTranslateScaleParams* scaleParams, double dfScaleSrcMin ) {
     scaleParams->dfScaleSrcMin = dfScaleSrcMin;
 }
 
-double ScaleParams_scaleSrcMax_get( ScaleParams scaleParams ) {
+double GDALTranslateScaleParams_scaleSrcMax_get( GDALTranslateScaleParams* scaleParams ) {
     return scaleParams->dfScaleSrcMax;
 }
 
-void ScaleParams_scaleSrcMax_set( ScaleParams scaleParams, double dfScaleSrcMax ) {
+void GDALTranslateScaleParams_scaleSrcMax_set( GDALTranslateScaleParams* scaleParams, double dfScaleSrcMax ) {
     scaleParams->dfScaleSrcMax = dfScaleSrcMax;
 }
 
-double ScaleParams_scaleDstMin_get( ScaleParams scaleParams ) {
+double GDALTranslateScaleParams_scaleDstMin_get( GDALTranslateScaleParams* scaleParams ) {
     return scaleParams->dfScaleDstMin;
 }
 
-void ScaleParams_scaleDstMin_set( ScaleParams scaleParams, double dfScaleDstMin ) {
+void GDALTranslateScaleParams_scaleDstMin_set( GDALTranslateScaleParams* scaleParams, double dfScaleDstMin ) {
     scaleParams->dfScaleDstMin = dfScaleDstMin;
 }
 
-double ScaleParams_scaleDstMax_get( ScaleParams scaleParams ) {
+double GDALTranslateScaleParams_scaleDstMax_get( GDALTranslateScaleParams* scaleParams ) {
     return scaleParams->dfScaleDstMax;
 }
 
-void ScaleParams_scaleDstMax_set( ScaleParams scaleParams, double dfScaleDstMax ) {
+void GDALTranslateScaleParams_scaleDstMax_set( GDALTranslateScaleParams* scaleParams, double dfScaleDstMax ) {
     scaleParams->dfScaleDstMax = dfScaleDstMax;
 }
 
 %}
 
-%clear ScaleParams *scaleParams;
+%clear GDALTranslateScaleParams *scaleParams;
 
 %rename (TranslateOptions) GDALTranslateOptions;
 
@@ -1264,31 +1266,22 @@ struct GDALTranslateOptions
 %mutable;
     char* format;
     int quiet;
-    GDALProgressFunc progress;
-    void* progressData;
     GDALDataType outputType;
     MaskMode maskMode;
-    int* bandList; /* negative value of panBandList[i] means mask band of ABS(panBandList[i]) */
     int oXSizePixel;
     int oYSizePixel;
     double oXSizePct;
     double oYSizePct;
     char** createOptions;
-    int srcWin[4];
     int strict;
     int unscale;
-    int scaleRepeat;
-    ScaleParams* scaleParams;
-    int exponentRepeat;
-    double* exponent;
+    GDALTranslateScaleParams* scaleParams;
     double uLX;
     double uLY;
     double lRX;
     double lRY;
     char** metadataOptions;
     char* outputSRS;
-    GDAL_GCP* gcps;
-    double uLLR[4];
     int setNoData;
     int unsetNoData;
     double noDataReal;
@@ -1312,8 +1305,91 @@ struct GDALTranslateOptions
     ~GDALTranslateOptions() {
         GDALTranslateOptionsFree( self );
     }
+
+    void getBandList( int *nLen, const int **pList ) {
+        *nLen = self->nBandCount;
+        *pList = self->panBandList;
+    }
+    
+    void setBandList( int nList, int *pList ) {
+        CPLFree(self->panBandList);
+        self->nBandCount = nList;
+        self->panBandList = (int*)CPLMalloc(sizeof(int) * nList);
+        memcpy(self->panBandList, pList, sizeof(int) * nList);
+    }
+
+    void getSrcWin( int *nLen, const int **pList ) {
+        *nLen = 4;
+        *pList = self->anSrcWin;
+    }
+
+    void setSrcWin( int nList, int *pList ) {
+        if(nList != 4)
+            CPLError(CE_Failure, CPLE_AppDefined, "srcWin can only accept list of 4 integers");
+        else
+            memcpy(self->anSrcWin, pList, sizeof(int) * nList);
+    }
+
+    void getExponent( int *nLen, const double **pList ) {
+        *nLen = self->nExponentRepeat;
+        *pList = self->padfExponent;
+    }
+
+    void setExponent( int nList, double *pList ) {
+        CPLFree(self->padfExponent);
+        self->nExponentRepeat = nList;
+        self->padfExponent = (double*)CPLMalloc(sizeof(int) * nList);
+        memcpy(self->padfExponent, pList, sizeof(double) * nList);
+    }
+
+    void getULLR( int *nLen, const double **pList ) {
+        *nLen = 4;
+        *pList = self->adfULLR;
+    }
+
+    void setULLR( int nList, double *pList ) {
+        if(nList != 4)
+            CPLError(CE_Failure, CPLE_AppDefined, "ULLR can only accept list of 4 floats");
+        else
+            memcpy(self->adfULLR, pList, sizeof(double) * nList);
+    }
+
+    void getGCPs( int *nGCPs, GDAL_GCP const **pGCPs ) {
+        *nGCPs = self->nGCPCount;
+        *pGCPs = self->pasGCPs;
+    }
+
+    void setGCPs( int nGCPs, GDAL_GCP const *pGCPs ) {
+        if(self->nGCPCount > 0) {
+            GDALDeinitGCPs( self->nGCPCount, self->pasGCPs );
+            CPLFree( self->pasGCPs );
+        }
+        self->nGCPCount = nGCPs;
+        self->pasGCPs = GDALDuplicateGCPs( nGCPs, pGCPs );
+    }
+
 } /* extend */
 };
+
+%extend GDALTranslateOptions {
+%pythoncode {
+    __swig_setmethods__["bandList"] = _gdal.TranslateOptions_setBandList
+    __swig_getmethods__["bandList"] = _gdal.TranslateOptions_getBandList
+    __swig_setmethods__["srcWin"] = _gdal.TranslateOptions_setSrcWin
+    __swig_getmethods__["srcWin"] = _gdal.TranslateOptions_getSrcWin
+    __swig_setmethods__["exponent"] = _gdal.TranslateOptions_setExponent
+    __swig_getmethods__["exponent"] = _gdal.TranslateOptions_getExponent
+    __swig_setmethods__["ULLR"] = _gdal.TranslateOptions_setULLR
+    __swig_getmethods__["ULLR"] = _gdal.TranslateOptions_getULLR
+    __swig_setmethods__["GCPs"] = _gdal.TranslateOptions_setGCPs
+    __swig_getmethods__["GCPs"] = _gdal.TranslateOptions_getGCPs
+    if _newclass:bandList = _swig_property(_gdal.TranslateOptions_getBandList, _gdal.TranslateOptions_setBandList)
+    if _newclass:srcWin = _swig_property(_gdal.TranslateOptions_getSrcWin, _gdal.TranslateOptions_setSrcWin)
+    if _newclass:exponent = _swig_property(_gdal.TranslateOptions_getExponent, _gdal.TranslateOptions_setExponent)
+    if _newclass:ULLR = _swig_property(_gdal.TranslateOptions_getULLR, _gdal.TranslateOptions_setULLR)
+    if _newclass:GCPs = _swig_property(_gdal.TranslateOptions_getGCPs, _gdal.TranslateOptions_setGCPs)
+}
+}
 
 %clear char** createOptions;
 %clear char** metadataOptions;
@@ -1321,12 +1397,13 @@ struct GDALTranslateOptions
 %apply Pointer NONNULL {GDALTranslateOptions *translateOptions};
 %inline %{
 
-char* GDALTranslateOptions_format_get( GDALTranslateOptions *translateOptions ) {
+const char* GDALTranslateOptions_format_get( GDALTranslateOptions *translateOptions ) {
     return translateOptions->pszFormat;
 }
 
-void GDALTranslateOptions_format_set( GDALTranslateOptions *translateOptions, char *pszFormat ) {
-    translateOptions->pszFormat = pszFormat;
+void GDALTranslateOptions_format_set( GDALTranslateOptions *translateOptions, const char *pszFormat ) {
+    CPLFree(translateOptions->pszFormat);
+    translateOptions->pszFormat = CPLStrdup(pszFormat);
 }
 
 bool GDALTranslateOptions_quiet_get( GDALTranslateOptions *translateOptions ) {
@@ -1335,22 +1412,6 @@ bool GDALTranslateOptions_quiet_get( GDALTranslateOptions *translateOptions ) {
 
 void GDALTranslateOptions_quiet_set( GDALTranslateOptions *translateOptions, bool bQuiet ) {
     translateOptions->bQuiet = bQuiet;
-}
-
-GDALProgressFunc GDALTranslateOptions_progress_get( GDALTranslateOptions *translateOptions ) {
-    return translateOptions->pfnProgress;
-}
-
-void GDALTranslateOptions_progress_set( GDALTranslateOptions *translateOptions, GDALProgressFunc pfnProgress ) {
-    translateOptions->pfnProgress = pfnProgress;
-}
-
-void* GDALTranslateOptions_progressData_get( GDALTranslateOptions *translateOptions ) {
-    return translateOptions->pProgressData;
-}
-
-void GDALTranslateOptions_progressData_set( GDALTranslateOptions *translateOptions, void *pProgressData ) {
-    translateOptions->pProgressData = pProgressData;
 }
 
 GDALDataType GDALTranslateOptions_outputType_get( GDALTranslateOptions *translateOptions ) {
@@ -1367,14 +1428,6 @@ MaskMode GDALTranslateOptions_maskMode_get( GDALTranslateOptions *translateOptio
 
 void GDALTranslateOptions_maskMode_set( GDALTranslateOptions *translateOptions, MaskMode eMaskMode ) {
     translateOptions->eMaskMode = eMaskMode;
-}
-
-int* GDALTranslateOptions_bandList_get( GDALTranslateOptions *translateOptions ) {
-    return translateOptions->panBandList;
-}
-
-void GDALTranslateOptions_bandList_set( GDALTranslateOptions *translateOptions, int *panBandList ) {
-    translateOptions->panBandList = panBandList;
 }
 
 int GDALTranslateOptions_oXSizePixel_get( GDALTranslateOptions *translateOptions ) {
@@ -1417,14 +1470,6 @@ void GDALTranslateOptions_createOptions_set( GDALTranslateOptions *translateOpti
     GDALTranslateOptionsSetCreateOptions( translateOptions, papszCreateOptions );
 }
 
-int* GDALTranslateOptions_srcWin_get( GDALTranslateOptions *translateOptions ) {
-    return translateOptions->anSrcWin;
-}
-
-void GDALTranslateOptions_srcWin_set( GDALTranslateOptions *translateOptions, int *anSrcWin ) {
-    //translateOptions->anSrcWin = anSrcWin;
-}
-
 bool GDALTranslateOptions_strict_get( GDALTranslateOptions *translateOptions ) {
     return translateOptions->bStrict;
 }
@@ -1441,36 +1486,12 @@ void GDALTranslateOptions_unscale_set( GDALTranslateOptions *translateOptions, b
     translateOptions->bUnscale = bUnscale;
 }
 
-int GDALTranslateOptions_scaleRepeat_get( GDALTranslateOptions *translateOptions ) {
-    return translateOptions->nScaleRepeat;
-}
-
-void GDALTranslateOptions_scaleRepeat_set( GDALTranslateOptions *translateOptions, int nScaleRepeat ) {
-    translateOptions->nScaleRepeat = nScaleRepeat;
-}
-
-ScaleParams* GDALTranslateOptions_scaleParams_get( GDALTranslateOptions *translateOptions ) {
+GDALTranslateScaleParams* GDALTranslateOptions_scaleParams_get( GDALTranslateOptions *translateOptions ) {
     return translateOptions->pasScaleParams;
 }
 
-void GDALTranslateOptions_scaleParams_set( GDALTranslateOptions *translateOptions, ScaleParams *pasScaleParams ) {
-    translateOptions->pasScaleParams = pasScaleParams;
-}
-
-int GDALTranslateOptions_exponentRepeat_get( GDALTranslateOptions *translateOptions ) {
-    return translateOptions->nExponentRepeat;
-}
-
-void GDALTranslateOptions_exponentRepeat_set( GDALTranslateOptions *translateOptions, int nExponentRepeat ) {
-    translateOptions->nExponentRepeat = nExponentRepeat;
-}
-
-double* GDALTranslateOptions_exponent_get( GDALTranslateOptions *translateOptions ) {
-    return translateOptions->padfExponent;
-}
-
-void GDALTranslateOptions_exponent_set( GDALTranslateOptions *translateOptions, double *padfExponent ) {
-    translateOptions->padfExponent = padfExponent;
+void GDALTranslateOptions_scaleParams_set( GDALTranslateOptions *translateOptions, GDALTranslateScaleParams *pasScaleParams ) {
+    //translateOptions->pasScaleParams = GDALTranslateAddScaleParam(pasScaleParams);
 }
 
 double GDALTranslateOptions_uLX_get( GDALTranslateOptions *translateOptions ) {
@@ -1513,28 +1534,13 @@ void GDALTranslateOptions_metadataOptions_set( GDALTranslateOptions *translateOp
     GDALTranslateOptionsSetMetadataOptions( translateOptions, papszMetadataOptions );
 }
 
-char* GDALTranslateOptions_outputSRS_get( GDALTranslateOptions *translateOptions ) {
+const char* GDALTranslateOptions_outputSRS_get( GDALTranslateOptions *translateOptions ) {
     return translateOptions->pszOutputSRS;
 }
 
-void GDALTranslateOptions_outputSRS_set( GDALTranslateOptions *translateOptions, char *pszOutputSRS ) {
-    translateOptions->pszOutputSRS = pszOutputSRS;
-}
-
-GDAL_GCP* GDALTranslateOptions_gcps_get( GDALTranslateOptions *translateOptions ) {
-    return translateOptions->pasGCPs;
-}
-
-void GDALTranslateOptions_gcps_set( GDALTranslateOptions *translateOptions, GDAL_GCP *pasGCPs ) {
-    translateOptions->pasGCPs = pasGCPs;
-}
-
-double* GDALTranslateOptions_uLLR_get( GDALTranslateOptions *translateOptions ) {
-    return translateOptions->adfULLR;
-}
-
-void GDALTranslateOptions_uLLR_set( GDALTranslateOptions *translateOptions, double *adfULLR ) {
-    //translateOptions->adfULLR = adfULLR;
+void GDALTranslateOptions_outputSRS_set( GDALTranslateOptions *translateOptions, const char *pszOutputSRS ) {
+    CPLFree(translateOptions->pszOutputSRS);
+    translateOptions->pszOutputSRS = CPLStrdup(pszOutputSRS);
 }
 
 bool GDALTranslateOptions_setNoData_get( GDALTranslateOptions *translateOptions ) {
@@ -1617,12 +1623,13 @@ void GDALTranslateOptions_noRAT_set( GDALTranslateOptions *translateOptions, boo
     translateOptions->bNoRAT = bNoRAT;
 }
 
-char* GDALTranslateOptions_resampling_get( GDALTranslateOptions *translateOptions ) {
+const char* GDALTranslateOptions_resampling_get( GDALTranslateOptions *translateOptions ) {
     return translateOptions->pszResampling;
 }
 
-void GDALTranslateOptions_resampling_set( GDALTranslateOptions *translateOptions, char *pszResampling ) {
-    translateOptions->pszResampling = pszResampling;
+void GDALTranslateOptions_resampling_set( GDALTranslateOptions *translateOptions, const char *pszResampling ) {
+    CPLFree(translateOptions->pszResampling);
+    translateOptions->pszResampling = CPLStrdup(pszResampling);
 }
 
 double GDALTranslateOptions_xRes_get( GDALTranslateOptions *translateOptions ) {
@@ -1641,19 +1648,24 @@ void GDALTranslateOptions_yRes_set( GDALTranslateOptions *translateOptions, doub
     translateOptions->dfYRes = dfYRes;
 }
 
-char* GDALTranslateOptions_projSRS_get( GDALTranslateOptions *translateOptions ) {
+const char* GDALTranslateOptions_projSRS_get( GDALTranslateOptions *translateOptions ) {
     return translateOptions->pszProjSRS;
 }
 
-void GDALTranslateOptions_projSRS_set( GDALTranslateOptions *translateOptions, char *pszProjSRS ) {
-    translateOptions->pszProjSRS = pszProjSRS;
+void GDALTranslateOptions_projSRS_set( GDALTranslateOptions *translateOptions, const char *pszProjSRS ) {
+    CPLFree(translateOptions->pszProjSRS);
+    translateOptions->pszProjSRS = CPLStrdup(pszProjSRS);
 }
 
 %}
 
 %clear GDALTranslateOptions *translateOptions;
 
+#ifdef SWIGPYTHON
+%rename (TranslateInternal) wrapper_GDALTranslate;
+#else
 %rename (Translate) wrapper_GDALTranslate;
+#endif
 
 %newobject wrapper_GDALTranslate;
 

@@ -761,4 +761,67 @@ def Info(ds, options = None, format = _gdal.INFO_FORMAT_TEXT, deserialize = True
         ret = json.loads(ret)
     return ret
 
+def Translate(path, ds, options = None, format = 'GTiff', quiet = True,
+              outputType = GDT_Unknown, maskMode = _gdal.MASK_AUTO, bandList = None,
+              oXSizePixel = 0, oYSizePixel = 0, oXSizePct = 0.0, oYSizePct = 0.0,
+              createOptions = None, srcWin = [0,0,0,0],strict = False,
+              unscale = False, scaleParams = None, exponent = None,
+              uLX = 0.0, uLY = 0.0, lRX = 0.0, lRY = 0.0, metadataOptions = None,
+              outputSRS = None, gcps = None, ULLR = [0,0,0,0], setNoData = False,
+              unsetNoData = False, noDataReal = 0.0, rgbExpand = 0, maskBand = 0,
+              stats = False, approxStats = False, errorOnPartiallyOutside = False,
+              errorOnCompletelyOutside = False, noRAT = False, resampling = None,
+              xRes = 0.0, yRes = 0.0, projSRS = None):
+    """ If options is provided as a gdal.TranslateOptions() object, format and other keywords are ignored. """
+    if options is None:
+        options = TranslateOptions()
+        options.format = format
+        options.quiet = quiet
+        options.outputType = outputType
+        options.maskMode = maskMode
+        if bandList is not None:
+            options.bandList = bandList
+        options.oXSizePixel = oXSizePixel
+        options.oYSizePixel = oYSizePixel
+        options.oXSizePct = oXSizePct
+        options.oYSizePct = oYSizePct
+        if createOptions is not None:
+            options.createOptions = createOptions
+        options.srcWin = srcWin
+        options.strict = strict
+        options.unscale = unscale
+        if scaleParams is not None:
+            options.scaleParams = scaleParams
+        if exponent is not None:
+            option.exponent = exponent
+        options.uLX = uLX
+        options.uLY = uLY
+        options.lRX = lRX
+        options.lRY = lRY
+        if metadataOptions is not None:
+            options.metadataOptions = metadataOptions
+        if outputSRS is not None:
+            options.outputSRS = outputSRS
+        if gcps is not None:
+            options.gcps = gcps
+        options.ULLR = ULLR
+        options.setNoData = setNoData
+        options.unsetNoData = unsetNoData
+        options.noDataReal = noDataReal
+        options.rgbExpand = rgbExpand
+        options.maskBand = maskBand
+        options.stats = stats
+        options.approxStats = approxStats
+        options.errorOnPartiallyOutside
+        options.errorOnCompletelyOutside
+        options.noRAT = noRAT
+        if resampling is not None:
+            options.resampling = resampling
+        options.xRes = xRes
+        options.yRes = yRes
+        if projSRS is not None:  
+            options.projSRS = projSRS
+    ret = TranslateInternal(path, ds, options)
+    return ret
+
 %}

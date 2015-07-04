@@ -95,7 +95,7 @@ typedef struct
     int     bHaveScaleSrc;
     double  dfScaleSrcMin, dfScaleSrcMax;
     double  dfScaleDstMin, dfScaleDstMax;
-} ScaleParams;
+} GDALTranslateScaleParams;
 
 typedef struct
 {
@@ -116,7 +116,7 @@ typedef struct
     int bStrict;
     int bUnscale;
     int nScaleRepeat;
-    ScaleParams *pasScaleParams;
+    GDALTranslateScaleParams *pasScaleParams;
     int bHasUsedExplicitScaleBand;
     int nExponentRepeat;
     double *padfExponent;
@@ -162,6 +162,9 @@ void CPL_DLL GDALTranslateOptionsSetMetadataOptions( GDALTranslateOptions *psOpt
 
 void  CPL_DLL GDALTranslateOptionsAddMetadataOptions( GDALTranslateOptions *psOptions,
                                                       const char *pszMetadataOption );
+
+void CPL_DLL GDALTranslateOptionsAddBand( GDALTranslateOptions *psOptions, int nBand,
+                                          int bIsMask );
 
 GDALDatasetH CPL_DLL GDALTranslate(const char *pszDest, GDALDatasetH hDataset, GDALTranslateOptions *psOptions, int *pbUsageError);
 
