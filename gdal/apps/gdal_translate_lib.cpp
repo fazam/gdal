@@ -276,6 +276,7 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
         oSRS.exportToWkt( &pszSRS );
         if( pszSRS )
             osProjSRS = pszSRS;
+        CPLFree( pszSRS );
     }
 
     if(psOptions->pszOutputSRS != NULL)
@@ -289,10 +290,12 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
             return NULL;
         }
 
-        CPLFree(psOptions->pszOutputSRS);
-        psOptions->pszOutputSRS = NULL;
+        char* pszSRS = NULL;
+        oOutputSRS.exportToWkt( &pszSRS );
+        CPLFree( psOptions->pszOutputSRS );
+        psOptions->pszOutputSRS = CPLStrdup( pszSRS );
+        CPLFree( pszSRS );
 
-        oOutputSRS.exportToWkt( &psOptions->pszOutputSRS );
     }
 
 /* -------------------------------------------------------------------- */
@@ -1368,7 +1371,6 @@ GDALTranslateOptions *GDALTranslateOptionsNew()
     psOptions->nOYSizePixel = 0;
     psOptions->dfOXSizePct = 0.0;
     psOptions->dfOYSizePct = 0.0;
-    psOptions->papszCreateOptions = NULL;
     psOptions->anSrcWin[0] = 0;
     psOptions->anSrcWin[1] = 0;
     psOptions->anSrcWin[2] = 0;
@@ -1385,7 +1387,6 @@ GDALTranslateOptions *GDALTranslateOptionsNew()
     psOptions->dfULY = 0.0;
     psOptions->dfLRX = 0.0;
     psOptions->dfLRY = 0.0;
-    psOptions->papszMetadataOptions = NULL;
     psOptions->pszOutputSRS = NULL;
     psOptions->nGCPCount = 0;
     psOptions->pasGCPs = NULL;

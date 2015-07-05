@@ -767,7 +767,7 @@ def Translate(path, ds, options = None, format = 'GTiff', quiet = True,
               createOptions = None, srcWin = [0,0,0,0],strict = False,
               unscale = False, scaleParams = None, exponent = None,
               uLX = 0.0, uLY = 0.0, lRX = 0.0, lRY = 0.0, metadataOptions = None,
-              outputSRS = None, gcps = None, ULLR = [0,0,0,0], setNoData = False,
+              outputSRS = None, GCPs = None, ULLR = [0,0,0,0], setNoData = False,
               unsetNoData = False, noDataReal = 0.0, rgbExpand = 0, maskBand = 0,
               stats = False, approxStats = False, errorOnPartiallyOutside = False,
               errorOnCompletelyOutside = False, noRAT = False, resampling = None,
@@ -802,8 +802,8 @@ def Translate(path, ds, options = None, format = 'GTiff', quiet = True,
             options.metadataOptions = metadataOptions
         if outputSRS is not None:
             options.outputSRS = outputSRS
-        if gcps is not None:
-            options.gcps = gcps
+        if GCPs is not None:
+            options.GCPs = GCPs
         options.ULLR = ULLR
         options.setNoData = setNoData
         options.unsetNoData = unsetNoData

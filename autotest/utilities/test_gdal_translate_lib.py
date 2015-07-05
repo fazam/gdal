@@ -70,15 +70,55 @@ def test_gdal_translate_lib_1():
     return 'success'
 
 ###############################################################################
-# Test bandList option
+# Test format option
 
 def test_gdal_translate_lib_2():
+
+    ds = gdal.Open('../gcore/data/byte.tif')
+    ds = gdal.Translate('tmp/test2.tif', ds, format = 'GTiff')
+    if ds is None:
+        return 'fail'
+
+    if ds.GetRasterBand(1).Checksum() != 4672:
+        gdaltest.post_reason('Bad checksum')
+        return 'fail'
+
+    ds = None
+
+    return 'success'
+
+###############################################################################
+# Test outputType option
+
+def test_gdal_translate_lib_3():
+    
+    ds = gdal.Open('../gcore/data/byte.tif')
+    ds = gdal.Translate('tmp/test3.tif', ds, outputType = gdal.GDT_Int16)
+    if ds is None:
+        return 'fail'
+
+    if ds.GetRasterBand(1).DataType != gdal.GDT_Int16:
+        gdaltest.post_reason('Bad data type')
+        return 'fail'
+
+    if ds.GetRasterBand(1).Checksum() != 4672:
+        gdaltest.post_reason('Bad checksum')
+        return 'fail'
+
+    ds = None
+
+    return 'success'
+
+###############################################################################
+# Test bandList option
+
+def test_gdal_translate_lib_4():
 
     ds = gdal.Open('../gcore/data/rgbsmall.tif')
     options = gdal.TranslateOptions()
     options.bandList = [3,2,1]
 
-    ds = gdal.Translate('tmp/test2.tif', ds, options)
+    ds = gdal.Translate('tmp/test4.tif', ds, options)
     if ds is None:
         gdaltest.post_reason('got error/warning')
         print(err)
@@ -101,13 +141,50 @@ def test_gdal_translate_lib_2():
     return 'success'
 
 ###############################################################################
+# Test rgbExpand option
+
+def test_gdal_translate_lib_5():
+
+    ds = gdal.Open('../gdrivers/data/bug407.gif')
+    ds = gdal.Translate('tmp/test5.tif', ds, rgbExpand = 3)
+    if ds is None:
+        return 'fail'
+
+    if ds.GetRasterBand(1).GetRasterColorInterpretation() != gdal.GCI_RedBand:
+        gdaltest.post_reason('Bad color interpretation')
+        return 'fail'
+
+    if ds.GetRasterBand(2).GetRasterColorInterpretation() != gdal.GCI_GreenBand:
+        gdaltest.post_reason('Bad color interpretation')
+        return 'fail'
+
+    if ds.GetRasterBand(3).GetRasterColorInterpretation() != gdal.GCI_BlueBand:
+        gdaltest.post_reason('Bad color interpretation')
+        return 'fail'
+
+    if ds.GetRasterBand(1).Checksum() != 20615:
+        gdaltest.post_reason('Bad checksum')
+        return 'fail'
+
+    if ds.GetRasterBand(2).Checksum() != 59147:
+        gdaltest.post_reason('Bad checksum')
+        return 'fail'
+
+    if ds.GetRasterBand(3).Checksum() != 63052:
+        gdaltest.post_reason('Bad checksum')
+        return 'fail'
+
+    ds = None
+
+    return 'success'
+
+###############################################################################
 # Test oXSizePixel and oYSizePixel option
 
-def test_gdal_translate_lib_3():
+def test_gdal_translate_lib_6():
 
     ds = gdal.Open('../gcore/data/byte.tif')
-
-    ds = gdal.Translate('tmp/test3.tif', ds, oXSizePixel = 40, oYSizePixel = 40)
+    ds = gdal.Translate('tmp/test6.tif', ds, oXSizePixel = 40, oYSizePixel = 40)
     if ds is None:
         return 'fail'
 
@@ -122,11 +199,10 @@ def test_gdal_translate_lib_3():
 ###############################################################################
 # Test oXSizePct and oYSizePct option
 
-def test_gdal_translate_lib_4():
+def test_gdal_translate_lib_7():
 
     ds = gdal.Open('../gcore/data/byte.tif')
-    
-    ds = gdal.Translate('tmp/test4.tif', ds, oXSizePct = 200.0, oYSizePct = 200.0)
+    ds = gdal.Translate('tmp/test7.tif', ds, oXSizePct = 200.0, oYSizePct = 200.0)
     if ds is None:
         return 'fail'
 
@@ -139,35 +215,13 @@ def test_gdal_translate_lib_4():
     return 'success'
 
 ###############################################################################
-# Test -outputType option
-
-def test_gdal_translate_lib_5():
-    
-    ds = gdal.Open('../gcore/data/byte.tif')
-    ds = gdal.Translate('tmp/test5.tif', ds, outputType = gdal.GDT_Int16)
-    if ds is None:
-        return 'fail'
-
-    if ds.GetRasterBand(1).DataType != gdal.GDT_Int16:
-        gdaltest.post_reason('Bad data type')
-        return 'fail'
-
-    if ds.GetRasterBand(1).Checksum() != 4672:
-        gdaltest.post_reason('Bad checksum')
-        return 'fail'
-
-    ds = None
-
-    return 'success'
-
-###############################################################################
 # Test outputSRS and GCPs options
 
-def test_gdal_translate_lib_6():
+def test_gdal_translate_lib_8():
 
     gcpList = [gdal.GCP(440720.000,3751320.000,0,0,0), gdal.GCP(441920.000,3751320.000,0,20,0), gdal.GCP(441920.000,3750120.000,0,20,20), gdal.GCP(440720.000,3750120.000,0,0,20)]
     ds = gdal.Open('../gcore/data/byte.tif')
-    ds = gdal.Translate('tmp/test6.tif', ds, outputSRS = 'EPSG:26711', gcps = gcpList)
+    ds = gdal.Translate('tmp/test8.tif', ds, outputSRS = 'EPSG:26711', GCPs = gcpList)
     if ds is None:
         return 'fail'
 
@@ -182,6 +236,124 @@ def test_gdal_translate_lib_6():
 
     if ds.GetGCPProjection().find('26711') == -1:
         gdaltest.post_reason( 'Bad GCP projection.' )
+        return 'fail'
+
+    ds = None
+
+    return 'success'
+
+###############################################################################
+# Test nodata option
+
+def test_gdal_translate_lib_9():
+
+    ds = gdal.Open('../gcore/data/byte.tif')
+    ds = gdal.Translate('tmp/test9.tif', ds, setNoData = True, noDataReal = 1)
+    if ds is None:
+        return 'fail'
+
+    if ds.GetRasterBand(1).GetNoDataValue() != 1:
+        gdaltest.post_reason('Bad nodata value')
+        return 'fail'
+
+    ds = None
+
+    return 'success'
+
+###############################################################################
+# Test srcWin option
+
+def test_gdal_translate_lib_10():
+
+    ds = gdal.Open('../gcore/data/byte.tif')
+    ds = gdal.Translate('tmp/test10.tif', ds, srcWin = [0,0,1,1])
+    if ds is None:
+        return 'fail'
+
+    if ds.GetRasterBand(1).Checksum() != 2:
+        gdaltest.post_reason('Bad checksum')
+        return 'fail'
+
+    ds = None
+
+    return 'success'
+
+###############################################################################
+# Test projWin option
+
+def test_gdal_translate_lib_11():
+
+    ds = gdal.Open('../gcore/data/byte.tif')
+    ds = gdal.Translate('tmp/test11.tif', ds, uLX = 440720.000, uLY = 3751320.000, lRX = 441920.000, lRY = 3750120.000)
+    if ds is None:
+        return 'fail'
+
+    if ds.GetRasterBand(1).Checksum() != 4672:
+        gdaltest.post_reason('Bad checksum')
+        return 'fail'
+
+    if not gdaltest.geotransform_equals(gdal.Open('../gcore/data/byte.tif').GetGeoTransform(), ds.GetGeoTransform(), 1e-9) :
+        gdaltest.post_reason('Bad geotransform')
+        return 'fail'
+
+    ds = None
+
+    return 'success'
+
+###############################################################################
+# Test ULLR option
+
+def test_gdal_translate_lib_12():
+
+    ds = gdal.Open('../gcore/data/byte.tif')
+    ds = gdal.Translate('tmp/test12.tif', ds, ULLR = [440720.000,3751320.000,441920.000,3750120.000])
+    if ds is None:
+        return 'fail'
+
+    if ds.GetRasterBand(1).Checksum() != 4672:
+        gdaltest.post_reason('Bad checksum')
+        return 'fail'
+
+    if not gdaltest.geotransform_equals(gdal.Open('../gcore/data/byte.tif').GetGeoTransform(), ds.GetGeoTransform(), 1e-9) :
+        gdaltest.post_reason('Bad geotransform')
+        return 'fail'
+
+    ds = None
+
+    return 'success'
+
+###############################################################################
+# Test metadataOptions
+
+def test_gdal_translate_lib_13():
+    
+    ds = gdal.Open('../gcore/data/byte.tif')
+    ds = gdal.Translate('tmp/test13.tif', ds, metadataOptions = ['TIFFTAG_DOCUMENTNAME=test13'])
+    if ds is None:
+        return 'fail'
+
+    md = ds.GetMetadata() 
+    if 'TIFFTAG_DOCUMENTNAME' not in md:
+        gdaltest.post_reason('Did not get TIFFTAG_DOCUMENTNAME')
+        return 'fail'
+
+    ds = None
+
+    return 'success'
+
+###############################################################################
+# Test createOptions
+
+def test_gdal_translate_lib_14():
+
+    ds = gdal.Open('../gcore/data/byte.tif')
+    ds = gdal.Translate('tmp/test14.tif', ds, createOptions = ['COMPRESS=LZW'])
+    if ds is None:
+        return 'fail'
+
+    md = ds.GetMetadata('IMAGE_STRUCTURE') 
+    if 'COMPRESSION' not in md or md['COMPRESSION'] != 'LZW':
+        gdaltest.post_reason('Did not get COMPRESSION')
         return 'fail'
 
     ds = None
@@ -211,6 +383,14 @@ gdaltest_list = [
     test_gdal_translate_lib_4,
     test_gdal_translate_lib_5,
     test_gdal_translate_lib_6,
+    test_gdal_translate_lib_7,
+    test_gdal_translate_lib_8,
+    test_gdal_translate_lib_9,
+    test_gdal_translate_lib_10,
+    test_gdal_translate_lib_11,
+    test_gdal_translate_lib_12,
+    test_gdal_translate_lib_13,
+    test_gdal_translate_lib_14,
     test_gdal_translate_lib_cleanup
     ]
 

@@ -1877,3 +1877,59 @@ DecomposeSequenceOfCoordinates( PyObject *seq, int nCount, double *x, double *y,
   SWIG_fail;
 %#endif
 }
+
+%typemap(in,numinputs=0) (int *nScaleParams, GDALTranslateScaleParams const **pScaleParams ) (int nScaleParams=0, GDALTranslateScaleParams *pScaleParams=0 )
+{
+  /* %typemap(in,numinputs=0) (int *nScaleParams, GDALTranslateScaleParams const **pScaleParams ) */
+  $1 = &nScaleParams;
+  $2 = &pScaleParams;
+}
+%typemap(argout) (int *nScaleParams, GDALTranslateScaleParams const **pScaleParams )
+{
+  /* %typemap(argout) (int *nScaleParams, GDALTranslateScaleParams const **pScaleParams ) */
+  PyObject *dict = PyTuple_New( *$1 );
+  for( int i = 0; i < *$1; i++ ) {
+    GDALTranslateScaleParams *o = new_GDALTranslateScaleParams( (*$2)[i].bScale,
+                                                                (*$2)[i].bHaveScaleSrc,
+                                                                (*$2)[i].dfScaleSrcMin,
+                                                                (*$2)[i].dfScaleSrcMax,
+                                                                (*$2)[i].dfScaleDstMin,
+                                                                (*$2)[i].dfScaleDstMax );
+  
+    PyTuple_SetItem(dict, i, 
+       SWIG_NewPointerObj((void*)o,SWIGTYPE_p_GDALTranslateScaleParams,1) );
+  }
+  Py_DECREF($result);
+  $result = dict;
+}
+%typemap(in,numinputs=1) (int nScaleParams, GDALTranslateScaleParams const *pScaleParams ) ( GDALTranslateScaleParams *tmpScaleParamsList )
+{
+  /* %typemap(in,numinputs=1) (int nScaleParams, GDALTranslateScaleParams const *pScaleParams ) */
+  /* check if is List */
+  if ( !PySequence_Check($input) ) {
+    PyErr_SetString(PyExc_TypeError, "not a sequence");
+    SWIG_fail;
+  }
+  $1 = PySequence_Size($input);
+  tmpScaleParamsList = (GDALTranslateScaleParams*) malloc($1*sizeof(GDALTranslateScaleParams));
+  $2 = tmpScaleParamsList;
+  for( int i = 0; i<$1; i++ ) {
+    PyObject *o = PySequence_GetItem($input,i);
+    GDALTranslateScaleParams *item = 0;
+    SWIG_ConvertPtr( o, (void**)&item, SWIGTYPE_p_GDALTranslateScaleParams, SWIG_POINTER_EXCEPTION | 0 );
+    if ( ! item ) {
+      Py_DECREF(o);
+      SWIG_fail;
+    }
+    memcpy( (void*) tmpScaleParamsList, (void*) item, sizeof( GDALTranslateScaleParams ) );
+    ++tmpScaleParamsList;
+    Py_DECREF(o);
+  }
+}
+%typemap(freearg) (int nScaleParams, GDALTranslateScaleParams const *pScaleParams )
+{
+  /* %typemap(freearg) (int nScaleParams, GDALTranslateScaleParams const *pScaleParams ) */
+  if ($2) {
+    free( (void*) $2 );
+  }
+}

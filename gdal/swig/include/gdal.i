@@ -1260,6 +1260,8 @@ void GDALTranslateScaleParams_scaleDstMax_set( GDALTranslateScaleParams* scalePa
 %apply (char** options) {char** createOptions};
 %apply (char** options) {char** metadataOptions};
 
+%feature("python:nondynamic") GDALTranslateOptions;
+
 struct GDALTranslateOptions
 {
 %extend {
@@ -1275,7 +1277,6 @@ struct GDALTranslateOptions
     char** createOptions;
     int strict;
     int unscale;
-    GDALTranslateScaleParams* scaleParams;
     double uLX;
     double uLY;
     double lRX;
@@ -1338,7 +1339,7 @@ struct GDALTranslateOptions
     void setExponent( int nList, double *pList ) {
         CPLFree(self->padfExponent);
         self->nExponentRepeat = nList;
-        self->padfExponent = (double*)CPLMalloc(sizeof(int) * nList);
+        self->padfExponent = (double*)CPLMalloc(sizeof(double) * nList);
         memcpy(self->padfExponent, pList, sizeof(double) * nList);
     }
 
@@ -1368,6 +1369,18 @@ struct GDALTranslateOptions
         self->pasGCPs = GDALDuplicateGCPs( nGCPs, pGCPs );
     }
 
+    void getScaleParams( int *nScaleParams, GDALTranslateScaleParams const **pScaleParams ) {
+        *nScaleParams = self->nScaleRepeat;
+        *pScaleParams = self->pasScaleParams;
+    }
+
+    void setScaleParams( int nScaleParams, GDALTranslateScaleParams const *pScaleParams ) {
+        CPLFree( self->pasScaleParams );
+        self->nScaleRepeat = nScaleParams;
+        self->pasScaleParams = (GDALTranslateScaleParams*)CPLMalloc(sizeof(GDALTranslateScaleParams) * nScaleParams);
+        memcpy(self->pasScaleParams, pScaleParams, sizeof(GDALTranslateScaleParams) * nScaleParams);
+    }
+
 } /* extend */
 };
 
@@ -1383,11 +1396,14 @@ struct GDALTranslateOptions
     __swig_getmethods__["ULLR"] = _gdal.TranslateOptions_getULLR
     __swig_setmethods__["GCPs"] = _gdal.TranslateOptions_setGCPs
     __swig_getmethods__["GCPs"] = _gdal.TranslateOptions_getGCPs
+    __swig_setmethods__["scaleParams"] = _gdal.TranslateOptions_setScaleParams
+    __swig_getmethods__["scaleParams"] = _gdal.TranslateOptions_getScaleParams
     if _newclass:bandList = _swig_property(_gdal.TranslateOptions_getBandList, _gdal.TranslateOptions_setBandList)
     if _newclass:srcWin = _swig_property(_gdal.TranslateOptions_getSrcWin, _gdal.TranslateOptions_setSrcWin)
     if _newclass:exponent = _swig_property(_gdal.TranslateOptions_getExponent, _gdal.TranslateOptions_setExponent)
     if _newclass:ULLR = _swig_property(_gdal.TranslateOptions_getULLR, _gdal.TranslateOptions_setULLR)
     if _newclass:GCPs = _swig_property(_gdal.TranslateOptions_getGCPs, _gdal.TranslateOptions_setGCPs)
+    if _newclass:scaleParams = _swig_property(_gdal.TranslateOptions_getScaleParams, _gdal.TranslateOptions_setScaleParams)
 }
 }
 
@@ -1484,14 +1500,6 @@ bool GDALTranslateOptions_unscale_get( GDALTranslateOptions *translateOptions ) 
 
 void GDALTranslateOptions_unscale_set( GDALTranslateOptions *translateOptions, bool bUnscale ) {
     translateOptions->bUnscale = bUnscale;
-}
-
-GDALTranslateScaleParams* GDALTranslateOptions_scaleParams_get( GDALTranslateOptions *translateOptions ) {
-    return translateOptions->pasScaleParams;
-}
-
-void GDALTranslateOptions_scaleParams_set( GDALTranslateOptions *translateOptions, GDALTranslateScaleParams *pasScaleParams ) {
-    //translateOptions->pasScaleParams = GDALTranslateAddScaleParam(pasScaleParams);
 }
 
 double GDALTranslateOptions_uLX_get( GDALTranslateOptions *translateOptions ) {
