@@ -601,6 +601,7 @@ ADD_LIBS	=
 #MSDASDK =	D:\Software\MDAC_2.6
 
 GDAL_DLL =	gdal$(VERSION).dll
+GDALUTILS_DLL = gdalutils$(VERSION).dll
 
 INC	=	-I$(GDAL_ROOT)\port -I$(GDAL_ROOT)\ogr -I$(GDAL_ROOT)\gcore \
 		-I$(GDAL_ROOT)\alg -I$(GDAL_ROOT)\ogr\ogrsf_frmts
@@ -636,8 +637,10 @@ CPLLIB	=    $(GDAL_ROOT)/port/cpl.lib
 
 !IFDEF DLLBUILD
 GDALLIB	=    $(GDAL_ROOT)/gdal_i.lib
+GDALUTILSLIB = $(GDAL_ROOT)/gdalutils_i.lib
 !ELSE
 GDALLIB	=    $(GDAL_ROOT)/gdal.lib
+GDALUTILSLIB = $(GDAL_ROOT)/gdalutils.lib
 !ENDIF
 
 !IFDEF ODBC_SUPPORTED

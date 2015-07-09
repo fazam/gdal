@@ -51,17 +51,26 @@ BASE_INCLUDE =	/INCLUDE:$(SYM_PREFIX)GDALSimpleImageWarp \
 !ENDIF
 
 LIBOBJ = port\*.obj gcore\*.obj alg\*.obj frmts\o\*.obj $(OGR_OBJ) $(VB6_OBJ)
+
+GDAL_UTILS_OBJ = apps\gdalinfo_lib.obj apps\gdal_translate_lib.obj
 	
 DISTDIR	=	gdal_$(VERSION)
 
-default:	port_dir ogr_dir core_dir frmts_dir $(VB6_TARGET) $(GDAL_DLL) \
+default:	port_dir ogr_dir core_dir frmts_dir $(VB6_TARGET) $(GDAL_DLL) appslib-target $(GDALUTILS_DLL) \
 		plugin_dir apps_dir 
 
 staticlib:
 	if exist gdal.lib del gdal.lib
 	lib /nologo /out:gdal.lib $(LIBOBJ)
+	if exist gdalutils.lib del gdalutils.lib
+	lib /nologo /out:gdalutils.lib $(GDAL_UTILS_OBJ)
 
-target-lib: port_dir ogr_dir core_dir frmts_dir dll
+appslib-target:
+	cd apps
+	$(MAKE) /f makefile.vc appslib
+	cd ..	
+	
+target-lib: port_dir ogr_dir core_dir frmts_dir appslib-target dll
 
 clean:	
 	cd port
@@ -92,6 +101,10 @@ clean:
 	if exist $(GDAL_DLL) del $(GDAL_DLL)
 	if exist $(GDAL_DLL).manifest del $(GDAL_DLL).manifest
 	if exist gdal_i.lib del gdal_i.*
+	if exist gdalutils.lib del gdalutils.lib
+	if exist $(GDALUTILS_DLL) del $(GDALUTILS_DLL)
+	if exist $(GDALUTILS_DLL).manifest del $(GDALUTILS_DLL).manifest
+	if exist gdalutils_i.lib del gdalutils_i.*
 	-del *.ilk
 	-del *.pdb
 
@@ -158,12 +171,19 @@ $(GDAL_DLL): staticlib
 		 /out:$(GDAL_DLL) /implib:gdal_i.lib $(LINKER_FLAGS)
     if exist $(GDAL_DLL).manifest mt -manifest $(GDAL_DLL).manifest -outputresource:$(GDAL_DLL);2
 
-dll:	$(GDAL_DLL)
+$(GDALUTILS_DLL): staticlib
+	link /nologo /dll $(GDAL_UTILS_OBJ) \
+		gcore\Version.res \
+		 /out:$(GDALUTILS_DLL) /implib:gdalutils_i.lib $(LINKER_FLAGS)
+    if exist $(GDALUTILS_DLL).manifest mt -manifest $(GDALUTILS_DLL).manifest -outputresource:$(GDAL_DLL);2
 
-install: $(GDAL_DLL) plugin_dir apps_dir 
+dll:	$(GDAL_DLL) $(GDALUTILS_DLL)
+
+install: $(GDAL_DLL) $(GDALUTILS_DLL) plugin_dir apps_dir 
 	-mkdir $(BINDIR)
 	-mkdir $(DATADIR)
 	$(INSTALL) $(GDAL_DLL) $(BINDIR)
+	$(INSTALL) $(GDALUTILS_DLL) $(BINDIR)
 	cd frmts
 	$(MAKE) /f makefile.vc plugins-install
 	cd ..\apps

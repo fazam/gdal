@@ -3,7 +3,7 @@ GDAL_ROOT	=	..
 
 XTRAOBJ =	$(SETARGV)
 
-LIBS	=	$(GDAL_ROOT)\gdal_i.lib
+LIBS	=	$(GDAL_ROOT)\gdal_i.lib $(GDAL_ROOT)\gdalutils_i.lib
 
 XTRAFLAGS =	-I..\gcore -I..\port -I..\frmts\vrt -I..\alg -I..\ogr -I..\ogr\ogrsf_frmts  $(GEOS_CFLAGS) -I..\ogr\ogrsf_frmts\geojson\libjson -I..\ogr\ogrsf_frmts\geojson
 
@@ -15,6 +15,8 @@ OGR_PROGRAMS =	gdal_contour.exe gdaltindex.exe gdal_rasterize.exe \
 		gdalbuildvrt.exe testepsg.exe
 !ENDIF
 
+OBJ = gdalinfo_lib.obj gdal_translate_lib.obj
+
 default:	gdal_translate.exe gdalinfo.exe gdalserver.exe gdaladdo.exe gdalwarp.exe \
 		nearblack.exe gdalmanage.exe gdalenhance.exe gdaltransform.exe\
 		gdaldem.exe gdallocationinfo.exe gdalsrsinfo.exe $(OGR_PROGRAMS)
@@ -22,9 +24,21 @@ default:	gdal_translate.exe gdalinfo.exe gdalserver.exe gdaladdo.exe gdalwarp.ex
 all:	default multireadtest.exe \
 			dumpoverviews.exe gdalwarpsimple.exe gdalflattenmask.exe \
 			gdaltorture.exe gdal2ogr.exe test_ogrsf.exe
+			
+appslib: $(OBJ)
 
-gdalinfo.exe:	gdalinfo.c commonutils.cpp $(GDALLIB) $(XTRAOBJ) 
-	$(CC) $(XTRAFLAGS) $(CFLAGS) gdalinfo.c commonutils.cpp $(XTRAOBJ) $(LIBS) \
+gdalinfo_lib.obj: gdalinfo_lib.cpp
+	$(CC) $(XTRAFLAGS) $(CFLAGS) gdalinfo_lib.cpp $(XTRAOBJ) $(LIBS) \
+		/link $(LINKER_FLAGS)
+	if exist $@.manifest mt -manifest $@.manifest -outputresource:$@;1
+
+gdal_translate_lib.obj: gdal_translate_lib.cpp
+	$(CC) $(XTRAFLAGS) $(CFLAGS) gdal_translate_lib.cpp $(XTRAOBJ) $(LIBS) \
+		/link $(LINKER_FLAGS)
+	if exist $@.manifest mt -manifest $@.manifest -outputresource:$@;1
+
+gdalinfo.exe:	gdalinfo_bin.cpp gdalinfo_lib.cpp commonutils.cpp $(GDALLIB) $(GDALUTILSLIB) $(XTRAOBJ) 
+	$(CC) $(XTRAFLAGS) $(CFLAGS) gdalinfo_bin.cpp commonutils.cpp $(XTRAOBJ) $(LIBS) \
 		/link $(LINKER_FLAGS)
 	if exist $@.manifest mt -manifest $@.manifest -outputresource:$@;1
 	
@@ -33,8 +47,8 @@ gdalserver.exe:	gdalserver.c $(GDALLIB) $(XTRAOBJ)
 		/link $(LINKER_FLAGS)
 	if exist $@.manifest mt -manifest $@.manifest -outputresource:$@;1
 	
-gdal_translate.exe:	gdal_translate.cpp commonutils.cpp $(GDALLIB) $(XTRAOBJ)
-	$(CC) $(XTRAFLAGS) $(CFLAGS) gdal_translate.cpp commonutils.cpp $(XTRAOBJ) $(LIBS) \
+gdal_translate.exe:	gdal_translate_bin.cpp gdal_translate_lib.cpp commonutils.cpp $(GDALLIB) $(GDALUTILSLIB) $(XTRAOBJ)
+	$(CC) $(XTRAFLAGS) $(CFLAGS) gdal_translate_bin.cpp commonutils.cpp $(XTRAOBJ) $(LIBS) \
 		/link $(LINKER_FLAGS)
 	if exist $@.manifest mt -manifest $@.manifest -outputresource:$@;1
 	
