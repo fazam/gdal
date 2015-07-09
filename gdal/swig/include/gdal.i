@@ -1386,6 +1386,9 @@ struct GDALTranslateOptions
 
 %extend GDALTranslateOptions {
 %pythoncode {
+    if not '__swig_setmethods__' in dir():
+        __swig_getmethods__ = {}
+        __swig_setmethods__ = {}
     __swig_setmethods__["bandList"] = _gdal.TranslateOptions_setBandList
     __swig_getmethods__["bandList"] = _gdal.TranslateOptions_getBandList
     __swig_setmethods__["srcWin"] = _gdal.TranslateOptions_setSrcWin

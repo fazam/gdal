@@ -1286,7 +1286,6 @@ static void AttachMetadata( GDALDatasetH hDS, char **papszMetadataOptions )
         CPLFree( pszKey );
     }
 
-    CSLDestroy( papszMetadataOptions );
 }
 
 /************************************************************************/

@@ -292,7 +292,7 @@ public:
     CPLString &tolower( void );
 };
 
-CPLString CPLOPrintf(const char *pszFormat, ... ) CPL_PRINT_FUNC_FORMAT (1, 2);
+CPLString CPL_DLL CPLOPrintf(const char *pszFormat, ... ) CPL_PRINT_FUNC_FORMAT (1, 2);
 CPLString CPLOvPrintf(const char *pszFormat, va_list args);
 
 /* -------------------------------------------------------------------- */

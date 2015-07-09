@@ -5,7 +5,9 @@ XTRAOBJ =	$(SETARGV)
 
 LIBS	=	$(GDAL_ROOT)\gdal_i.lib $(GDAL_ROOT)\gdalutils_i.lib
 
-XTRAFLAGS =	-I..\gcore -I..\port -I..\frmts\vrt -I..\alg -I..\ogr -I..\ogr\ogrsf_frmts  $(GEOS_CFLAGS) -I..\ogr\ogrsf_frmts\geojson\libjson -I..\ogr\ogrsf_frmts\geojson
+XTRAFLAGS =	-I..\gcore -I..\port -I..\frmts\vrt -I..\alg -I..\ogr -I..\ogr\ogrsf_frmts  $(GEOS_CFLAGS)
+
+EXTRAFLAGS =    -I..\frmts\vrt -I..\ogr\ogrsf_frmts\geojson\libjson -I..\ogr\ogrsf_frmts\geojson
 
 !INCLUDE ..\nmake.opt
 
@@ -27,19 +29,9 @@ all:	default multireadtest.exe \
 			
 appslib: $(OBJ)
 
-gdalinfo_lib.obj: gdalinfo_lib.cpp
-	$(CC) $(XTRAFLAGS) $(CFLAGS) gdalinfo_lib.cpp $(XTRAOBJ) $(LIBS) \
-		/link $(LINKER_FLAGS)
-	if exist $@.manifest mt -manifest $@.manifest -outputresource:$@;1
-
-gdal_translate_lib.obj: gdal_translate_lib.cpp
-	$(CC) $(XTRAFLAGS) $(CFLAGS) gdal_translate_lib.cpp $(XTRAOBJ) $(LIBS) \
-		/link $(LINKER_FLAGS)
-	if exist $@.manifest mt -manifest $@.manifest -outputresource:$@;1
-
 gdalinfo.exe:	gdalinfo_bin.cpp gdalinfo_lib.cpp commonutils.cpp $(GDALLIB) $(GDALUTILSLIB) $(XTRAOBJ) 
 	$(CC) $(XTRAFLAGS) $(CFLAGS) gdalinfo_bin.cpp commonutils.cpp $(XTRAOBJ) $(LIBS) \
-		/link $(LINKER_FLAGS)
+		/Fe$@ /link $(LINKER_FLAGS)
 	if exist $@.manifest mt -manifest $@.manifest -outputresource:$@;1
 	
 gdalserver.exe:	gdalserver.c $(GDALLIB) $(XTRAOBJ) 
@@ -49,7 +41,7 @@ gdalserver.exe:	gdalserver.c $(GDALLIB) $(XTRAOBJ)
 	
 gdal_translate.exe:	gdal_translate_bin.cpp gdal_translate_lib.cpp commonutils.cpp $(GDALLIB) $(GDALUTILSLIB) $(XTRAOBJ)
 	$(CC) $(XTRAFLAGS) $(CFLAGS) gdal_translate_bin.cpp commonutils.cpp $(XTRAOBJ) $(LIBS) \
-		/link $(LINKER_FLAGS)
+		 /Fe$@ /link $(LINKER_FLAGS)
 	if exist $@.manifest mt -manifest $@.manifest -outputresource:$@;1
 	
 gdaladdo.exe:	gdaladdo.cpp $(GDALLIB) $(XTRAOBJ)

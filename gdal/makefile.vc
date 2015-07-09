@@ -62,6 +62,8 @@ default:	port_dir ogr_dir core_dir frmts_dir $(VB6_TARGET) $(GDAL_DLL) appslib-t
 staticlib:
 	if exist gdal.lib del gdal.lib
 	lib /nologo /out:gdal.lib $(LIBOBJ)
+
+gdalutils_staticlib:
 	if exist gdalutils.lib del gdalutils.lib
 	lib /nologo /out:gdalutils.lib $(GDAL_UTILS_OBJ)
 
@@ -171,11 +173,11 @@ $(GDAL_DLL): staticlib
 		 /out:$(GDAL_DLL) /implib:gdal_i.lib $(LINKER_FLAGS)
     if exist $(GDAL_DLL).manifest mt -manifest $(GDAL_DLL).manifest -outputresource:$(GDAL_DLL);2
 
-$(GDALUTILS_DLL): staticlib
+$(GDALUTILS_DLL): staticlib gdalutils_staticlib
 	link /nologo /dll $(GDAL_UTILS_OBJ) \
 		gcore\Version.res \
-		 /out:$(GDALUTILS_DLL) /implib:gdalutils_i.lib $(LINKER_FLAGS)
-    if exist $(GDALUTILS_DLL).manifest mt -manifest $(GDALUTILS_DLL).manifest -outputresource:$(GDAL_DLL);2
+		 /out:$(GDALUTILS_DLL) /implib:gdalutils_i.lib gdal_i.lib $(LINKER_FLAGS)
+    if exist $(GDALUTILS_DLL).manifest mt -manifest $(GDALUTILS_DLL).manifest -outputresource:$(GDALUTILS_DLL);2
 
 dll:	$(GDAL_DLL) $(GDALUTILS_DLL)
 
