@@ -654,6 +654,7 @@ int main( int argc, char ** argv )
         }
 
         GDALClose(hDataset);
+        GDALTranslateOptionsFree(psOptions);
 
         GDALDestroyDriverManager();
         return 0;
@@ -670,6 +671,7 @@ int main( int argc, char ** argv )
 
     GDALClose(hDataset);
     GDALClose(hOutDS);
+    GDALTranslateOptionsFree(psOptions);
     
     GDALDestroyDriverManager();
 

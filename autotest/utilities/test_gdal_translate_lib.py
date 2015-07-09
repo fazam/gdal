@@ -364,7 +364,7 @@ def test_gdal_translate_lib_14():
 # Cleanup
 
 def test_gdal_translate_lib_cleanup():
-    for i in range(1):
+    for i in range(14):
         try:
             os.remove('tmp/test' + str(i+1) + '.tif')
         except:

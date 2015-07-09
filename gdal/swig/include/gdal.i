@@ -1387,6 +1387,7 @@ struct GDALTranslateOptions
 %extend GDALTranslateOptions {
 %pythoncode {
     if not '__swig_setmethods__' in dir():
+        #This is to ensure that it builds in windows too since SWIG generates different files for linux and windows.
         __swig_getmethods__ = {}
         __swig_setmethods__ = {}
     __swig_setmethods__["bandList"] = _gdal.TranslateOptions_setBandList
