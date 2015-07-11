@@ -93,6 +93,7 @@ gdalwarp [--help-general] [--formats]
     [-csql statement] [-cblend dist_in_pixels] [-crop_to_cutline]
     [-of format] [-co "NAME=VALUE"]* [-overwrite]
     [-nomd] [-cvmd meta_conflict_value] [-setci] [-oo NAME=VALUE]*
+    [-doo NAME=VALUE]*
     srcfile* dstfile
 \endverbatim
 
@@ -126,7 +127,9 @@ available GCPs.</dd>
 <dt> <b>-rpc</b>:</dt> <dd>Force use of RPCs.</dd>
 <dt> <b>-geoloc</b>:</dt><dd>Force use of Geolocation Arrays.</dd>
 <dt> <b>-et</b> <em>err_threshold</em>:</dt><dd> error threshold for
-transformation approximation (in pixel units - defaults to 0.125).</dd>
+transformation approximation (in pixel units - defaults to 0.125, unless, starting
+with GDAL 2.1, the RPC_DEM warping option is specified, in which case, an exact
+transformer, i.e. err_threshold=0, will be used).</dd>
 <dt> <b>-refine_gcps</b> <em>tolerance minimum_gcps</em>:</dt><dd>  (GDAL >= 1.9.0) refines the GCPs by automatically eliminating outliers.
 Outliers will be eliminated until minimum_gcps are left or when no outliers can be detected.
 The tolerance is passed to adjust when a GCP will be eliminated.
@@ -225,6 +228,7 @@ Value to set metadata items that conflict between source datasets (default is "*
 <dt> <b>-setci</b>:</dt><dd>(GDAL >= 1.10.0) 
 Set the color interpretation of the bands of the target dataset from the source dataset.</dd>
 <dt> <b>-oo</b> <em>NAME=VALUE</em>:</dt><dd>(starting with GDAL 2.0) Dataset open option (format specific)</dd>
+<dt> <b>-doo</b> <em>NAME=VALUE</em>:</dt><dd>(starting with GDAL 2.1) Output dataset open option (format specific)</dd>
 
 <dt> <em>srcfile</em>:</dt><dd> The source file name(s). </dd>
 <dt> <em>dstfile</em>:</dt><dd> The destination file name. </dd>
@@ -325,6 +329,7 @@ static void Usage(const char* pszErrorMsg = NULL)
         "    [-csql statement] [-cblend dist_in_pixels] [-crop_to_cutline]\n"
         "    [-of format] [-co \"NAME=VALUE\"]* [-overwrite]\n"
         "    [-nomd] [-cvmd meta_conflict_value] [-setci] [-oo NAME=VALUE]*\n"
+        "    [-doo NAME=VALUE]*\n"
         "    srcfile* dstfile\n"
         "\n"
         "Available resampling methods:\n"
@@ -575,7 +580,7 @@ int main( int argc, char ** argv )
     int                 bCreateOutput = FALSE, i;
     void               *hTransformArg = NULL;
     char               **papszWarpOptions = NULL;
-    double             dfErrorThreshold = 0.125;
+    double             dfErrorThreshold = -1;
     double             dfWarpMemoryLimit = 0.0;
     GDALTransformerFunc pfnTransformer = NULL;
     char                **papszCreateOptions = NULL;
@@ -596,6 +601,7 @@ int main( int argc, char ** argv )
     const char           *pszMDConflictValue = "*";
     int                  bSetColorInterpretation = FALSE;
     char               **papszOpenOptions = NULL;
+    char               **papszDestOpenOptions = NULL;
     int                  nOvLevel = -2;
     CPLString            osTE_SRS;
 
@@ -963,6 +969,12 @@ int main( int argc, char ** argv )
             papszOpenOptions = CSLAddString( papszOpenOptions,
                                                 argv[++i] );
         }
+        else if( EQUAL(argv[i], "-doo") )
+        {
+            CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
+            papszDestOpenOptions = CSLAddString( papszDestOpenOptions,
+                                                argv[++i] );
+        }
         else if( EQUAL(argv[i], "-ovr") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
@@ -1005,6 +1017,15 @@ int main( int argc, char ** argv )
             printf("-ts values have minx >= maxx. This will result in a horizontally flipped image.\n");
         if( dfMinY >= dfMaxY )
             printf("-ts values have miny >= maxy. This will result in a vertically flipped image.\n");
+    }
+
+    if( dfErrorThreshold < 0 )
+    {
+        // By default, use approximate transformer unless RPC_DEM is specified
+        if( CSLFetchNameValue(papszWarpOptions, "RPC_DEM") != NULL )
+            dfErrorThreshold = 0.0;
+        else
+            dfErrorThreshold = 0.125;
     }
 
 /* -------------------------------------------------------------------- */
@@ -1069,7 +1090,8 @@ int main( int argc, char ** argv )
     else
     {
         CPLPushErrorHandler( CPLQuietErrorHandler );
-        hDstDS = GDALOpen( pszDstFilename, GA_Update );
+        hDstDS = GDALOpenEx( pszDstFilename, GDAL_OF_RASTER | GDAL_OF_VERBOSE_ERROR | GDAL_OF_UPDATE,
+                             NULL, papszDestOpenOptions, NULL );
         CPLPopErrorHandler();
     }
 
@@ -1859,6 +1881,7 @@ int main( int argc, char ** argv )
             CSLDestroy( papszWarpOptions );
             CSLDestroy( papszTO );
             CSLDestroy( papszOpenOptions );
+            CSLDestroy( papszDestOpenOptions );
     
             GDALDumpOpenDatasets( stderr );
         
@@ -1915,6 +1938,7 @@ int main( int argc, char ** argv )
     CSLDestroy( papszWarpOptions );
     CSLDestroy( papszTO );
     CSLDestroy( papszOpenOptions );
+    CSLDestroy( papszDestOpenOptions );
 
     GDALDumpOpenDatasets( stderr );
 
