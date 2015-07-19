@@ -36,6 +36,7 @@
  */
 
 #include "cpl_port.h"
+#include "gdalwarper.h"
 
 CPL_C_START
 
@@ -167,5 +168,60 @@ void CPL_DLL GDALTranslateOptionsAddBand( GDALTranslateOptions *psOptions, int n
                                           int bIsMask );
 
 GDALDatasetH CPL_DLL GDALTranslate(const char *pszDest, GDALDatasetH hDataset, GDALTranslateOptions *psOptions, int *pbUsageError);
+
+typedef struct
+{
+    double dfMinX;
+    double dfMinY;
+    double dfMaxX;
+    double dfMaxY;
+    double dfXRes;
+    double dfYRes;
+    int bTargetAlignedPixels;
+    int nForcePixels;
+    int nForceLines;
+    int bQuiet;
+    int bEnableDstAlpha;
+    int bEnableSrcAlpha;
+    int bVRT;
+    char *pszFormat;
+    int bFormatExplicitlySet;
+    int bCreateOutput;
+    void *hTransformArg;
+    char **papszWarpOptions;
+    double dfErrorThreshold;
+    double dfWarpMemoryLimit;
+    GDALTransformerFunc pfnTransformer;
+    char **papszCreateOptions;
+    GDALDataType eOutputType;
+    GDALDataType eWorkingType;
+    GDALResampleAlg eResampleAlg;
+    char *pszSrcNodata;
+    char *pszDstNodata;
+    int bMulti;
+    char **papszTO;
+    char *pszCutlineDSName;
+    char *pszCLayer;
+    char *pszCWHERE;
+    char *pszCSQL;
+    void *hCutline;
+    int bCropToCutline;
+    int bOverwrite;
+    int bCopyMetadata;
+    int bCopyBandInfo;
+    char *pszMDConflictValue;
+    int bSetColorInterpretation;
+    char **papszDestOpenOptions;
+    int nOvLevel;
+    char *pszTE_SRS;
+
+} GDALWarpAppOptions;
+
+GDALDatasetH CPL_DLL GDALWarp( const char *pszDest, GDALDatasetH hDstDS, int nSrcCount,
+                       GDALDatasetH *pahSrcDS, GDALWarpAppOptions *psOptions, int *pbUsageError );
+
+GDALWarpAppOptions CPL_DLL *GDALWarpAppOptionsNew( void );
+
+void CPL_DLL GDALWarpAppOptionsFree( GDALWarpAppOptions *psOptions );
 
 CPL_C_END
