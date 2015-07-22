@@ -183,15 +183,12 @@ typedef struct
     int bQuiet;
     int bEnableDstAlpha;
     int bEnableSrcAlpha;
-    int bVRT;
     char *pszFormat;
     int bFormatExplicitlySet;
     int bCreateOutput;
-    void *hTransformArg;
     char **papszWarpOptions;
     double dfErrorThreshold;
     double dfWarpMemoryLimit;
-    GDALTransformerFunc pfnTransformer;
     char **papszCreateOptions;
     GDALDataType eOutputType;
     GDALDataType eWorkingType;

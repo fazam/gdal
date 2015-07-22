@@ -251,8 +251,23 @@ static CPLErr CropToCutline( void* hCutline, char** papszTO, GDALDatasetH *pahSr
 
 GDALDatasetH GDALWarp( const char *pszDest, GDALDatasetH hDstDS, int nSrcCount, GDALDatasetH *pahSrcDS, GDALWarpAppOptions *psOptions, int *pbUsageError )
 {
+    GDALTransformerFunc pfnTransformer = NULL;
+    void *hTransformArg = NULL;
     int bHasGotErr = FALSE;
     int i;
+    int bVRT = FALSE;
+
+    if( EQUAL(psOptions->pszFormat,"VRT") )
+                bVRT = TRUE;
+
+    if( bVRT && nSrcCount > 1 )
+    {
+        CPLError(CE_Warning, CPLE_AppDefined, "gdalwarp -of VRT just takes into account "
+                        "the first source dataset.\nIf all source datasets "
+                        "are in the same projection, try making a mosaic of\n"
+                        "them with gdalbuildvrt, and use the resulting "
+                        "VRT file as the input of\ngdalwarp -of VRT.\n");
+    }
 
 /* -------------------------------------------------------------------- */
 /*      Check that incompatible options are not used                    */
@@ -673,15 +688,15 @@ GDALDatasetH GDALWarp( const char *pszDest, GDALDatasetH hDstDS, int nSrcCount, 
 /*      destination coordinate system.                                  */
 /* -------------------------------------------------------------------- */
         if (hUniqueTransformArg)
-            psOptions->hTransformArg = hUniqueTransformArg;
+            hTransformArg = hUniqueTransformArg;
         else
-            psOptions->hTransformArg =
+            hTransformArg =
                 GDALCreateGenImgProjTransformer2( hSrcDS, hDstDS, psOptions->papszTO );
         
-        if( psOptions->hTransformArg == NULL )
+        if( hTransformArg == NULL )
             return NULL;
 
-        psOptions->pfnTransformer = GDALGenImgProjTransform;
+        pfnTransformer = GDALGenImgProjTransform;
 
 /* -------------------------------------------------------------------- */
 /*      Determine if we must work with the full-resolution source       */
@@ -697,7 +712,7 @@ GDALDatasetH GDALWarp( const char *pszDest, GDALDatasetH hDstDS, int nSrcCount, 
             int    nPixels, nLines;
             /* Compute what the "natural" output resolution (in pixels) would be for this */
             /* input dataset */
-            if( GDALSuggestedWarpOutput2(hSrcDS, psOptions->pfnTransformer, psOptions->hTransformArg,
+            if( GDALSuggestedWarpOutput2(hSrcDS, pfnTransformer, hTransformArg,
                                          adfSuggestedGeoTransform, &nPixels, &nLines,
                                          adfExtent, 0) == CE_None)
             {
@@ -752,8 +767,8 @@ GDALDatasetH GDALWarp( const char *pszDest, GDALDatasetH hDstDS, int nSrcCount, 
         /* We need to recreate the transform when operating on an overview */
         if( poSrcOvrDS != NULL )
         {
-            GDALDestroyGenImgProjTransformer( psOptions->hTransformArg );
-            psOptions->hTransformArg =
+            GDALDestroyGenImgProjTransformer( hTransformArg );
+            hTransformArg =
                 GDALCreateGenImgProjTransformer2( hWrkSrcDS, hDstDS, psOptions->papszTO );
         }
 
@@ -763,11 +778,11 @@ GDALDatasetH GDALWarp( const char *pszDest, GDALDatasetH hDstDS, int nSrcCount, 
 /* -------------------------------------------------------------------- */
         if( psOptions->dfErrorThreshold != 0.0 )
         {
-            psOptions->hTransformArg =
+            hTransformArg =
                 GDALCreateApproxTransformer( GDALGenImgProjTransform, 
-                                             psOptions->hTransformArg, psOptions->dfErrorThreshold);
-            psOptions->pfnTransformer = GDALApproxTransform;
-            GDALApproxTransformerOwnsSubtransformer(psOptions->hTransformArg, TRUE);
+                                             hTransformArg, psOptions->dfErrorThreshold);
+            pfnTransformer = GDALApproxTransform;
+            GDALApproxTransformerOwnsSubtransformer(hTransformArg, TRUE);
         }
 
 /* -------------------------------------------------------------------- */
@@ -789,8 +804,8 @@ GDALDatasetH GDALWarp( const char *pszDest, GDALDatasetH hDstDS, int nSrcCount, 
         psWO->hSrcDS = hWrkSrcDS;
         psWO->hDstDS = hDstDS;
 
-        psWO->pfnTransformer = psOptions->pfnTransformer;
-        psWO->pTransformerArg = psOptions->hTransformArg;
+        psWO->pfnTransformer = pfnTransformer;
+        psWO->pTransformerArg = hTransformArg;
 
         if( !psOptions->bQuiet )
             psWO->pfnProgress = GDALTermProgress;
@@ -1102,7 +1117,7 @@ GDALDatasetH GDALWarp( const char *pszDest, GDALDatasetH hDstDS, int nSrcCount, 
 /*      the warp options and write out now rather than proceeding       */
 /*      with the operations.                                            */
 /* -------------------------------------------------------------------- */
-        if( psOptions->bVRT )
+        if( bVRT )
         {
             GDALSetMetadataItem(hDstDS, "SrcOvrLevel", CPLSPrintf("%d", psOptions->nOvLevel), NULL);
             if( GDALInitializeWarpedVRT( hDstDS, psWO ) != CE_None )
@@ -1139,7 +1154,9 @@ GDALDatasetH GDALWarp( const char *pszDest, GDALDatasetH hDstDS, int nSrcCount, 
 /* -------------------------------------------------------------------- */
 /*      Cleanup                                                         */
 /* -------------------------------------------------------------------- */
-        
+        if( hTransformArg != NULL )
+            GDALDestroyTransformer( hTransformArg );
+
         GDALDestroyWarpOptions( psWO );
 
         if( poSrcOvrDS )
@@ -1309,6 +1326,10 @@ GDALWarpCreateOutput( int nSrcCount, GDALDatasetH *pahSrcDS, const char *pszFile
     double dfWrkResX=0, dfWrkResY=0;
     int nDstBandCount = 0;
     std::vector<GDALColorInterp> apeColorInterpretations;
+    int bVRT = FALSE;
+
+    if( EQUAL(pszFormat,"VRT") )
+                bVRT = TRUE;
 
     /* If (-ts and -te) or (-tr and -te) are specified, we don't need to compute the suggested output extent */
     int    bNeedsSuggestedWarpOutput = 
@@ -1352,7 +1373,7 @@ GDALWarpCreateOutput( int nSrcCount, GDALDatasetH *pahSrcDS, const char *pszFile
 /*      For virtual output files, we have to set a special subclass     */
 /*      of dataset to create.                                           */
 /* -------------------------------------------------------------------- */
-    if( psOptions->bVRT )
+    if( bVRT )
         *ppapszCreateOptions = 
             CSLSetNameValue( *ppapszCreateOptions, "SUBCLASS", 
                              "VRTWarpedDataset" );
@@ -1754,7 +1775,7 @@ GDALWarpCreateOutput( int nSrcCount, GDALDatasetH *pahSrcDS, const char *pszFile
 /*      but it might create spurious .aux.xml files (at least with HFA, */
 /*      and netCDF)                                                     */
 /* -------------------------------------------------------------------- */
-    if( psOptions->bVRT || bSetColorInterpretation )
+    if( bVRT || bSetColorInterpretation )
     {
         int nBandsToCopy = (int)apeColorInterpretations.size();
         if ( psOptions->bEnableSrcAlpha )
@@ -1990,15 +2011,12 @@ GDALWarpAppOptions *GDALWarpAppOptionsNew()
     psOptions->bQuiet = FALSE;
     psOptions->bEnableDstAlpha = FALSE;
     psOptions->bEnableSrcAlpha = FALSE;
-    psOptions->bVRT = FALSE;
     psOptions->pszFormat = CPLStrdup("GTiff");
     psOptions->bFormatExplicitlySet = FALSE;
     psOptions->bCreateOutput = FALSE;
-    psOptions->hTransformArg = NULL;
     psOptions->papszWarpOptions = NULL;
     psOptions->dfErrorThreshold = -1;
     psOptions->dfWarpMemoryLimit = 0.0;
-    psOptions->pfnTransformer = NULL;
     psOptions->papszCreateOptions = NULL;
     psOptions->eOutputType = GDT_Unknown;
     psOptions->eWorkingType = GDT_Unknown;
@@ -2027,8 +2045,6 @@ GDALWarpAppOptions *GDALWarpAppOptionsNew()
 void GDALWarpAppOptionsFree( GDALWarpAppOptions *psOptions )
 {
     CPLFree(psOptions->pszFormat);
-    if( psOptions->hTransformArg != NULL )
-            GDALDestroyTransformer( psOptions->hTransformArg );
     CSLDestroy(psOptions->papszWarpOptions);
     CSLDestroy(psOptions->papszCreateOptions);
     CPLFree(psOptions->pszSrcNodata);

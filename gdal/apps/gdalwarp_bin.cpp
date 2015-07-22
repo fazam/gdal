@@ -357,9 +357,9 @@ int main( int argc, char ** argv )
     GDALDatasetH *pahSrcDS = NULL;
     int nSrcCount = 0;
     int i;
-    char **papszSrcFiles;
-    char **papszOpenOptions;
-    char *pszDstFilename;
+    char **papszSrcFiles = NULL;
+    char **papszOpenOptions = NULL;
+    char *pszDstFilename = NULL;
     GDALWarpAppOptions *psOptions = GDALWarpAppOptionsNew();
 
     /* Check that we are running against at least GDAL 1.6 */
@@ -453,8 +453,6 @@ int main( int argc, char ** argv )
             psOptions->pszFormat = CPLStrdup(argv[++i]);
             psOptions->bFormatExplicitlySet = TRUE;
             psOptions->bCreateOutput = TRUE;
-            if( EQUAL(psOptions->pszFormat,"VRT") )
-                psOptions->bVRT = TRUE;
         }
         else if( EQUAL(argv[i],"-t_srs") )
         {
@@ -768,15 +766,6 @@ int main( int argc, char ** argv )
     {
         Usage("No target filename specified.");
     }
-        
-    if( psOptions->bVRT && CSLCount(papszSrcFiles) > 1 )
-    {
-        CPLError(CE_Warning, CPLE_AppDefined, "gdalwarp -of VRT just takes into account "
-                        "the first source dataset.\nIf all source datasets "
-                        "are in the same projection, try making a mosaic of\n"
-                        "them with gdalbuildvrt, and use the resulting "
-                        "VRT file as the input of\ngdalwarp -of VRT.\n");
-    }
 
     if ( CSLCount(papszSrcFiles) == 1 &&
          strcmp(papszSrcFiles[0], pszDstFilename) == 0 && psOptions->bOverwrite)
@@ -806,6 +795,10 @@ int main( int argc, char ** argv )
     CSLDestroy(papszSrcFiles);
     CPLFree(pszDstFilename);
 
+    for(i = 0; i < nSrcCount; i++)
+    {
+        GDALClose(pahSrcDS[i]);
+    }
     GDALClose( hDstDS );
 
     GDALDumpOpenDatasets( stderr );
