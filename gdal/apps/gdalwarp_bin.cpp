@@ -314,33 +314,6 @@ static void Usage(const char* pszErrorMsg = NULL)
     GDALExit( 1 );
 }
 
-/************************************************************************/
-/*                             SanitizeSRS                              */
-/************************************************************************/
-
-char *SanitizeSRS( const char *pszUserInput )
-
-{
-    OGRSpatialReferenceH hSRS;
-    char *pszResult = NULL;
-
-    CPLErrorReset();
-    
-    hSRS = OSRNewSpatialReference( NULL );
-    if( OSRSetFromUserInput( hSRS, pszUserInput ) == OGRERR_NONE )
-        OSRExportToWkt( hSRS, &pszResult );
-    else
-    {
-        CPLError( CE_Failure, CPLE_AppDefined,
-                  "Translating source or target SRS failed:\n%s",
-                  pszUserInput );
-        GDALExit( 1 );
-    }
-    
-    OSRDestroySpatialReference( hSRS );
-
-    return pszResult;
-}
 
 /************************************************************************/
 /*                                main()                                */
@@ -361,6 +334,7 @@ int main( int argc, char ** argv )
     char **papszOpenOptions = NULL;
     char *pszDstFilename = NULL;
     GDALWarpAppOptions *psOptions = GDALWarpAppOptionsNew();
+    psOptions->bQuiet = FALSE;
 
     /* Check that we are running against at least GDAL 1.6 */
     /* Note to developers : if we use newer API, please change the requirement */
@@ -451,13 +425,14 @@ int main( int argc, char ** argv )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
             psOptions->pszFormat = CPLStrdup(argv[++i]);
-            psOptions->bFormatExplicitlySet = TRUE;
             psOptions->bCreateOutput = TRUE;
         }
         else if( EQUAL(argv[i],"-t_srs") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
             char *pszSRS = SanitizeSRS(argv[++i]);
+            if(pszSRS == NULL)
+                GDALExit( 1 );
             psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "DST_SRS", pszSRS );
             CPLFree( pszSRS );
         }
@@ -465,6 +440,8 @@ int main( int argc, char ** argv )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
             char *pszSRS = SanitizeSRS(argv[++i]);
+            if(pszSRS == NULL)
+                GDALExit( 1 );
             psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "SRC_SRS", pszSRS );
             CPLFree( pszSRS );
         }

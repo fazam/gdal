@@ -824,4 +824,67 @@ def Translate(path, ds, options = None, format = 'GTiff', quiet = True,
     ret = TranslateInternal(path, ds, options)
     return ret
 
+def Warp(dest, dstDS, srcDS, options = None, minX = 0.0, minY = 0.0, maxX = 0.0,
+         maxY = 0.0, xRes = 0.0, yRes = 0.0, targetAlignedPixels = False, forcePixels = 0,
+         forceLines = 0, quiet = False, enableDstAlpha = False, enableSrcAlpha = False,
+         format = 'GTiff', createOutput = False, warpOptions = None, errorThreshold = -1,
+         warpMemoryLimit = 0.0, createOptions = None, outputType = GDT_Unknown,
+         workingType = GDT_Unknown, resampleAlg = GRA_NearestNeighbour,
+         srcNodata = None, dstNodata = None, multi = False, TO = None, cutlineDSName = None,
+         cLayer = None, cWHERE = None, cSQL = None, cropToCutline = False, overwrite = False,
+         copyMetadata = True, copyBandInfo = True, MDConflictValue = '*',
+         setColorInterpretation = False, destOpenOptions = None, OvLevel = -2):
+    """ If options is provided as a gdal.WarpOptions() object, format and other keywords are ignored. """
+    if options is None:
+        options = WarpOptions()
+        options.minX = minX
+        options.minY = minY
+        options.maxX = maxX
+        options.maxY = maxY
+        options.xRes = xRes
+        options.yRes = yRes
+        options.targetAlignedPixels = targetAlignedPixels
+        options.forcePixels = forcePixels
+        options.forceLines = forceLines
+        options.quiet = quiet
+        options.enableDstAlpha = enableDstAlpha
+        options.enableSrcAlpha = enableSrcAlpha
+        options.format = format
+        options.createOutput = createOutput
+        if warpOptions is not None:
+            options.warpOptions = warpOptions
+        options.errorThreshold = errorThreshold
+        options.warpMemoryLimit = warpMemoryLimit
+        if createOptions is not None:
+            options.createOptions = createOptions
+        options.outputType = outputType
+        options.workingType = workingType
+        options.resampleAlg = resampleAlg
+        if srcNodata is not None:
+            options.srcNodata = srcNodata
+        if dstNodata is not None:
+            options.dstNodata = dstNodata
+        options.multi = multi
+        if TO is not None:
+            options.TO = TO
+        if cutlineDSName is not None:
+            options.cutlineDSName = cutlineDSName;
+        if cLayer is not None:
+            options.cLayer = cLayer
+        if cWHERE is not None:
+            options.cWHERE = cWHERE
+        if cSQL is not None:
+            options.cSQL = cSQL
+        options.cropToCutline = cropToCutline
+        options.overwrite = overwrite
+        options.copyMetadata = copyMetadata
+        options.copyBandInfo = copyBandInfo
+        options.MDConflictValue = MDConflictValue
+        options.setColorInterpretation = setColorInterpretation
+        if destOpenOptions is not None:
+            options.destOpenOptions = destOpenOptions
+        options.OvLevel = OvLevel
+    ret = WarpInternal(dest, dstDS, srcDS, options)
+    return ret
+
 %}

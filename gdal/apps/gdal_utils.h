@@ -184,7 +184,6 @@ typedef struct
     int bEnableDstAlpha;
     int bEnableSrcAlpha;
     char *pszFormat;
-    int bFormatExplicitlySet;
     int bCreateOutput;
     char **papszWarpOptions;
     double dfErrorThreshold;
@@ -201,7 +200,6 @@ typedef struct
     char *pszCLayer;
     char *pszCWHERE;
     char *pszCSQL;
-    void *hCutline;
     int bCropToCutline;
     int bOverwrite;
     int bCopyMetadata;
@@ -220,5 +218,27 @@ GDALDatasetH CPL_DLL GDALWarp( const char *pszDest, GDALDatasetH hDstDS, int nSr
 GDALWarpAppOptions CPL_DLL *GDALWarpAppOptionsNew( void );
 
 void CPL_DLL GDALWarpAppOptionsFree( GDALWarpAppOptions *psOptions );
+
+char CPL_DLL *SanitizeSRS( const char *pszUserInput );
+
+void CPL_DLL GDALWarpAppOptionsSetSrcSRS( GDALWarpAppOptions *psOptions, const char *pszSrcSRS );
+
+void CPL_DLL GDALWarpAppOptionsSetDstSRS( GDALWarpAppOptions *psOptions, const char *pszDstSRS );
+
+void CPL_DLL GDALWarpAppOptionsSetOrder( GDALWarpAppOptions *psOptions, const char *pszN);
+
+void CPL_DLL GDALWarpAppOptionsSetRefineGCPs( GDALWarpAppOptions *psOptions, const char *pszTolerance, const char *pszMinimumGCPs );
+
+void CPL_DLL GDALWarpAppOptionsSetMethod( GDALWarpAppOptions *psOptions, const char *pszMethod );
+
+void CPL_DLL GDALWarpAppOptionsSetTransformerOption( GDALWarpAppOptions *psOptions, const char *pszTransformerOption );
+
+void CPL_DLL GDALWarpAppOptionsSetWarpOptions( GDALWarpAppOptions *psOptions, char **papszWarpOptions );
+
+void CPL_DLL GDALWarpAppOptionsSetCreateOptions( GDALWarpAppOptions *psOptions, char **papszCreateOptions );
+
+void CPL_DLL GDALWarpAppOptionsSetTO( GDALWarpAppOptions *psOptions, char **papszTO );
+
+void CPL_DLL GDALWarpAppOptionsSetDestOpenOptions( GDALWarpAppOptions *psOptions, char **papszDestOpenOptions );
 
 CPL_C_END

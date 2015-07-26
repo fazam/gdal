@@ -249,13 +249,15 @@ static CPLErr CropToCutline( void* hCutline, char** papszTO, GDALDatasetH *pahSr
 }
 #endif /* OGR_ENABLED */
 
-GDALDatasetH GDALWarp( const char *pszDest, GDALDatasetH hDstDS, int nSrcCount, GDALDatasetH *pahSrcDS, GDALWarpAppOptions *psOptions, int *pbUsageError )
+GDALDatasetH GDALWarp( const char *pszDest, GDALDatasetH hDstDS, int nSrcCount,
+                       GDALDatasetH *pahSrcDS, GDALWarpAppOptions *psOptions, int *pbUsageError )
 {
     GDALTransformerFunc pfnTransformer = NULL;
     void *hTransformArg = NULL;
     int bHasGotErr = FALSE;
     int i;
     int bVRT = FALSE;
+    void *hCutline = NULL;
 
     if( EQUAL(psOptions->pszFormat,"VRT") )
                 bVRT = TRUE;
@@ -443,16 +445,16 @@ GDALDatasetH GDALWarp( const char *pszDest, GDALDatasetH hDstDS, int nSrcCount, 
     {
         CPLErr eError;
         eError = LoadCutline( psOptions->pszCutlineDSName, psOptions->pszCLayer, psOptions->pszCWHERE, psOptions->pszCSQL,
-                     &psOptions->hCutline );
+                     &hCutline );
         if(eError == CE_Failure)
             return NULL;
     }
 
 #ifdef OGR_ENABLED
-    if ( psOptions->bCropToCutline && psOptions->hCutline != NULL )
+    if ( psOptions->bCropToCutline && hCutline != NULL )
     {
         CPLErr eError;
-        eError = CropToCutline( psOptions->hCutline, psOptions->papszTO, pahSrcDS,
+        eError = CropToCutline( hCutline, psOptions->papszTO, pahSrcDS,
                        psOptions->dfMinX, psOptions->dfMinY, psOptions->dfMaxX, psOptions->dfMaxY );
         if(eError == CE_Failure)
             return NULL;
@@ -475,7 +477,7 @@ GDALDatasetH GDALWarp( const char *pszDest, GDALDatasetH hDstDS, int nSrcCount, 
 
     if( hDstDS == NULL )
     {
-        if (!psOptions->bQuiet && !psOptions->bFormatExplicitlySet)
+        if (!psOptions->bQuiet)
             CheckExtensionConsistency(pszDest, psOptions->pszFormat);
 
         hDstDS = GDALWarpCreateOutput( nSrcCount, pahSrcDS, pszDest,psOptions->pszFormat,
@@ -1102,10 +1104,10 @@ GDALDatasetH GDALWarp( const char *pszDest, GDALDatasetH hDstDS, int nSrcCount, 
 /*      If we have a cutline, transform it into the source              */
 /*      pixel/line coordinate system and insert into warp options.      */
 /* -------------------------------------------------------------------- */
-        if( psOptions->hCutline != NULL )
+        if( hCutline != NULL )
         {
             CPLErr eError;
-            eError = TransformCutlineToSource( hWrkSrcDS, psOptions->hCutline, 
+            eError = TransformCutlineToSource( hWrkSrcDS, hCutline, 
                                       &(psWO->papszWarpOptions), 
                                       psOptions->papszTO );
             if(eError == CE_Failure)
@@ -1170,6 +1172,11 @@ GDALDatasetH GDALWarp( const char *pszDest, GDALDatasetH hDstDS, int nSrcCount, 
     GDALFlushCache( hDstDS );
     if( CPLGetLastErrorType() == CE_Failure )
         bHasGotErr = TRUE;
+
+#ifdef OGR_ENABLED
+    if( hCutline != NULL )
+        OGR_G_DestroyGeometry( (OGRGeometryH) hCutline );
+#endif
 
     return (bHasGotErr) ? NULL : hDstDS;
 }
@@ -1994,6 +2001,33 @@ RemoveConflictingMetadata( GDALMajorObjectH hObj, char **papszMetadata,
     CSLDestroy( papszMetadataRef );
 }
 
+/************************************************************************/
+/*                             SanitizeSRS                              */
+/************************************************************************/
+
+char *SanitizeSRS( const char *pszUserInput )
+
+{
+    OGRSpatialReferenceH hSRS;
+    char *pszResult = NULL;
+
+    CPLErrorReset();
+    
+    hSRS = OSRNewSpatialReference( NULL );
+    if( OSRSetFromUserInput( hSRS, pszUserInput ) == OGRERR_NONE )
+        OSRExportToWkt( hSRS, &pszResult );
+    else
+    {
+        CPLError( CE_Failure, CPLE_AppDefined,
+                  "Translating source or target SRS failed:\n%s",
+                  pszUserInput );
+    }
+    
+    OSRDestroySpatialReference( hSRS );
+
+    return pszResult;
+}
+
 
 GDALWarpAppOptions *GDALWarpAppOptionsNew()
 {
@@ -2008,11 +2042,10 @@ GDALWarpAppOptions *GDALWarpAppOptionsNew()
     psOptions->bTargetAlignedPixels = FALSE;
     psOptions->nForcePixels = 0;
     psOptions->nForceLines = 0;
-    psOptions->bQuiet = FALSE;
+    psOptions->bQuiet = TRUE;
     psOptions->bEnableDstAlpha = FALSE;
     psOptions->bEnableSrcAlpha = FALSE;
     psOptions->pszFormat = CPLStrdup("GTiff");
-    psOptions->bFormatExplicitlySet = FALSE;
     psOptions->bCreateOutput = FALSE;
     psOptions->papszWarpOptions = NULL;
     psOptions->dfErrorThreshold = -1;
@@ -2029,7 +2062,6 @@ GDALWarpAppOptions *GDALWarpAppOptionsNew()
     psOptions->pszCLayer = NULL;
     psOptions->pszCWHERE = NULL;
     psOptions->pszCSQL = NULL;
-    psOptions->hCutline = NULL;
     psOptions->bCropToCutline = FALSE;
     psOptions->bOverwrite = FALSE;
     psOptions->bCopyMetadata = TRUE;
@@ -2054,13 +2086,84 @@ void GDALWarpAppOptionsFree( GDALWarpAppOptions *psOptions )
     CPLFree(psOptions->pszCLayer);
     CPLFree(psOptions->pszCWHERE);
     CPLFree(psOptions->pszCSQL);
-#ifdef OGR_ENABLED
-    if( psOptions->hCutline != NULL )
-        OGR_G_DestroyGeometry( (OGRGeometryH) psOptions->hCutline );
-#endif
     CPLFree(psOptions->pszMDConflictValue);
     CSLDestroy(psOptions->papszDestOpenOptions);
     CPLFree(psOptions->pszTE_SRS);
 
     CPLFree(psOptions);
+}
+
+void GDALWarpAppOptionsSetSrcSRS( GDALWarpAppOptions *psOptions, const char *pszSrcSRS )
+{
+    char *pszSRS = SanitizeSRS( pszSrcSRS );
+    psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "SRC_SRS", pszSRS );
+    CPLFree( pszSRS );
+}
+
+void GDALWarpAppOptionsSetDstSRS( GDALWarpAppOptions *psOptions, const char *pszDstSRS )
+{
+    char *pszSRS = SanitizeSRS( pszDstSRS );
+    psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "DST_SRS", pszSRS );
+    CPLFree( pszSRS );
+}
+
+void GDALWarpAppOptionsSetOrder( GDALWarpAppOptions *psOptions, const char *pszN)
+{
+    psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "MAX_GCP_ORDER", pszN );
+}
+
+void GDALWarpAppOptionsSetRefineGCPs( GDALWarpAppOptions *psOptions, const char *pszTolerance, const char *pszMinimumGCPs )
+{
+    psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "REFINE_TOLERANCE", pszTolerance );
+    if(CPLAtof(pszTolerance) < 0)
+    {
+        CPLError( CE_Failure, CPLE_IllegalArg, "The tolerance for -refine_gcps may not be negative." );
+    }
+    if (atoi(pszTolerance) >= 0 && isdigit(pszTolerance[0]))
+    {
+        psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "REFINE_MINIMUM_GCPS", pszTolerance );
+    }
+    else
+    {
+        psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "REFINE_MINIMUM_GCPS", "-1" );
+    }
+}
+
+void GDALWarpAppOptionsSetMethod( GDALWarpAppOptions *psOptions, const char *pszMethod )
+{
+    if( EQUAL(pszMethod,"tps") )
+        psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "METHOD", "GCP_TPS" );
+    else if( EQUAL(pszMethod,"rpc") )
+        psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "METHOD", "RPC" );
+    else if( EQUAL(pszMethod,"geoloc") )
+        psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "METHOD", "GEOLOC_ARRAY" );
+}
+
+void GDALWarpAppOptionsSetTransformerOption( GDALWarpAppOptions *psOptions, const char *pszTransformerOption )
+{
+    psOptions->papszTO = CSLAddString( psOptions->papszTO, pszTransformerOption );
+}
+
+void  GDALWarpAppOptionsSetWarpOptions( GDALWarpAppOptions *psOptions, char **papszWarpOptions )
+{
+    CSLDestroy( psOptions->papszWarpOptions );
+    psOptions->papszWarpOptions = CSLDuplicate( papszWarpOptions );
+}
+
+void GDALWarpAppOptionsSetCreateOptions( GDALWarpAppOptions *psOptions, char **papszCreateOptions )
+{
+    CSLDestroy( psOptions->papszCreateOptions );
+    psOptions->papszCreateOptions = CSLDuplicate( papszCreateOptions );
+}
+
+void GDALWarpAppOptionsSetTO( GDALWarpAppOptions *psOptions, char **papszTO )
+{
+    CSLDestroy( psOptions->papszTO );
+    psOptions->papszTO = CSLDuplicate( papszTO );
+}
+
+void GDALWarpAppOptionsSetDestOpenOptions( GDALWarpAppOptions *psOptions, char **papszDestOpenOptions )
+{
+    CSLDestroy( psOptions->papszDestOpenOptions );
+    psOptions->papszDestOpenOptions = CSLDuplicate( papszDestOpenOptions );
 }

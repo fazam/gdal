@@ -1689,5 +1689,427 @@ GDALDatasetShadow* wrapper_GDALTranslate( const char* dest, GDALDatasetShadow* d
 }
 %}
 
+%rename (WarpOptions) GDALWarpAppOptions;
+
+%apply (char** options) {char** warpOptions};
+%apply (char** options) {char** createOptions};
+%apply (char** options) {char** TO};
+%apply (char** options) {char** destOpenOptions};
+
+struct GDALWarpAppOptions
+{
+%extend {
+%mutable;
+    double minX;
+    double minY;
+    double maxX;
+    double maxY;
+    double xRes;
+    double yRes;
+    int targetAlignedPixels;
+    int forcePixels;
+    int forceLines;
+    int quiet;
+    int enableDstAlpha;
+    int enableSrcAlpha;
+    char *format;
+    int createOutput;
+    char **warpOptions;
+    double errorThreshold;
+    double warpMemoryLimit;
+    char **createOptions;
+    GDALDataType outputType;
+    GDALDataType workingType;
+    GDALResampleAlg resampleAlg;
+    char *srcNodata;
+    char *dstNodata;
+    int multi;
+    char **TO;
+    char *cutlineDSName;
+    char *cLayer;
+    char *cWHERE;
+    char *cSQL;
+    int cropToCutline;
+    int overwrite;
+    int copyMetadata;
+    int copyBandInfo;
+    char *MDConflictValue;
+    int setColorInterpretation;
+    char **destOpenOptions;
+    int OvLevel;
+    char *TE_SRS;
+%immutable;
+    GDALWarpAppOptions() {
+        GDALWarpAppOptions *self = GDALWarpAppOptionsNew();
+        return self;
+    }
+
+    ~GDALWarpAppOptions() {
+        GDALWarpAppOptionsFree(self);
+    }
+}
+};
+
+%clear char** warpOptions;
+%clear char** createOptions;
+%clear char** TO;
+%clear char** destOpenOptions;
+
+%apply Pointer NONNULL {GDALWarpAppOptions *warpAppOptions};
+%inline %{
+
+double GDALWarpAppOptions_minX_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->dfMinX;
+}
+
+void GDALWarpAppOptions_minX_set( GDALWarpAppOptions *warpAppOptions, double dfMinX ) {
+    warpAppOptions->dfMinX = dfMinX;
+}
+
+double GDALWarpAppOptions_minY_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->dfMinX;
+}
+
+void GDALWarpAppOptions_minY_set( GDALWarpAppOptions *warpAppOptions, double dfMinY ) {
+    warpAppOptions->dfMinY = dfMinY;
+}
+
+double GDALWarpAppOptions_maxX_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->dfMaxX;
+}
+
+void GDALWarpAppOptions_maxX_set( GDALWarpAppOptions *warpAppOptions, double dfMaxX ) {
+    warpAppOptions->dfMaxX = dfMaxX;
+}
+
+double GDALWarpAppOptions_maxY_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->dfMaxY;
+}
+
+void GDALWarpAppOptions_maxY_set( GDALWarpAppOptions *warpAppOptions, double dfMaxY ) {
+    warpAppOptions->dfMaxY = dfMaxY;
+}
+
+double GDALWarpAppOptions_xRes_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->dfXRes;
+}
+
+void GDALWarpAppOptions_xRes_set( GDALWarpAppOptions *warpAppOptions, double dfXRes ) {
+    warpAppOptions->dfXRes = dfXRes;
+}
+
+double GDALWarpAppOptions_yRes_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->dfYRes;
+}
+
+void GDALWarpAppOptions_yRes_set( GDALWarpAppOptions *warpAppOptions, double dfYRes ) {
+    warpAppOptions->dfYRes = dfYRes;
+}
+
+bool GDALWarpAppOptions_targetAlignedPixels_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->bTargetAlignedPixels;
+}
+
+void GDALWarpAppOptions_targetAlignedPixels_set( GDALWarpAppOptions *warpAppOptions, bool bTargetAlignedPixels ) {
+    warpAppOptions->bTargetAlignedPixels = bTargetAlignedPixels;
+}
+
+int GDALWarpAppOptions_forcePixels_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->nForcePixels;
+}
+
+void GDALWarpAppOptions_forcePixels_set( GDALWarpAppOptions *warpAppOptions, int nForcePixels ) {
+    warpAppOptions->nForcePixels = nForcePixels;
+}
+
+int GDALWarpAppOptions_forceLines_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->nForceLines;
+}
+
+void GDALWarpAppOptions_forceLines_set( GDALWarpAppOptions *warpAppOptions, int nForceLines ) {
+    warpAppOptions->nForceLines = nForceLines;
+}
+
+bool GDALWarpAppOptions_quiet_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->bQuiet;
+}
+
+void GDALWarpAppOptions_quiet_set( GDALWarpAppOptions *warpAppOptions, bool bQuiet ) {
+    warpAppOptions->bQuiet = bQuiet;
+}
+
+bool GDALWarpAppOptions_enableDstAlpha_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->bEnableDstAlpha;
+}
+
+void GDALWarpAppOptions_enableDstAlpha_set( GDALWarpAppOptions *warpAppOptions, bool bEnableDstAlpha ) {
+    warpAppOptions->bEnableDstAlpha = bEnableDstAlpha;
+}
+
+bool GDALWarpAppOptions_enableSrcAlpha_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->bEnableSrcAlpha;
+}
+
+void GDALWarpAppOptions_enableSrcAlpha_set( GDALWarpAppOptions *warpAppOptions, bool bEnableSrcAlpha ) {
+    warpAppOptions->bEnableSrcAlpha = bEnableSrcAlpha;
+}
+
+char *GDALWarpAppOptions_format_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->pszFormat;
+}
+
+void GDALWarpAppOptions_format_set( GDALWarpAppOptions *warpAppOptions, char *pszFormat ) {
+    CPLFree(warpAppOptions->pszFormat);
+    warpAppOptions->pszFormat = CPLStrdup(pszFormat);
+}
+
+bool GDALWarpAppOptions_createOutput_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->bCreateOutput;
+}
+
+void GDALWarpAppOptions_createOutput_set( GDALWarpAppOptions *warpAppOptions, bool bCreateOutput ) {
+    warpAppOptions->bCreateOutput = bCreateOutput;
+}
+
+char **GDALWarpAppOptions_warpOptions_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->papszWarpOptions;
+}
+
+void GDALWarpAppOptions_warpOptions_set( GDALWarpAppOptions *warpAppOptions, char **papszWarpOptions ) {
+    GDALWarpAppOptionsSetWarpOptions( warpAppOptions, papszWarpOptions );
+}
+
+double GDALWarpAppOptions_errorThreshold_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->dfErrorThreshold;
+}
+
+void GDALWarpAppOptions_errorThreshold_set( GDALWarpAppOptions *warpAppOptions, double dfErrorThreshold ) {
+    warpAppOptions->dfErrorThreshold = dfErrorThreshold;
+}
+
+double GDALWarpAppOptions_warpMemoryLimit_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->dfWarpMemoryLimit;
+}
+
+void GDALWarpAppOptions_warpMemoryLimit_set( GDALWarpAppOptions *warpAppOptions, double dfWarpMemoryLimit ) {
+    warpAppOptions->dfWarpMemoryLimit = dfWarpMemoryLimit;
+}
+
+char **GDALWarpAppOptions_createOptions_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->papszCreateOptions;
+}
+
+void GDALWarpAppOptions_createOptions_set( GDALWarpAppOptions *warpAppOptions, char **papszCreateOptions ) {
+    GDALWarpAppOptionsSetCreateOptions( warpAppOptions, papszCreateOptions );
+}
+
+GDALDataType GDALWarpAppOptions_outputType_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->eOutputType;
+}
+
+void GDALWarpAppOptions_outputType_set( GDALWarpAppOptions *warpAppOptions, GDALDataType eOutputType ) {
+    warpAppOptions->eOutputType = eOutputType;
+}
+
+GDALDataType GDALWarpAppOptions_workingType_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->eWorkingType;
+}
+
+void GDALWarpAppOptions_workingType_set( GDALWarpAppOptions *warpAppOptions, GDALDataType eWorkingType ) {
+    warpAppOptions->eWorkingType = eWorkingType;
+}
+
+GDALResampleAlg GDALWarpAppOptions_resampleAlg_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->eResampleAlg;
+}
+
+void GDALWarpAppOptions_resampleAlg_set( GDALWarpAppOptions *warpAppOptions, GDALResampleAlg eResampleAlg ) {
+    warpAppOptions->eResampleAlg = eResampleAlg;
+}
+
+char *GDALWarpAppOptions_srcNodata_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->pszSrcNodata;
+}
+
+void GDALWarpAppOptions_srcNodata_set( GDALWarpAppOptions *warpAppOptions, char *pszSrcNodata ) {
+    CPLFree(warpAppOptions->pszSrcNodata);
+    warpAppOptions->pszSrcNodata = CPLStrdup(pszSrcNodata);
+}
+
+char *GDALWarpAppOptions_dstNodata_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->pszDstNodata;
+}
+
+void GDALWarpAppOptions_dstNodata_set( GDALWarpAppOptions *warpAppOptions, char *pszDstNodata ) {
+    CPLFree(warpAppOptions->pszDstNodata);
+    warpAppOptions->pszDstNodata = CPLStrdup(pszDstNodata);
+}
+
+bool GDALWarpAppOptions_multi_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->bMulti;
+}
+
+void GDALWarpAppOptions_multi_set( GDALWarpAppOptions *warpAppOptions, bool bMulti ) {
+    warpAppOptions->bMulti = bMulti;
+}
+
+char **GDALWarpAppOptions_TO_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->papszTO;
+}
+
+void GDALWarpAppOptions_TO_set( GDALWarpAppOptions *warpAppOptions, char **papszTO ) {
+    GDALWarpAppOptionsSetTO( warpAppOptions, papszTO );
+}
+
+char *GDALWarpAppOptions_cutlineDSName_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->pszCutlineDSName;
+}
+
+void GDALWarpAppOptions_cutlineDSName_set( GDALWarpAppOptions *warpAppOptions, char *pszCutlineDSName ) {
+    CPLFree(warpAppOptions->pszCutlineDSName);
+    warpAppOptions->pszCutlineDSName = CPLStrdup(pszCutlineDSName);
+}
+
+char *GDALWarpAppOptions_cLayer_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->pszCLayer;
+}
+
+void GDALWarpAppOptions_cLayer_set( GDALWarpAppOptions *warpAppOptions, char *pszCLayer ) {
+    CPLFree(warpAppOptions->pszCLayer);
+    warpAppOptions->pszCLayer = CPLStrdup(pszCLayer);
+}
+
+char *GDALWarpAppOptions_cWHERE_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->pszCWHERE;
+}
+
+void GDALWarpAppOptions_cWHERE_set( GDALWarpAppOptions *warpAppOptions, char *pszCWHERE ) {
+    CPLFree(warpAppOptions->pszCWHERE);
+    warpAppOptions->pszCWHERE = CPLStrdup(pszCWHERE);
+}
+
+char *GDALWarpAppOptions_cSQL_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->pszCSQL;
+}
+
+void GDALWarpAppOptions_cSQL_set( GDALWarpAppOptions *warpAppOptions, char *pszCSQL) {
+    CPLFree(warpAppOptions->pszCSQL);
+    warpAppOptions->pszCSQL = CPLStrdup(pszCSQL);
+}
+
+bool GDALWarpAppOptions_cropToCutline_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->bCropToCutline;
+}
+
+void GDALWarpAppOptions_cropToCutline_set( GDALWarpAppOptions *warpAppOptions, bool bCropToCutline ) {
+    warpAppOptions->bCropToCutline = bCropToCutline;
+}
+
+bool GDALWarpAppOptions_overwrite_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->bOverwrite;
+}
+
+void GDALWarpAppOptions_overwrite_set( GDALWarpAppOptions *warpAppOptions, bool bOverwrite ) {
+    warpAppOptions->bOverwrite = bOverwrite;
+}
+
+bool GDALWarpAppOptions_copyMetadata_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->bCopyMetadata;
+}
+
+void GDALWarpAppOptions_copyMetadata_set( GDALWarpAppOptions *warpAppOptions, bool bCopyMetadata ) {
+    warpAppOptions->bCopyMetadata = bCopyMetadata;
+}
+
+bool GDALWarpAppOptions_copyBandInfo_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->bCopyBandInfo;
+}
+
+void GDALWarpAppOptions_copyBandInfo_set( GDALWarpAppOptions *warpAppOptions, bool bCopyBandInfo ) {
+    warpAppOptions->bCopyBandInfo = bCopyBandInfo;
+}
+
+char *GDALWarpAppOptions_MDConflictValue_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->pszMDConflictValue;
+}
+
+void GDALWarpAppOptions_MDConflictValue_set( GDALWarpAppOptions *warpAppOptions, char *pszMDConflictValue ) {
+    CPLFree(warpAppOptions->pszMDConflictValue);
+    warpAppOptions->pszMDConflictValue = CPLStrdup(pszMDConflictValue);
+}
+
+bool GDALWarpAppOptions_setColorInterpretation_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->bSetColorInterpretation;
+}
+
+void GDALWarpAppOptions_setColorInterpretation_set( GDALWarpAppOptions *warpAppOptions, bool bSetColorInterpretation ) {
+    warpAppOptions->bSetColorInterpretation = bSetColorInterpretation;
+}
+
+char **GDALWarpAppOptions_destOpenOptions_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->papszDestOpenOptions;
+}
+
+void GDALWarpAppOptions_destOpenOptions_set( GDALWarpAppOptions *warpAppOptions, char **papszDestOpenOptions ) {
+    GDALWarpAppOptionsSetDestOpenOptions( warpAppOptions, papszDestOpenOptions );
+}
+
+int GDALWarpAppOptions_OvLevel_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->nOvLevel;
+}
+
+void GDALWarpAppOptions_OvLevel_set( GDALWarpAppOptions *warpAppOptions, int nOvLevel ) {
+    warpAppOptions->nOvLevel = nOvLevel;
+}
+
+char *GDALWarpAppOptions_TE_SRS_get( GDALWarpAppOptions *warpAppOptions ) {
+    return warpAppOptions->pszTE_SRS;
+}
+
+void GDALWarpAppOptions_TE_SRS_set( GDALWarpAppOptions *warpAppOptions, char *pszTE_SRS ) {
+    CPLFree(warpAppOptions->pszTE_SRS);
+    warpAppOptions->pszTE_SRS = CPLStrdup(pszTE_SRS);
+}
+
+%}
+
+%clear GDALWarpAppOptions *warpAppOptions;
+
+#ifdef SWIGPYTHON
+%rename (WarpInternal) wrapper_GDALWarp;
+#else
+%rename (Warp) wrapper_GDALWarp;
+#endif
+
+%newobject wrapper_GDALWarp;
+
+%inline %{
+GDALDatasetShadow* wrapper_GDALWarp( const char* dest, GDALDatasetShadow* dstDS, int object_list_count, GDALDatasetShadow** poObjects, GDALWarpAppOptions* warpAppOptions )
+{
+    int usageError; /* ignored */
+    GDALDatasetShadow **srcDS = (GDALDatasetShadow**) CPLMalloc( sizeof(GDALDatasetShadow*) * object_list_count );
+    memcpy( srcDS, poObjects, sizeof(GDALDatasetShadow*) * object_list_count );
+    return GDALWarp(dest, dstDS, object_list_count, srcDS, warpAppOptions, &usageError);
+}
+
+%}
+
+%rename (WarpOptionsSetSrcSRS) GDALWarpAppOptionsSetSrcSRS;
+void GDALWarpAppOptionsSetSrcSRS( GDALWarpAppOptions *psOptions, const char *pszSrcSRS );
+
+%rename (WarpOptionsSetDstSRS) GDALWarpAppOptionsSetDstSRS;
+void GDALWarpAppOptionsSetDstSRS( GDALWarpAppOptions *psOptions, const char *pszDstSRS );
+
+%rename (WarpOptionsSetOrder) GDALWarpAppOptionsSetOrder;
+void GDALWarpAppOptionsSetOrder( GDALWarpAppOptions *psOptions, const char *pszN);
+
+%rename (WarpOptionsSetRefineGCPs) GDALWarpAppOptionsSetRefineGCPs;
+void GDALWarpAppOptionsSetRefineGCPs( GDALWarpAppOptions *psOptions, const char *pszTolerance, const char *pszMinimumGCPs );
+
+%rename (WarpOptionsSetMethod) GDALWarpAppOptionsSetMethod;
+void GDALWarpAppOptionsSetMethod( GDALWarpAppOptions *psOptions, const char *pszMethod );
+
+%rename (WarpOptionsSetTransformerOptions) GDALWarpAppOptionsSetTransformerOption;
+void GDALWarpAppOptionsSetTransformerOption( GDALWarpAppOptions *psOptions, const char *pszTransformerOption );
 
 #endif
