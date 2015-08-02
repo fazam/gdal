@@ -259,9 +259,13 @@ GDALDatasetH GDALWarp( const char *pszDest, GDALDatasetH hDstDS, int nSrcCount,
     int bVRT = FALSE;
     void *hCutline = NULL;
 
-    if( EQUAL(psOptions->pszFormat,"VRT") )
-                bVRT = TRUE;
-
+    if( !EQUAL(psOptions->pszFormat,"GTiff") )
+    {
+        psOptions->bCreateOutput = TRUE;
+        if( EQUAL(psOptions->pszFormat,"VRT") )
+            bVRT = TRUE;    
+    }
+    
     if( bVRT && nSrcCount > 1 )
     {
         CPLError(CE_Warning, CPLE_AppDefined, "gdalwarp -of VRT just takes into account "
@@ -477,7 +481,7 @@ GDALDatasetH GDALWarp( const char *pszDest, GDALDatasetH hDstDS, int nSrcCount,
 
     if( hDstDS == NULL )
     {
-        if (!psOptions->bQuiet)
+        if (!psOptions->bQuiet && EQUAL(psOptions->pszFormat,"GTiff") )
             CheckExtensionConsistency(pszDest, psOptions->pszFormat);
 
         hDstDS = GDALWarpCreateOutput( nSrcCount, pahSrcDS, pszDest,psOptions->pszFormat,

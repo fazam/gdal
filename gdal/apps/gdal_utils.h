@@ -241,4 +241,96 @@ void CPL_DLL GDALWarpAppOptionsSetTO( GDALWarpAppOptions *psOptions, char **paps
 
 void CPL_DLL GDALWarpAppOptionsSetDestOpenOptions( GDALWarpAppOptions *psOptions, char **papszDestOpenOptions );
 
+typedef enum
+{
+    NONE,
+    SEGMENTIZE,
+    SIMPLIFY_PRESERVE_TOPOLOGY,
+} GeomOperation;
+
+typedef struct
+{
+    int bPromoteToMulti;
+    int bConvertToLinear;
+    int bConvertToCurve;
+} GeometryConversion;
+
+#define COORD_DIM_LAYER_DIM -2
+
+typedef struct
+{
+    int bSkipFailures;
+    int bLayerTransaction;
+    int bForceTransaction;
+    int nGroupTransactions;
+    GIntBig nFIDToFetch;
+    int bQuiet;
+    char *pszFormat;
+    char **papszLayers;
+    char **papszDSCO;
+    char **papszLCO;
+    int bTransform;
+    int bAppend;
+    int bUpdate;
+    int bOverwrite;
+    int bAddMissingFields;
+    char *pszOutputSRSDef;
+    char *pszSourceSRSDef;
+    int bNullifyOutputSRS;
+    int bExactFieldNameMatch;
+    char *pszNewLayerName;
+    char *pszWHERE;
+    char *pszGeomField;
+    char **papszSelFields;
+    char *pszSQLStatement;
+    char *pszDialect;
+    int eGType;
+    GeometryConversion sGeomConversion;
+    GeomOperation eGeomOp;
+    double dfGeomOpParam;
+    char **papszFieldTypesToString;
+    char **papszMapFieldType;
+    int bUnsetFieldWidth;
+    int bDisplayProgress;
+    int bWrapDateline;
+    char *pszDateLineOffset;
+    int bClipSrc;
+    OGRGeometryH hClipSrc;
+    char *pszClipSrcDS;
+    char *pszClipSrcSQL;
+    char *pszClipSrcLayer;
+    char *pszClipSrcWhere;
+    OGRGeometryH hClipDst;
+    char *pszClipDstDS;
+    char *pszClipDstSQL;
+    char *pszClipDstLayer;
+    char *pszClipDstWhere;
+    int bSplitListFields;
+    int nMaxSplitListSubFields;
+    int bExplodeCollections;
+    char *pszZField;
+    char *pszFieldMap;
+    char **papszFieldMap;
+    int nCoordDim;
+    char **papszDestOpenOptions;
+    int bForceNullable;
+    int bUnsetDefault;
+    int bUnsetFid;
+    int bPreserveFID;
+    int bCopyMD;
+    char **papszMetadataOptions;
+    char *pszSpatSRSDef;
+    int nGCPCount;
+    GDAL_GCP *pasGCPs;
+    int nTransformOrder;
+    OGRGeometryH hSpatialFilter;
+
+} OGR2OGROptions;
+
+OGR2OGROptions CPL_DLL *OGR2OGROptionsNew( void );
+
+void CPL_DLL OGR2OGROptionsFree( OGR2OGROptions *psOptions );
+
+GDALDatasetH CPL_DLL OGR2OGR( const char *pszDest, GDALDatasetH hDataset, OGR2OGROptions *psOptions, int *bUsageError );
+
 CPL_C_END

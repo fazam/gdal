@@ -123,7 +123,6 @@ def test_gdalwarp_lib_5():
     ds = gdal.Open('../gcore/data/byte.tif')
     gcpList = [gdal.GCP(440720.000,3751320.000,0,0,0),gdal.GCP(441920.000,3751320.000,0,20,0),gdal.GCP(441920.000,3750120.000,0,20,20),gdal.GCP(440720.000,3750120.000,0,0,20)]
     ds1 = gdal.Translate('tmp/testgdalwarp_gcp.tif',ds,outputSRS = 'EPSG:26711',GCPs = gcpList)
-    gdaltest.runexternal(test_cli_utilities.get_gdalwarp_path() + ' tmp/testgdalwarp_gcp.tif tmp/testgdalwarp5.tif')
     srcDS = [ds1]
     dstDS = gdal.Warp('tmp/testgdalwarp5.tif',dstDS = None,srcDS = srcDS)
 
