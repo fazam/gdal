@@ -87,6 +87,7 @@ int main( int nArgc, char ** papszArgv )
     char **papszOpenOptions = NULL;
     OGR2OGROptions *psOptions = OGR2OGROptionsNew();
     int bUsageError = FALSE;
+    int bCloseODS = TRUE;
     
     /* Check strict compilation and runtime library version as we use C++ API */
     if (! GDAL_CHECK_VERSION(papszArgv[0]))
@@ -162,23 +163,20 @@ int main( int nArgc, char ** papszArgv )
         }
         else if( EQUAL(papszArgv[iArg],"-append") )
         {
-            psOptions->bAppend = TRUE;
-            psOptions->bUpdate = TRUE;
+            psOptions->eAccessMode = ACCESS_APPEND;
         }
         else if( EQUAL(papszArgv[iArg],"-overwrite") )
         {
-            psOptions->bOverwrite = TRUE;
-            psOptions->bUpdate = TRUE;
+            psOptions->eAccessMode = ACCESS_OVERWRITE;
         }
         else if( EQUAL(papszArgv[iArg],"-addfields") )
         {
             psOptions->bAddMissingFields = TRUE;
-            psOptions->bAppend = TRUE;
-            psOptions->bUpdate = TRUE;
+            psOptions->eAccessMode = ACCESS_APPEND;
         }
         else if( EQUAL(papszArgv[iArg],"-update") )
         {
-            psOptions->bUpdate = TRUE;
+            psOptions->eAccessMode = ACCESS_UPDATE;
         }
         else if( EQUAL(papszArgv[iArg],"-relaxedFieldNameMatch") )
         {
@@ -226,11 +224,11 @@ int main( int nArgc, char ** papszArgv )
             else if( EQUAL(osGeomName,"GEOMETRY") )
                 psOptions->eGType = wkbUnknown;
             else if( EQUAL(osGeomName,"PROMOTE_TO_MULTI") )
-                psOptions->sGeomConversion.bPromoteToMulti = TRUE;
+                psOptions->eGeomConversion = GEOMTYPE_PROMOTE_TO_MULTI;
             else if( EQUAL(osGeomName,"CONVERT_TO_LINEAR") )
-                psOptions->sGeomConversion.bConvertToLinear = TRUE;
+                psOptions->eGeomConversion = GEOMTYPE_CONVERT_TO_LINEAR;
             else if( EQUAL(osGeomName,"CONVERT_TO_CURVE") )
-                psOptions->sGeomConversion.bConvertToCurve = TRUE;
+                psOptions->eGeomConversion = GEOMTYPE_CONVERT_TO_CURVE;
             else
             {
                 psOptions->eGType = OGRFromOGCGeomType(osGeomName);
@@ -345,13 +343,13 @@ int main( int nArgc, char ** papszArgv )
         else if( EQUAL(papszArgv[iArg],"-segmentize") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
-            psOptions->eGeomOp = SEGMENTIZE;
+            psOptions->eGeomOp = GEOMOP_SEGMENTIZE;
             psOptions->dfGeomOpParam = CPLAtof(papszArgv[++iArg]);
         }
         else if( EQUAL(papszArgv[iArg],"-simplify") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
-            psOptions->eGeomOp = SIMPLIFY_PRESERVE_TOPOLOGY;
+            psOptions->eGeomOp = GEOMOP_SIMPLIFY_PRESERVE_TOPOLOGY;
             psOptions->dfGeomOpParam = CPLAtof(papszArgv[++iArg]);
         }
         else if( EQUAL(papszArgv[iArg],"-fieldTypeToString") )
@@ -418,7 +416,7 @@ int main( int nArgc, char ** papszArgv )
         }
         else if( EQUAL(papszArgv[iArg],"-datelineoffset") && iArg < nArgc-1 )
         {
-            psOptions->pszDateLineOffset = papszArgv[++iArg];
+            psOptions->nDateLineOffset = atoi(papszArgv[++iArg]);
         }        
         else if( EQUAL(papszArgv[iArg],"-clipsrc") )
         {
@@ -608,8 +606,7 @@ int main( int nArgc, char ** papszArgv )
         else if( EQUAL(papszArgv[iArg],"-fieldmap") && papszArgv[iArg+1] != NULL)
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(1);
-            psOptions->pszFieldMap = papszArgv[++iArg];
-            psOptions->papszFieldMap = CSLTokenizeStringComplex(psOptions->pszFieldMap, ",", 
+            psOptions->papszFieldMap = CSLTokenizeStringComplex(papszArgv[++iArg], ",", 
                                                       FALSE, FALSE );
         }
         else if( EQUAL(papszArgv[iArg],"-forceNullable") )
@@ -681,14 +678,14 @@ int main( int nArgc, char ** papszArgv )
     }
 
 
-    hODS = OGR2OGR( pszDestDataSource, hDS, psOptions, &bUsageError );
+    hODS = OGR2OGR( pszDestDataSource, NULL, hDS, psOptions, &bUsageError, &bCloseODS );
 
     if(bUsageError==TRUE)
         Usage();
 
     if(hDS)
         GDALClose(hDS);
-    if(hODS)
+    if(bCloseODS)
         GDALClose(hODS);
 
     OGR2OGROptionsFree( psOptions );

@@ -243,17 +243,27 @@ void CPL_DLL GDALWarpAppOptionsSetDestOpenOptions( GDALWarpAppOptions *psOptions
 
 typedef enum
 {
-    NONE,
-    SEGMENTIZE,
-    SIMPLIFY_PRESERVE_TOPOLOGY,
+    GEOMOP_NONE,
+    GEOMOP_SEGMENTIZE,
+    GEOMOP_SIMPLIFY_PRESERVE_TOPOLOGY,
 } GeomOperation;
 
-typedef struct
+typedef enum
 {
-    int bPromoteToMulti;
-    int bConvertToLinear;
-    int bConvertToCurve;
-} GeometryConversion;
+    GEOMTYPE_DEFAULT,
+    GEOMTYPE_SET,
+    GEOMTYPE_PROMOTE_TO_MULTI,
+    GEOMTYPE_CONVERT_TO_LINEAR,
+    GEOMTYPE_CONVERT_TO_CURVE,
+} GeomType;
+
+typedef enum
+{
+    ACCESS_CREATION,
+    ACCESS_UPDATE,
+    ACCESS_APPEND,
+    ACCESS_OVERWRITE,
+} AccessMode;
 
 #define COORD_DIM_LAYER_DIM -2
 
@@ -269,11 +279,9 @@ typedef struct
     char **papszLayers;
     char **papszDSCO;
     char **papszLCO;
-    int bTransform;
-    int bAppend;
-    int bUpdate;
-    int bOverwrite;
+    AccessMode eAccessMode;
     int bAddMissingFields;
+    int bTransform; //bTransform must be set to TRUE to trigger reprojection, otherwise only SRS assignment is done.
     char *pszOutputSRSDef;
     char *pszSourceSRSDef;
     int bNullifyOutputSRS;
@@ -285,7 +293,7 @@ typedef struct
     char *pszSQLStatement;
     char *pszDialect;
     int eGType;
-    GeometryConversion sGeomConversion;
+    GeomType eGeomConversion;
     GeomOperation eGeomOp;
     double dfGeomOpParam;
     char **papszFieldTypesToString;
@@ -293,7 +301,7 @@ typedef struct
     int bUnsetFieldWidth;
     int bDisplayProgress;
     int bWrapDateline;
-    char *pszDateLineOffset;
+    int nDateLineOffset;
     int bClipSrc;
     OGRGeometryH hClipSrc;
     char *pszClipSrcDS;
@@ -309,7 +317,6 @@ typedef struct
     int nMaxSplitListSubFields;
     int bExplodeCollections;
     char *pszZField;
-    char *pszFieldMap;
     char **papszFieldMap;
     int nCoordDim;
     char **papszDestOpenOptions;
@@ -331,6 +338,7 @@ OGR2OGROptions CPL_DLL *OGR2OGROptionsNew( void );
 
 void CPL_DLL OGR2OGROptionsFree( OGR2OGROptions *psOptions );
 
-GDALDatasetH CPL_DLL OGR2OGR( const char *pszDest, GDALDatasetH hDataset, OGR2OGROptions *psOptions, int *bUsageError );
+GDALDatasetH CPL_DLL OGR2OGR( const char *pszDest, GDALDatasetH hDstDS, GDALDatasetH hSrcDS,
+                              OGR2OGROptions *psOptions, int *bUsageError, int *bCloseODS );
 
 CPL_C_END

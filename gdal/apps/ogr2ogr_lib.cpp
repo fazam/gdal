@@ -74,7 +74,7 @@ public:
     int bAppend;
     int bAddMissingFields;
     int eGTypeIn;
-    GeometryConversion sGeomConversion;
+    GeomType eGeomConversion;
     int nCoordDim;
     int bOverwrite;
     char** papszFieldTypesToString;
@@ -110,7 +110,7 @@ public:
     OGRSpatialReference *poUserSourceSRS;
     OGRCoordinateTransformation *poGCPCoordTrans;
     int eGTypeIn;
-    GeometryConversion sGeomConversion;
+    GeomType eGeomConversion;
     int nCoordDim;
     GeomOperation eGeomOp;
     double dfGeomOpParam;
@@ -884,7 +884,8 @@ int GetFieldType(const char* pszArg, int* pnSubFieldType)
 /*                             OGR2OGR()                                */
 /************************************************************************/
 
-GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDataset, OGR2OGROptions *psOptions, int *bUsageError )
+GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDstDS, GDALDatasetH hSrcDS, 
+                      OGR2OGROptions *psOptions, int *pbUsageError, int *pbCloseODS )
 
 {
     OGRSpatialReference *poOutputSRS = NULL;
@@ -892,47 +893,66 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDataset, OGR2OGROptions
     GDALProgressFunc pfnProgress = NULL;
     void *pProgressArg = NULL;
     OGRSpatialReference* poSpatSRS = NULL;
-
+    int bAppend = FALSE;
+    int bUpdate = FALSE;
+    int bOverwrite = FALSE;
+    CPLString osDateLineOffset;
     int nRetCode = 0;
 
+    if( psOptions->eAccessMode == ACCESS_UPDATE )
+    {
+        bUpdate = TRUE;
+    }
+    else if ( psOptions->eAccessMode == ACCESS_APPEND )
+    {
+        bAppend = TRUE;
+        bUpdate = TRUE;
+    }
+    else if ( psOptions->eAccessMode == ACCESS_OVERWRITE )
+    {
+        bOverwrite = TRUE;
+        bUpdate = TRUE;
+    }
+
+    osDateLineOffset = CPLOPrintf("%d", psOptions->nDateLineOffset);
 
     if( psOptions->bPreserveFID && psOptions->bExplodeCollections )
     {
         CPLError( CE_Failure, CPLE_IllegalArg, "cannot use -preserve_fid and -explodecollections at the same time.");
-        if(bUsageError)
-            *bUsageError = TRUE;
+        if(pbUsageError)
+            *pbUsageError = TRUE;
         return NULL;
     }
 
-    if (psOptions->pszFieldMap && !psOptions->bAppend)
+    if (psOptions->papszFieldMap && !bAppend)
     {
         CPLError( CE_Failure, CPLE_IllegalArg, "if -fieldmap is specified, -append must also be specified");
-        if(bUsageError)
-            *bUsageError = TRUE;
+        if(pbUsageError)
+            *pbUsageError = TRUE;
         return NULL;
     }
 
-    if (psOptions->pszFieldMap && psOptions->bAddMissingFields)
+    if (psOptions->papszFieldMap && psOptions->bAddMissingFields)
     {
         CPLError( CE_Failure, CPLE_IllegalArg, "if -addfields is specified, -fieldmap cannot be used.");
-        if(bUsageError)
-            *bUsageError = TRUE;
+        if(pbUsageError)
+            *pbUsageError = TRUE;
         return NULL;
     }
 
     if( psOptions->papszFieldTypesToString && psOptions->papszMapFieldType )
     {
         CPLError( CE_Failure, CPLE_IllegalArg, "-fieldTypeToString and -mapFieldType are exclusive.");
-        if(bUsageError)
-            *bUsageError = TRUE;
+        if(pbUsageError)
+            *pbUsageError = TRUE;
         return NULL;
     }
 
     if( psOptions->pszSourceSRSDef != NULL && psOptions->pszOutputSRSDef == NULL && psOptions->pszSpatSRSDef == NULL )
     {
         CPLError( CE_Failure, CPLE_IllegalArg, "if -s_srs is specified, -t_srs and/or -spat_srs must also be specified.");
-        if(bUsageError)
-            *bUsageError = TRUE;
+        if(pbUsageError)
+            *pbUsageError = TRUE;
         return NULL;
     }
 
@@ -953,8 +973,8 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDataset, OGR2OGROptions
         {
             CPLError( CE_Failure, CPLE_IllegalArg, "-clipsrc must be used with -spat option or a\n"
                              "bounding box, WKT string or datasource must be specified");
-            if(bUsageError)
-                *bUsageError = TRUE;
+            if(pbUsageError)
+                *pbUsageError = TRUE;
             return NULL;
         }
     }
@@ -969,14 +989,16 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDataset, OGR2OGROptions
         }
     }
 
-    GDALDataset *poDS = (GDALDataset *) hDataset;
+    GDALDataset *poDS = (GDALDataset *) hSrcDS;
     GDALDataset *poODS = NULL;
     GDALDriver *poDriver = NULL;
-    int bCloseODS = TRUE;
+    
+    if(hDstDS)
+        poODS = (GDALDataset *) hDstDS;
 
     /* Avoid opening twice the same datasource if it is both the input and output */
     /* Known to cause problems with at least FGdb and SQlite drivers. See #4270 */
-    if (psOptions->bUpdate && strcmp(pszDest, poDS->GetDescription()) == 0)
+    if (bUpdate && strcmp(pszDest, poDS->GetDescription()) == 0)
     {
         poODS = poDS;
 
@@ -985,14 +1007,17 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDataset, OGR2OGROptions
 
         /* Restrict to those 2 drivers. For example it is known to break with */
         /* the PG driver due to the way it manages transactions... */
-        if (!poDS && (EQUAL(poDriver->GetDescription(), "FileGDB") ||
-                     !EQUAL(poDriver->GetDescription(), "SQLite") ||
-                     !EQUAL(poDriver->GetDescription(), "GPKG")))
-            bCloseODS = FALSE;
+        if (poDS && !(EQUAL(poDriver->GetDescription(), "FileGDB") ||
+                      EQUAL(poDriver->GetDescription(), "SQLite") ||
+                      EQUAL(poDriver->GetDescription(), "GPKG")))
+            poODS = NULL;
+        else
+            if( pbCloseODS )
+                *pbCloseODS = FALSE;
         
         if (poDS)
         {
-            if (psOptions->bOverwrite || psOptions->bAppend)
+            if (bOverwrite || bAppend)
             {
                 /* Various tests to avoid overwriting the source layer(s) */
                 /* or to avoid appending a layer to itself */
@@ -1019,7 +1044,7 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDataset, OGR2OGROptions
 /*      Try opening the output datasource as an existing, writable      */
 /* -------------------------------------------------------------------- */
 
-    if( psOptions->bUpdate && poODS == NULL )
+    if( bUpdate && poODS == NULL )
     {
         poODS = (GDALDataset*) GDALOpenEx( pszDest,
                 GDAL_OF_UPDATE | GDAL_OF_VECTOR, NULL, psOptions->papszDestOpenOptions, NULL );
@@ -1028,14 +1053,14 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDataset, OGR2OGROptions
 
         if( poODS == NULL )
         {
-            if (psOptions->bOverwrite || psOptions->bAppend)
+            if (bOverwrite || bAppend)
             {
                 poODS = (GDALDataset*) GDALOpenEx( pszDest,
                             GDAL_OF_VECTOR, NULL, psOptions->papszDestOpenOptions, NULL );
                 if (poODS == NULL)
                 {
                     /* ok the datasource doesn't exist at all */
-                    psOptions->bUpdate = FALSE;
+                    bUpdate = FALSE;
                 }
                 else
                 {
@@ -1046,7 +1071,7 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDataset, OGR2OGROptions
                 }
             }
 
-            if (psOptions->bUpdate)
+            if (bUpdate)
             {
                 CPLError( CE_Failure, CPLE_AppDefined,
                         "Unable to open existing output datasource `%s'.\n",
@@ -1064,7 +1089,7 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDataset, OGR2OGROptions
 /* -------------------------------------------------------------------- */
 /*      Find the output driver.                                         */
 /* -------------------------------------------------------------------- */
-    if( !psOptions->bUpdate )
+    if( !bUpdate )
     {
         if (!psOptions->bQuiet && EQUAL(psOptions->pszFormat,"ESRI Shapefile"))
             CheckDestDataSourceNameConsistency(pszDest, psOptions->pszFormat);
@@ -1249,12 +1274,12 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDataset, OGR2OGROptions
     oSetup.poOutputSRSIn = poOutputSRS;
     oSetup.bNullifyOutputSRS = psOptions->bNullifyOutputSRS;
     oSetup.papszSelFields = psOptions->papszSelFields;
-    oSetup.bAppend = psOptions->bAppend;
+    oSetup.bAppend = bAppend;
     oSetup.bAddMissingFields = psOptions->bAddMissingFields;
     oSetup.eGTypeIn = psOptions->eGType;
-    oSetup.sGeomConversion = psOptions->sGeomConversion;
+    oSetup.eGeomConversion = psOptions->eGeomConversion;
     oSetup.nCoordDim = psOptions->nCoordDim;
-    oSetup.bOverwrite = psOptions->bOverwrite;
+    oSetup.bOverwrite = bOverwrite;
     oSetup.papszFieldTypesToString = psOptions->papszFieldTypesToString;
     oSetup.papszMapFieldType = psOptions->papszMapFieldType;
     oSetup.bUnsetFieldWidth = psOptions->bUnsetFieldWidth;
@@ -1275,13 +1300,13 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDataset, OGR2OGROptions
     oTranslator.poODS = poODS;
     oTranslator.bTransform = psOptions->bTransform;
     oTranslator.bWrapDateline = psOptions->bWrapDateline;
-    oTranslator.pszDateLineOffset = psOptions->pszDateLineOffset;
+    oTranslator.pszDateLineOffset = CPLStrdup(osDateLineOffset);
     oTranslator.poOutputSRSIn = poOutputSRS;
     oTranslator.bNullifyOutputSRS = psOptions->bNullifyOutputSRS;
     oTranslator.poUserSourceSRS = poSourceSRS;
     oTranslator.poGCPCoordTrans = poGCPCoordTrans;
     oTranslator.eGTypeIn = psOptions->eGType;
-    oTranslator.sGeomConversion = psOptions->sGeomConversion;
+    oTranslator.eGeomConversion = psOptions->eGeomConversion;
     oTranslator.nCoordDim = psOptions->nCoordDim;
     oTranslator.eGeomOp = psOptions->eGeomOp;
     oTranslator.dfGeomOpParam = psOptions->dfGeomOpParam;
@@ -1305,8 +1330,8 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDataset, OGR2OGROptions
 
         /* Special case: if output=input, then we must likely destroy the */
         /* old table before to avoid transaction issues. */
-        if( poDS == poODS && psOptions->pszNewLayerName != NULL && psOptions->bOverwrite )
-            GetLayerAndOverwriteIfNecessary(poODS, psOptions->pszNewLayerName, psOptions->bOverwrite, NULL);
+        if( poDS == poODS && psOptions->pszNewLayerName != NULL && bOverwrite )
+            GetLayerAndOverwriteIfNecessary(poODS, psOptions->pszNewLayerName, bOverwrite, NULL);
 
         if( psOptions->pszWHERE != NULL )
             CPLError( CE_Warning, CPLE_AppDefined, "-where clause ignored in combination with -sql.\n" );
@@ -1804,12 +1829,6 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDataset, OGR2OGROptions
                 poODS->CommitTransaction();
         }
     }
-
-/* -------------------------------------------------------------------- */
-/*      Close down.                                                     */
-/* -------------------------------------------------------------------- */
-    if (bCloseODS)
-        GDALClose( (GDALDatasetH)poODS );
     
     OGRGeometryFactory::destroyGeometry((OGRGeometry *)psOptions->hSpatialFilter);
     OGRGeometryFactory::destroyGeometry((OGRGeometry *)psOptions->hClipSrc);
@@ -1954,18 +1973,18 @@ static OGRLayer* GetLayerAndOverwriteIfNecessary(GDALDataset *poDstDS,
 /*                          ConvertType()                               */
 /************************************************************************/
 
-static OGRwkbGeometryType ConvertType(GeometryConversion sGeomConversion,
+static OGRwkbGeometryType ConvertType(GeomType eGeomConversion,
                                       OGRwkbGeometryType eGType)
 {
     OGRwkbGeometryType eRetType = eGType;
-    if ( sGeomConversion.bPromoteToMulti )
+    if ( eGeomConversion == GEOMTYPE_PROMOTE_TO_MULTI )
     {
         if( !OGR_GT_IsSubClassOf(eGType, wkbGeometryCollection) )
             eRetType = OGR_GT_GetCollection(eGType);
     }
-    else if ( sGeomConversion.bConvertToLinear )
+    else if ( eGeomConversion == GEOMTYPE_CONVERT_TO_LINEAR )
         eRetType = OGR_GT_GetLinear(eGType);
-    if ( sGeomConversion.bConvertToCurve )
+    if ( eGeomConversion == GEOMTYPE_CONVERT_TO_CURVE )
         eRetType = OGR_GT_GetCurve(eGType);
     return eRetType;
 }
@@ -2206,7 +2225,7 @@ TargetLayerInfo* SetupTargetLayer::Setup(OGRLayer* poSrcLayer,
                 eGType = wkbNone;
 
             int bHasZ = wkbHasZ((OGRwkbGeometryType)eGType);
-            eGType = ConvertType(sGeomConversion, (OGRwkbGeometryType)eGType);
+            eGType = ConvertType(eGeomConversion, (OGRwkbGeometryType)eGType);
 
             if ( bExplodeCollections )
             {
@@ -2357,7 +2376,7 @@ TargetLayerInfo* SetupTargetLayer::Setup(OGRLayer* poSrcLayer,
                 else
                 {
                     eGType = oGFldDefn.GetType();
-                    eGType = ConvertType(sGeomConversion, (OGRwkbGeometryType)eGType);
+                    eGType = ConvertType(eGeomConversion, (OGRwkbGeometryType)eGType);
                     eGType = ForceCoordDimension(eGType, nCoordDim);
                     oGFldDefn.SetType((OGRwkbGeometryType) eGType);
                 }
@@ -3081,12 +3100,12 @@ int LayerTranslator::Translate( TargetLayerInfo* psInfo,
                     poDstGeometry->setCoordinateDimension(
                         wkbHasZ(poDstLayer->GetLayerDefn()->GetGeomFieldDefn(iGeom)->GetType()) ? 3 : 2 );
 
-                if (eGeomOp == SEGMENTIZE)
+                if (eGeomOp == GEOMOP_SEGMENTIZE)
                 {
                     if (dfGeomOpParam > 0)
                         poDstGeometry->segmentize(dfGeomOpParam);
                 }
-                else if (eGeomOp == SIMPLIFY_PRESERVE_TOPOLOGY)
+                else if (eGeomOp == GEOMOP_SIMPLIFY_PRESERVE_TOPOLOGY)
                 {
                     if (dfGeomOpParam > 0)
                     {
@@ -3170,15 +3189,15 @@ int LayerTranslator::Translate( TargetLayerInfo* psInfo,
                         OGRGeometryFactory::forceTo(
                             poDstFeature->StealGeometry(iGeom), (OGRwkbGeometryType)eGType) );
                 }
-                else if( sGeomConversion.bPromoteToMulti ||
-                         sGeomConversion.bConvertToLinear ||
-                         sGeomConversion.bConvertToCurve )
+                else if( eGeomConversion == GEOMTYPE_PROMOTE_TO_MULTI ||
+                         eGeomConversion == GEOMTYPE_CONVERT_TO_LINEAR ||
+                         eGeomConversion == GEOMTYPE_CONVERT_TO_CURVE )
                 {
                     poDstGeometry = poDstFeature->StealGeometry(iGeom);
                     if( poDstGeometry != NULL )
                     {
                         OGRwkbGeometryType eTargetType = poDstGeometry->getGeometryType();
-                        eTargetType = ConvertType(sGeomConversion, eTargetType);
+                        eTargetType = ConvertType(eGeomConversion, eTargetType);
                         poDstGeometry = OGRGeometryFactory::forceTo(poDstGeometry, eTargetType);
                         poDstFeature->SetGeomFieldDirectly(iGeom, poDstGeometry);
                     }
@@ -3279,6 +3298,7 @@ OGR2OGROptions *OGR2OGROptionsNew()
 {
     OGR2OGROptions *psOptions = (OGR2OGROptions *) CPLCalloc( 1, sizeof(OGR2OGROptions) );
     
+    psOptions->eAccessMode = ACCESS_CREATION;
     psOptions->bSkipFailures = FALSE;
     psOptions->bLayerTransaction = -1;
     psOptions->bForceTransaction = FALSE;
@@ -3290,9 +3310,6 @@ OGR2OGROptions *OGR2OGROptionsNew()
     psOptions->papszDSCO = NULL;
     psOptions->papszLCO = NULL;
     psOptions->bTransform = FALSE;
-    psOptions->bAppend = FALSE;
-    psOptions->bUpdate = FALSE;
-    psOptions->bOverwrite = FALSE;
     psOptions->bAddMissingFields = FALSE;
     psOptions->pszOutputSRSDef = NULL;
     psOptions->pszSourceSRSDef = NULL;
@@ -3305,17 +3322,15 @@ OGR2OGROptions *OGR2OGROptionsNew()
     psOptions->pszSQLStatement = NULL;
     psOptions->pszDialect = NULL;
     psOptions->eGType = -2;
-    psOptions->sGeomConversion.bPromoteToMulti = FALSE;
-    psOptions->sGeomConversion.bConvertToLinear = FALSE;
-    psOptions->sGeomConversion.bConvertToCurve = FALSE;
-    psOptions->eGeomOp = NONE;
+    psOptions->eGeomConversion = GEOMTYPE_DEFAULT;
+    psOptions->eGeomOp = GEOMOP_NONE;
     psOptions->dfGeomOpParam = 0;
     psOptions->papszFieldTypesToString = NULL;
     psOptions->papszMapFieldType = NULL;
     psOptions->bUnsetFieldWidth = FALSE;
     psOptions->bDisplayProgress = FALSE;
     psOptions->bWrapDateline = FALSE;
-    psOptions->pszDateLineOffset = CPLStrdup("10");
+    psOptions->nDateLineOffset = 10;
     psOptions->bClipSrc = FALSE;
     psOptions->hClipSrc = NULL;
     psOptions->pszClipSrcDS = NULL;
@@ -3331,7 +3346,6 @@ OGR2OGROptions *OGR2OGROptionsNew()
     psOptions->nMaxSplitListSubFields = -1;
     psOptions->bExplodeCollections = FALSE;
     psOptions->pszZField = NULL;
-    psOptions->pszFieldMap = NULL;
     psOptions->papszFieldMap = NULL;
     psOptions->nCoordDim = -1;
     psOptions->papszDestOpenOptions = NULL;
@@ -3360,7 +3374,6 @@ void OGR2OGROptionsFree( OGR2OGROptions *psOptions )
     CPLFree( psOptions->pszGeomField );
     CPLFree( psOptions->pszSQLStatement );
     CPLFree( psOptions->pszDialect );
-    CPLFree( psOptions->pszDateLineOffset );
     CPLFree( psOptions->pszClipSrcDS );
     CPLFree( psOptions->pszClipSrcSQL );
     CPLFree( psOptions->pszClipSrcLayer );
@@ -3370,7 +3383,6 @@ void OGR2OGROptionsFree( OGR2OGROptions *psOptions )
     CPLFree( psOptions->pszClipDstLayer );
     CPLFree( psOptions->pszClipDstWhere );
     CPLFree( psOptions->pszZField );
-    CPLFree( psOptions->pszFieldMap );
     CPLFree( psOptions->pszSpatSRSDef );
     CSLDestroy(psOptions->papszSelFields);
     CSLDestroy( psOptions->papszFieldMap );

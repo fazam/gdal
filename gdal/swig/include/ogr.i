@@ -3066,3 +3066,666 @@ int GDALTermProgress( double, const char *, void * );
 #ifdef SWIGJAVA
 %include "ogr_java_extend.i"
 #endif
+
+
+//************************************************************************
+//
+// OGR Utilities
+//
+//************************************************************************
+
+#ifdef SWIGPYTHON
+%{
+#include "gdal_utils.h"   
+%}
+
+typedef enum
+{
+    GEOMOP_NONE,
+    GEOMOP_SEGMENTIZE,
+    GEOMOP_SIMPLIFY_PRESERVE_TOPOLOGY,
+} GeomOperation;
+
+typedef enum
+{
+    GEOMTYPE_DEFAULT,
+    GEOMTYPE_SET,
+    GEOMTYPE_PROMOTE_TO_MULTI,
+    GEOMTYPE_CONVERT_TO_LINEAR,
+    GEOMTYPE_CONVERT_TO_CURVE,
+} GeomType;
+
+typedef enum
+{
+    ACCESS_CREATION,
+    ACCESS_UPDATE,
+    ACCESS_APPEND,
+    ACCESS_OVERWRITE,
+} AccessMode;
+
+%rename (TranslateOGROptions) OGR2OGROptions;
+
+%apply (char** options) {char** layers};
+%apply (char** options) {char** DSCO};
+%apply (char** options) {char** LCO};
+%apply (char** options) {char** selFields};
+%apply (char** options) {char** fieldTypesToString};
+%apply (char** options) {char** mapFieldType};
+%apply (char** options) {char** fieldMap};
+%apply (char** options) {char** destOpenOptions};
+%apply (char** options) {char** metadataOptions};
+
+%feature("python:nondynamic") GDALTranslateOptions;
+
+struct OGR2OGROptions {
+%extend {
+%mutable;
+    int skipFailures;
+    int layerTransaction;
+    int forceTransaction;
+    int groupTransactions;
+    GIntBig FIDToFetch;
+    int quiet;
+    char *format;
+    char **layers;
+    char **DSCO;
+    char **LCO;
+    AccessMode accessMode;
+    int addMissingFields;
+    int transform; //transform must be set to TRUE to trigger reprojection, otherwise only SRS assignment is done.
+    char *outputSRSDef;
+    char *sourceSRSDef;
+    int nullifyOutputSRS;
+    int exactFieldNameMatch;
+    char *newLayerName;
+    char *WHERE;
+    char *geomField;
+    char **selFields;
+    char *SQLStatement;
+    char *dialect;
+    int gType;
+    GeomType geomConversion;
+    GeomOperation geomOp;
+    double geomOpParam;
+    char **fieldTypesToString;
+    char **mapFieldType;
+    int unsetFieldWidth;
+    int displayProgress;
+    int wrapDateline;
+    int dateLineOffset;
+    OGRGeometryH clipSrc;
+    char *clipSrcDS;
+    char *clipSrcSQL;
+    char *clipSrcLayer;
+    char *clipSrcWhere;
+    OGRGeometryH clipDst;
+    char *clipDstDS;
+    char *clipDstSQL;
+    char *clipDstLayer;
+    char *clipDstWhere;
+    int splitListFields;
+    int maxSplitListSubFields;
+    int explodeCollections;
+    char *zField;
+    char **fieldMap;
+    int coordDim;
+    char **destOpenOptions;
+    int forceNullable;
+    int unsetDefault;
+    int unsetFid;
+    int preserveFID;
+    int copyMD;
+    char **metadataOptions;
+    char *spatSRSDef;
+    GDAL_GCP *GCPs;
+    int transformOrder;
+    OGRGeometryH spatialFilter;
+
+%immutable;
+    OGR2OGROptions() {
+        OGR2OGROptions *self = OGR2OGROptionsNew();
+        return self;
+    }
+
+    ~OGR2OGROptions() {
+        OGR2OGROptionsFree( self );
+    }
+
+    void getGCPs( int *nGCPs, GDAL_GCP const **pGCPs ) {
+        *nGCPs = self->nGCPCount;
+        *pGCPs = self->pasGCPs;
+    }
+
+    void setGCPs( int nGCPs, GDAL_GCP const *pGCPs ) {
+        if(self->nGCPCount > 0) {
+            GDALDeinitGCPs( self->nGCPCount, self->pasGCPs );
+            CPLFree( self->pasGCPs );
+        }
+        self->nGCPCount = nGCPs;
+        self->pasGCPs = GDALDuplicateGCPs( nGCPs, pGCPs );
+    }
+
+} /* extend */    
+};
+
+%extend OGR2OGROptions {
+%pythoncode {
+    if not '__swig_setmethods__' in dir():
+        #This is to ensure that it builds in windows too since SWIG generates different files for linux and windows.
+        __swig_getmethods__ = {}
+        __swig_setmethods__ = {}
+    __swig_setmethods__["GCPs"] = _gdal.TranslateOptions_setGCPs
+    __swig_getmethods__["GCPs"] = _gdal.TranslateOptions_getGCPs
+    if _newclass:GCPs = _swig_property(_gdal.TranslateOptions_getGCPs, _gdal.TranslateOptions_setGCPs)
+}
+}
+
+%clear char** layers;
+%clear char** DSCO;
+%clear char** LCO;
+%clear char** selFields;
+%clear char** fieldTypesToString;
+%clear char** mapFieldType;
+%clear char** fieldMap;
+%clear char** destOpenOptions;
+%clear char** metadataOptions;
+
+%apply Pointer NONNULL {OGR2OGROptions *ogr2ogrOptions};
+%inline %{
+    
+bool OGR2OGROptions_skipFailures_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->bSkipFailures;
+}
+
+void OGR2OGROptions_skipFailures_set( OGR2OGROptions *ogr2ogrOptions, bool bSkipFailures ) {
+    ogr2ogrOptions->bSkipFailures = bSkipFailures;
+}
+
+bool OGR2OGROptions_layerTransaction_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->bLayerTransaction;
+}
+
+void OGR2OGROptions_layerTransaction_set( OGR2OGROptions *ogr2ogrOptions, bool bLayerTransaction ) {
+    ogr2ogrOptions->bLayerTransaction = bLayerTransaction;
+}
+
+bool OGR2OGROptions_forceTransaction_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->bForceTransaction;
+}
+
+void OGR2OGROptions_forceTransaction_set( OGR2OGROptions *ogr2ogrOptions, bool bForceTransaction ) {
+    ogr2ogrOptions->bForceTransaction = bForceTransaction;
+}
+
+int OGR2OGROptions_groupTransactions_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->nGroupTransactions;
+}
+
+void OGR2OGROptions_groupTransactions_set( OGR2OGROptions *ogr2ogrOptions, int nGroupTransactions ) {
+    ogr2ogrOptions->nGroupTransactions = nGroupTransactions;
+}
+
+GIntBig OGR2OGROptions_FIDToFetch_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->nFIDToFetch;
+}
+
+void OGR2OGROptions_FIDToFetch_set( OGR2OGROptions *ogr2ogrOptions, GIntBig nFIDToFetch ) {
+    ogr2ogrOptions->nFIDToFetch = nFIDToFetch;
+}
+
+bool OGR2OGROptions_quiet_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->bQuiet;
+}
+
+void OGR2OGROptions_quiet_set( OGR2OGROptions *ogr2ogrOptions, bool bQuiet ) {
+    ogr2ogrOptions->bQuiet = bQuiet;
+}
+
+char *OGR2OGROptions_format_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->pszFormat;
+}
+
+void OGR2OGROptions_format_set( OGR2OGROptions *ogr2ogrOptions, char *pszFormat ) {
+    ogr2ogrOptions->pszFormat = pszFormat;
+}
+
+char **OGR2OGROptions_layers_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->papszLayers;
+}
+
+void OGR2OGROptions_layers_set( OGR2OGROptions *ogr2ogrOptions, char **papszLayers ) {
+    ogr2ogrOptions->papszLayers = papszLayers;
+}
+
+char **OGR2OGROptions_DSCO_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->papszDSCO;
+}
+
+void OGR2OGROptions_DSCO_set( OGR2OGROptions *ogr2ogrOptions, char **papszDSCO ) {
+    ogr2ogrOptions->papszDSCO = papszDSCO;
+}
+
+char **OGR2OGROptions_LCO_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->papszLCO;
+}
+
+void OGR2OGROptions_LCO_set( OGR2OGROptions *ogr2ogrOptions, char **papszLCO ) {
+    ogr2ogrOptions->papszLCO = papszLCO;
+}
+
+AccessMode OGR2OGROptions_accessMode_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->eAccessMode;
+}
+
+void OGR2OGROptions_accessMode_set( OGR2OGROptions *ogr2ogrOptions, AccessMode eAccessMode ) {
+    ogr2ogrOptions->eAccessMode = eAccessMode;
+}
+
+bool OGR2OGROptions_addMissingFields_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->bAddMissingFields;
+}
+
+void OGR2OGROptions_addMissingFields_set( OGR2OGROptions *ogr2ogrOptions, bool bAddMissingFields ) {
+    ogr2ogrOptions->bAddMissingFields = bAddMissingFields;
+}
+
+bool OGR2OGROptions_transform_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->bTransform;
+}
+
+void OGR2OGROptions_transform_set( OGR2OGROptions *ogr2ogrOptions, bool bTransform ) {
+    ogr2ogrOptions->bTransform = bTransform;
+}
+
+char *OGR2OGROptions_outputSRSDef_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->pszOutputSRSDef;
+}
+
+void OGR2OGROptions_outputSRSDef_set( OGR2OGROptions *ogr2ogrOptions, char *pszOutputSRSDef ) {
+    ogr2ogrOptions->pszOutputSRSDef = pszOutputSRSDef;
+}
+
+char *OGR2OGROptions_sourceSRSDef_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->pszSourceSRSDef;
+}
+
+void OGR2OGROptions_sourceSRSDef_set( OGR2OGROptions *ogr2ogrOptions, char *pszSourceSRSDef ) {
+    ogr2ogrOptions->pszSourceSRSDef = pszSourceSRSDef;
+}
+
+bool OGR2OGROptions_nullifyOutputSRS_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->bNullifyOutputSRS;
+}
+
+void OGR2OGROptions_nullifyOutputSRS_set( OGR2OGROptions *ogr2ogrOptions, bool bNullifyOutputSRS ) {
+    ogr2ogrOptions->bNullifyOutputSRS = bNullifyOutputSRS;
+}
+
+bool OGR2OGROptions_exactFieldNameMatch_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->bExactFieldNameMatch;
+}
+
+void OGR2OGROptions_exactFieldNameMatch_set( OGR2OGROptions *ogr2ogrOptions, bool bExactFieldNameMatch ) {
+    ogr2ogrOptions->bExactFieldNameMatch = bExactFieldNameMatch;
+}
+
+char *OGR2OGROptions_newLayerName_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->pszNewLayerName;
+}
+
+void OGR2OGROptions_newLayerName_set( OGR2OGROptions *ogr2ogrOptions, char *pszNewLayerName ) {
+    ogr2ogrOptions->pszNewLayerName = pszNewLayerName;
+}
+
+char *OGR2OGROptions_WHERE_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->pszWHERE;
+}
+
+void OGR2OGROptions_WHERE_set( OGR2OGROptions *ogr2ogrOptions, char *pszWHERE ) {
+    ogr2ogrOptions->pszWHERE = pszWHERE;
+}
+
+char *OGR2OGROptions_geomField_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->pszGeomField;
+}
+
+void OGR2OGROptions_geomField_set( OGR2OGROptions *ogr2ogrOptions, char *pszGeomField ) {
+    ogr2ogrOptions->pszGeomField = pszGeomField;
+}
+
+char **OGR2OGROptions_selFields_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->papszSelFields;
+}
+
+void OGR2OGROptions_selFields_set( OGR2OGROptions *ogr2ogrOptions, char **papszSelFields ) {
+    ogr2ogrOptions->papszSelFields = papszSelFields;
+}
+
+char *OGR2OGROptions_SQLStatement_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->pszSQLStatement;
+}
+
+void OGR2OGROptions_SQLStatement_set( OGR2OGROptions *ogr2ogrOptions, char *pszSQLStatement ) {
+    ogr2ogrOptions->pszSQLStatement = pszSQLStatement;
+}
+
+char *OGR2OGROptions_dialect_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->pszDialect;
+}
+
+void OGR2OGROptions_dialect_set( OGR2OGROptions *ogr2ogrOptions, char *pszDialect ) {
+    ogr2ogrOptions->pszDialect = pszDialect;
+}
+
+int OGR2OGROptions_gType_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->eGType;
+}
+
+void OGR2OGROptions_gType_set( OGR2OGROptions *ogr2ogrOptions, int eGType ) {
+    ogr2ogrOptions->eGType = eGType;
+}
+
+GeomType OGR2OGROptions_geomConversion_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->eGeomConversion;
+}
+
+void OGR2OGROptions_geomConversion_set( OGR2OGROptions *ogr2ogrOptions, GeomType eGeomConversion ) {
+    ogr2ogrOptions->eGeomConversion = eGeomConversion;
+}
+
+GeomOperation OGR2OGROptions_geomOp_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->eGeomOp;
+}
+
+void OGR2OGROptions_geomOp_set( OGR2OGROptions *ogr2ogrOptions, GeomOperation eGeomOp ) {
+    ogr2ogrOptions->eGeomOp = eGeomOp;
+}
+
+double OGR2OGROptions_geomOpParam_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->dfGeomOpParam;
+}
+
+void OGR2OGROptions_geomOpParam_set( OGR2OGROptions *ogr2ogrOptions, double dfGeomOpParam ) {
+    ogr2ogrOptions->dfGeomOpParam = dfGeomOpParam;
+}
+
+char **OGR2OGROptions_fieldTypesToString_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->papszFieldTypesToString;
+}
+
+void OGR2OGROptions_fieldTypesToString_set( OGR2OGROptions *ogr2ogrOptions, char **papszFieldTypesToString ) {
+    ogr2ogrOptions->papszFieldTypesToString = papszFieldTypesToString;
+}
+
+char **OGR2OGROptions_mapFieldType_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->papszMapFieldType;
+}
+
+void OGR2OGROptions_mapFieldType_set( OGR2OGROptions *ogr2ogrOptions, char **papszMapFieldType ) {
+    ogr2ogrOptions->papszMapFieldType = papszMapFieldType;
+}
+
+bool OGR2OGROptions_unsetFieldWidth_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->bUnsetFieldWidth;
+}
+
+void OGR2OGROptions_unsetFieldWidth_set( OGR2OGROptions *ogr2ogrOptions, bool bUnsetFieldWidth ) {
+    ogr2ogrOptions->bUnsetFieldWidth = bUnsetFieldWidth;
+}
+
+bool OGR2OGROptions_displayProgress_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->bDisplayProgress;
+}
+
+void OGR2OGROptions_displayProgress_set( OGR2OGROptions *ogr2ogrOptions, bool bDisplayProgress ) {
+    ogr2ogrOptions->bDisplayProgress = bDisplayProgress;
+}
+
+bool OGR2OGROptions_wrapDateline_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->bWrapDateline;
+}
+
+void OGR2OGROptions_wrapDateline_set( OGR2OGROptions *ogr2ogrOptions, bool bWrapDateline ) {
+    ogr2ogrOptions->bWrapDateline = bWrapDateline;
+}
+
+int OGR2OGROptions_dateLineOffset_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->nDateLineOffset;
+}
+
+void OGR2OGROptions_dateLineOffset_set( OGR2OGROptions *ogr2ogrOptions, int nDateLineOffset ) {
+    ogr2ogrOptions->nDateLineOffset = nDateLineOffset;
+}
+
+OGRGeometryH OGR2OGROptions_clipSrc_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->hClipSrc;
+}
+
+void OGR2OGROptions_clipSrc_set( OGR2OGROptions *ogr2ogrOptions, OGRGeometryH hClipSrc ) {
+    ogr2ogrOptions->hClipSrc = hClipSrc;
+}
+
+char *OGR2OGROptions_clipSrcDS_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->pszClipSrcDS;
+}
+
+void OGR2OGROptions_clipSrcDS_set( OGR2OGROptions *ogr2ogrOptions, char *pszClipSrcDS ) {
+    ogr2ogrOptions->pszClipSrcDS = pszClipSrcDS;
+}
+
+char *OGR2OGROptions_clipSrcSQL_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->pszClipSrcSQL;
+}
+
+void OGR2OGROptions_clipSrcSQL_set( OGR2OGROptions *ogr2ogrOptions, char *pszClipSrcSQL ) {
+    ogr2ogrOptions->pszClipSrcSQL = pszClipSrcSQL;
+}
+
+char *OGR2OGROptions_clipSrcLayer_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->pszClipSrcLayer;
+}
+
+void OGR2OGROptions_clipSrcLayer_set( OGR2OGROptions *ogr2ogrOptions, char *pszClipSrcLayer ) {
+    ogr2ogrOptions->pszClipSrcLayer = pszClipSrcLayer;
+}
+
+char *OGR2OGROptions_clipSrcWhere_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->pszClipSrcWhere;
+}
+
+void OGR2OGROptions_clipSrcWhere_set( OGR2OGROptions *ogr2ogrOptions, char *pszClipSrcWhere ) {
+    ogr2ogrOptions->pszClipSrcWhere = pszClipSrcWhere;
+}
+
+OGRGeometryH OGR2OGROptions_clipDst_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->hClipDst;
+}
+
+void OGR2OGROptions_clipDst_set( OGR2OGROptions *ogr2ogrOptions, OGRGeometryH hClipDst ) {
+    ogr2ogrOptions->hClipDst = hClipDst;
+}
+
+char *OGR2OGROptions_clipDstDS_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->pszClipDstDS;
+}
+
+void OGR2OGROptions_clipDstDS_set( OGR2OGROptions *ogr2ogrOptions, char *pszClipDstDS ) {
+    ogr2ogrOptions->pszClipDstDS = pszClipDstDS;
+}
+
+char *OGR2OGROptions_clipDstSQL_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->pszClipDstSQL;
+}
+
+void OGR2OGROptions_clipDstSQL_set( OGR2OGROptions *ogr2ogrOptions, char *pszClipDstSQL ) {
+    ogr2ogrOptions->pszClipDstSQL = pszClipDstSQL;
+}
+
+char *OGR2OGROptions_clipDstLayer_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->pszClipDstLayer;
+}
+
+void OGR2OGROptions_clipDstLayer_set( OGR2OGROptions *ogr2ogrOptions, char *pszClipDstLayer ) {
+    ogr2ogrOptions->pszClipDstLayer = pszClipDstLayer;
+}
+
+char *OGR2OGROptions_clipDstWhere_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->pszClipDstWhere;
+}
+
+void OGR2OGROptions_clipDstWhere_set( OGR2OGROptions *ogr2ogrOptions, char *pszClipDstWhere ) {
+    ogr2ogrOptions->pszClipDstWhere = pszClipDstWhere;
+}
+
+bool OGR2OGROptions_splitListFields_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->bSplitListFields;
+}
+
+void OGR2OGROptions_splitListFields_set( OGR2OGROptions *ogr2ogrOptions, bool bSplitListFields ) {
+    ogr2ogrOptions->bSplitListFields = bSplitListFields;
+}
+
+int OGR2OGROptions_maxSplitListSubFields_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->nMaxSplitListSubFields;
+}
+
+void OGR2OGROptions_maxSplitListSubFields_set( OGR2OGROptions *ogr2ogrOptions, int nMaxSplitListSubFields ) {
+    ogr2ogrOptions->nMaxSplitListSubFields = nMaxSplitListSubFields;
+}
+
+bool OGR2OGROptions_explodeCollections_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->bExplodeCollections;
+}
+
+void OGR2OGROptions_explodeCollections_set( OGR2OGROptions *ogr2ogrOptions, bool bExplodeCollections ) {
+    ogr2ogrOptions->bExplodeCollections = bExplodeCollections;
+}
+
+char *OGR2OGROptions_zField_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->pszZField;
+}
+
+void OGR2OGROptions_zField_set( OGR2OGROptions *ogr2ogrOptions, char *pszZField ) {
+    ogr2ogrOptions->pszZField = pszZField;
+}
+
+char **OGR2OGROptions_fieldMap_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->papszFieldMap;
+}
+
+void OGR2OGROptions_fieldMap_set( OGR2OGROptions *ogr2ogrOptions, char **papszFieldMap ) {
+    ogr2ogrOptions->papszFieldMap = papszFieldMap;
+}
+
+int OGR2OGROptions_coordDim_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->nCoordDim;
+}
+
+void OGR2OGROptions_coordDim_set( OGR2OGROptions *ogr2ogrOptions, int nCoordDim ) {
+    ogr2ogrOptions->nCoordDim = nCoordDim;
+}
+
+char **OGR2OGROptions_destOpenOptions_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->papszDestOpenOptions;
+}
+
+void OGR2OGROptions_destOpenOptions_set( OGR2OGROptions *ogr2ogrOptions, char **papszDestOpenOptions ) {
+    ogr2ogrOptions->papszDestOpenOptions = papszDestOpenOptions;
+}
+
+bool OGR2OGROptions_forceNullable_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->bForceNullable;
+}
+
+void OGR2OGROptions_forceNullable_set( OGR2OGROptions *ogr2ogrOptions, bool bForceNullable ) {
+    ogr2ogrOptions->bForceNullable = bForceNullable;
+}
+
+bool OGR2OGROptions_unsetDefault_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->bUnsetDefault;
+}
+
+void OGR2OGROptions_unsetDefault_set( OGR2OGROptions *ogr2ogrOptions, bool bUnsetDefault ) {
+    ogr2ogrOptions->bUnsetDefault = bUnsetDefault;
+}
+
+bool OGR2OGROptions_unsetFid_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->bUnsetFid;
+}
+
+void OGR2OGROptions_unsetFid_set( OGR2OGROptions *ogr2ogrOptions, bool bUnsetFid ) {
+    ogr2ogrOptions->bUnsetFid = bUnsetFid;
+}
+
+bool OGR2OGROptions_preserveFID_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->bPreserveFID;
+}
+
+void OGR2OGROptions_preserveFID_set( OGR2OGROptions *ogr2ogrOptions, bool bPreserveFID ) {
+    ogr2ogrOptions->bPreserveFID = bPreserveFID;
+}
+
+bool OGR2OGROptions_copyMD_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->bCopyMD;
+}
+
+void OGR2OGROptions_copyMD_set( OGR2OGROptions *ogr2ogrOptions, bool bCopyMD ) {
+    ogr2ogrOptions->bCopyMD = bCopyMD;
+}
+
+char **OGR2OGROptions_metadataOptions_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->papszMetadataOptions;
+}
+
+void OGR2OGROptions_metadataOptions_set( OGR2OGROptions *ogr2ogrOptions, char **papszMetadataOptions ) {
+    ogr2ogrOptions->papszMetadataOptions = papszMetadataOptions;
+}
+
+char *OGR2OGROptions_spatSRSDef_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->pszSpatSRSDef;
+}
+
+void OGR2OGROptions_spatSRSDef_set( OGR2OGROptions *ogr2ogrOptions, char *pszSpatSRSDef ) {
+    ogr2ogrOptions->pszSpatSRSDef = pszSpatSRSDef;
+}
+
+int OGR2OGROptions_transformOrder_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->nTransformOrder;
+}
+
+void OGR2OGROptions_transformOrder_set( OGR2OGROptions *ogr2ogrOptions, int nTransformOrder ) {
+    ogr2ogrOptions->nTransformOrder = nTransformOrder;
+}
+
+OGRGeometryH OGR2OGROptions_spatialFilter_get( OGR2OGROptions *ogr2ogrOptions ) {
+    return ogr2ogrOptions->hSpatialFilter;
+}
+
+void OGR2OGROptions_spatialFilter_set( OGR2OGROptions *ogr2ogrOptions, OGRGeometryH hSpatialFilter ) {
+    ogr2ogrOptions->hSpatialFilter = hSpatialFilter;
+}
+
+%}
+
+%clear OGR2OGROptions *ogr2ogrOptions;
+
+#ifdef SWIGPYTHON
+%rename (TranslateOGRInternal) wrapper_TranslateOGR;
+#else
+%rename (TranslateOGR) wrapper_TranslateOGR;
+#endif
+
+%newobject wrapper_GDALWarp;
+
+%inline %{
+GDALDatasetShadow* wrapper_TranslateOGR( const char* dest, GDALDatasetShadow* dstDS, GDALDatasetShadow* srcDS,
+                                         OGR2OGROptions *ogr2ogrOptions )
+{
+    int usageError; /* ignored */
+    int closeODS; /* ignores */
+    return OGR2OGR( dest, dstDS, srcDS, ogr2ogrOptions, &usageError, &closeODS);
+}
+
+%}
+
+#endif

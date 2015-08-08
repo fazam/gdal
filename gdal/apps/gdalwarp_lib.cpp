@@ -1129,12 +1129,16 @@ GDALDatasetH GDALWarp( const char *pszDest, GDALDatasetH hDstDS, int nSrcCount,
             if( GDALInitializeWarpedVRT( hDstDS, psWO ) != CE_None )
                 return NULL;
 
+            // We need to close it before destroying poSrcOvrDS and warping options
+            CPLString osDstFilename(GDALGetDescription(hDstDS));
+            GDALClose(hDstDS);
+
             if( poSrcOvrDS )
                 delete poSrcOvrDS;
 
             GDALDestroyWarpOptions( psWO );
         
-            return hDstDS;
+            return GDALOpen(osDstFilename, GA_Update);
         }
 
 /* -------------------------------------------------------------------- */
