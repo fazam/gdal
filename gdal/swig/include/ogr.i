@@ -3074,6 +3074,8 @@ int GDALTermProgress( double, const char *, void * );
 //
 //************************************************************************
 
+#ifndef FROM_GDAL_I
+
 #ifdef SWIGPYTHON
 %{
 #include "gdal_utils.h"   
@@ -3103,7 +3105,7 @@ typedef enum
     ACCESS_OVERWRITE,
 } AccessMode;
 
-%rename (TranslateOGROptions) OGR2OGROptions;
+%rename (TranslateOptions) OGR2OGROptions;
 
 %apply (char** options) {char** layers};
 %apply (char** options) {char** DSCO};
@@ -3177,7 +3179,7 @@ struct OGR2OGROptions {
     int copyMD;
     char **metadataOptions;
     char *spatSRSDef;
-    GDAL_GCP *GCPs;
+    //GDAL_GCP *GCPs;
     int transformOrder;
     OGRGeometryH spatialFilter;
 
@@ -3190,7 +3192,7 @@ struct OGR2OGROptions {
     ~OGR2OGROptions() {
         OGR2OGROptionsFree( self );
     }
-
+/*
     void getGCPs( int *nGCPs, GDAL_GCP const **pGCPs ) {
         *nGCPs = self->nGCPCount;
         *pGCPs = self->pasGCPs;
@@ -3204,10 +3206,11 @@ struct OGR2OGROptions {
         self->nGCPCount = nGCPs;
         self->pasGCPs = GDALDuplicateGCPs( nGCPs, pGCPs );
     }
-
+*/
 } /* extend */    
 };
 
+/*
 %extend OGR2OGROptions {
 %pythoncode {
     if not '__swig_setmethods__' in dir():
@@ -3219,6 +3222,7 @@ struct OGR2OGROptions {
     if _newclass:GCPs = _swig_property(_gdal.TranslateOptions_getGCPs, _gdal.TranslateOptions_setGCPs)
 }
 }
+*/
 
 %clear char** layers;
 %clear char** DSCO;
@@ -3286,7 +3290,8 @@ char *OGR2OGROptions_format_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_format_set( OGR2OGROptions *ogr2ogrOptions, char *pszFormat ) {
-    ogr2ogrOptions->pszFormat = pszFormat;
+    CPLFree( ogr2ogrOptions->pszFormat );
+    ogr2ogrOptions->pszFormat = CPLStrdup( pszFormat );
 }
 
 char **OGR2OGROptions_layers_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3294,7 +3299,7 @@ char **OGR2OGROptions_layers_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_layers_set( OGR2OGROptions *ogr2ogrOptions, char **papszLayers ) {
-    ogr2ogrOptions->papszLayers = papszLayers;
+    OGR2OGROptionsSetLayers( ogr2ogrOptions, papszLayers );
 }
 
 char **OGR2OGROptions_DSCO_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3302,7 +3307,7 @@ char **OGR2OGROptions_DSCO_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_DSCO_set( OGR2OGROptions *ogr2ogrOptions, char **papszDSCO ) {
-    ogr2ogrOptions->papszDSCO = papszDSCO;
+    OGR2OGROptionsSetDSCO( ogr2ogrOptions, papszDSCO );
 }
 
 char **OGR2OGROptions_LCO_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3310,7 +3315,7 @@ char **OGR2OGROptions_LCO_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_LCO_set( OGR2OGROptions *ogr2ogrOptions, char **papszLCO ) {
-    ogr2ogrOptions->papszLCO = papszLCO;
+    OGR2OGROptionsSetLCO( ogr2ogrOptions, papszLCO );
 }
 
 AccessMode OGR2OGROptions_accessMode_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3342,7 +3347,8 @@ char *OGR2OGROptions_outputSRSDef_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_outputSRSDef_set( OGR2OGROptions *ogr2ogrOptions, char *pszOutputSRSDef ) {
-    ogr2ogrOptions->pszOutputSRSDef = pszOutputSRSDef;
+    CPLFree( ogr2ogrOptions->pszOutputSRSDef );
+    ogr2ogrOptions->pszOutputSRSDef = CPLStrdup( pszOutputSRSDef );
 }
 
 char *OGR2OGROptions_sourceSRSDef_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3350,7 +3356,8 @@ char *OGR2OGROptions_sourceSRSDef_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_sourceSRSDef_set( OGR2OGROptions *ogr2ogrOptions, char *pszSourceSRSDef ) {
-    ogr2ogrOptions->pszSourceSRSDef = pszSourceSRSDef;
+    CPLFree( ogr2ogrOptions->pszSourceSRSDef );
+    ogr2ogrOptions->pszSourceSRSDef = CPLStrdup( pszSourceSRSDef );
 }
 
 bool OGR2OGROptions_nullifyOutputSRS_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3374,7 +3381,8 @@ char *OGR2OGROptions_newLayerName_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_newLayerName_set( OGR2OGROptions *ogr2ogrOptions, char *pszNewLayerName ) {
-    ogr2ogrOptions->pszNewLayerName = pszNewLayerName;
+    CPLFree( ogr2ogrOptions->pszNewLayerName );
+    ogr2ogrOptions->pszNewLayerName = CPLStrdup( pszNewLayerName );
 }
 
 char *OGR2OGROptions_WHERE_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3382,7 +3390,8 @@ char *OGR2OGROptions_WHERE_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_WHERE_set( OGR2OGROptions *ogr2ogrOptions, char *pszWHERE ) {
-    ogr2ogrOptions->pszWHERE = pszWHERE;
+    CPLFree( ogr2ogrOptions->pszWHERE );
+    ogr2ogrOptions->pszWHERE = CPLStrdup( pszWHERE );
 }
 
 char *OGR2OGROptions_geomField_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3390,7 +3399,8 @@ char *OGR2OGROptions_geomField_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_geomField_set( OGR2OGROptions *ogr2ogrOptions, char *pszGeomField ) {
-    ogr2ogrOptions->pszGeomField = pszGeomField;
+    CPLFree( ogr2ogrOptions->pszGeomField );
+    ogr2ogrOptions->pszGeomField = CPLStrdup( pszGeomField );
 }
 
 char **OGR2OGROptions_selFields_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3398,7 +3408,7 @@ char **OGR2OGROptions_selFields_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_selFields_set( OGR2OGROptions *ogr2ogrOptions, char **papszSelFields ) {
-    ogr2ogrOptions->papszSelFields = papszSelFields;
+    OGR2OGROptionsSetSelFields( ogr2ogrOptions, papszSelFields );
 }
 
 char *OGR2OGROptions_SQLStatement_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3406,7 +3416,8 @@ char *OGR2OGROptions_SQLStatement_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_SQLStatement_set( OGR2OGROptions *ogr2ogrOptions, char *pszSQLStatement ) {
-    ogr2ogrOptions->pszSQLStatement = pszSQLStatement;
+    CPLFree( ogr2ogrOptions->pszSQLStatement );
+    ogr2ogrOptions->pszSQLStatement = CPLStrdup( pszSQLStatement );
 }
 
 char *OGR2OGROptions_dialect_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3414,7 +3425,8 @@ char *OGR2OGROptions_dialect_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_dialect_set( OGR2OGROptions *ogr2ogrOptions, char *pszDialect ) {
-    ogr2ogrOptions->pszDialect = pszDialect;
+    CPLFree( ogr2ogrOptions->pszDialect );
+    ogr2ogrOptions->pszDialect = CPLStrdup( pszDialect );
 }
 
 int OGR2OGROptions_gType_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3454,7 +3466,7 @@ char **OGR2OGROptions_fieldTypesToString_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_fieldTypesToString_set( OGR2OGROptions *ogr2ogrOptions, char **papszFieldTypesToString ) {
-    ogr2ogrOptions->papszFieldTypesToString = papszFieldTypesToString;
+    OGR2OGROptionsSetFieldTypesToString( ogr2ogrOptions, papszFieldTypesToString );
 }
 
 char **OGR2OGROptions_mapFieldType_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3462,7 +3474,7 @@ char **OGR2OGROptions_mapFieldType_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_mapFieldType_set( OGR2OGROptions *ogr2ogrOptions, char **papszMapFieldType ) {
-    ogr2ogrOptions->papszMapFieldType = papszMapFieldType;
+    OGR2OGROptionsSetMapFieldType( ogr2ogrOptions, papszMapFieldType );
 }
 
 bool OGR2OGROptions_unsetFieldWidth_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3502,7 +3514,9 @@ OGRGeometryH OGR2OGROptions_clipSrc_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_clipSrc_set( OGR2OGROptions *ogr2ogrOptions, OGRGeometryH hClipSrc ) {
-    ogr2ogrOptions->hClipSrc = hClipSrc;
+    OGR_G_DestroyGeometry( ogr2ogrOptions->hClipSrc );
+    if( hClipSrc != NULL )
+        ogr2ogrOptions->hClipSrc = OGR_G_Clone( hClipSrc );
 }
 
 char *OGR2OGROptions_clipSrcDS_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3510,7 +3524,8 @@ char *OGR2OGROptions_clipSrcDS_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_clipSrcDS_set( OGR2OGROptions *ogr2ogrOptions, char *pszClipSrcDS ) {
-    ogr2ogrOptions->pszClipSrcDS = pszClipSrcDS;
+    CPLFree( ogr2ogrOptions->pszClipSrcDS );
+    ogr2ogrOptions->pszClipSrcDS = CPLStrdup( pszClipSrcDS );
 }
 
 char *OGR2OGROptions_clipSrcSQL_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3518,7 +3533,8 @@ char *OGR2OGROptions_clipSrcSQL_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_clipSrcSQL_set( OGR2OGROptions *ogr2ogrOptions, char *pszClipSrcSQL ) {
-    ogr2ogrOptions->pszClipSrcSQL = pszClipSrcSQL;
+    CPLFree( ogr2ogrOptions->pszClipSrcSQL );
+    ogr2ogrOptions->pszClipSrcSQL = CPLStrdup( pszClipSrcSQL );
 }
 
 char *OGR2OGROptions_clipSrcLayer_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3526,7 +3542,8 @@ char *OGR2OGROptions_clipSrcLayer_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_clipSrcLayer_set( OGR2OGROptions *ogr2ogrOptions, char *pszClipSrcLayer ) {
-    ogr2ogrOptions->pszClipSrcLayer = pszClipSrcLayer;
+    CPLFree( ogr2ogrOptions->pszClipSrcLayer );
+    ogr2ogrOptions->pszClipSrcLayer = CPLStrdup( pszClipSrcLayer );
 }
 
 char *OGR2OGROptions_clipSrcWhere_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3534,7 +3551,8 @@ char *OGR2OGROptions_clipSrcWhere_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_clipSrcWhere_set( OGR2OGROptions *ogr2ogrOptions, char *pszClipSrcWhere ) {
-    ogr2ogrOptions->pszClipSrcWhere = pszClipSrcWhere;
+    CPLFree( ogr2ogrOptions->pszClipSrcWhere );
+    ogr2ogrOptions->pszClipSrcWhere = CPLStrdup( pszClipSrcWhere );
 }
 
 OGRGeometryH OGR2OGROptions_clipDst_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3542,7 +3560,9 @@ OGRGeometryH OGR2OGROptions_clipDst_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_clipDst_set( OGR2OGROptions *ogr2ogrOptions, OGRGeometryH hClipDst ) {
-    ogr2ogrOptions->hClipDst = hClipDst;
+    OGR_G_DestroyGeometry( ogr2ogrOptions->hClipDst );
+    if( hClipDst != NULL )
+        ogr2ogrOptions->hClipDst = OGR_G_Clone( hClipDst );
 }
 
 char *OGR2OGROptions_clipDstDS_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3550,7 +3570,8 @@ char *OGR2OGROptions_clipDstDS_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_clipDstDS_set( OGR2OGROptions *ogr2ogrOptions, char *pszClipDstDS ) {
-    ogr2ogrOptions->pszClipDstDS = pszClipDstDS;
+    CPLFree( ogr2ogrOptions->pszClipDstDS );
+    ogr2ogrOptions->pszClipDstDS = CPLStrdup( pszClipDstDS );
 }
 
 char *OGR2OGROptions_clipDstSQL_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3558,7 +3579,8 @@ char *OGR2OGROptions_clipDstSQL_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_clipDstSQL_set( OGR2OGROptions *ogr2ogrOptions, char *pszClipDstSQL ) {
-    ogr2ogrOptions->pszClipDstSQL = pszClipDstSQL;
+    CPLFree( ogr2ogrOptions->pszClipDstSQL );
+    ogr2ogrOptions->pszClipDstSQL = CPLStrdup( pszClipDstSQL );
 }
 
 char *OGR2OGROptions_clipDstLayer_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3566,7 +3588,8 @@ char *OGR2OGROptions_clipDstLayer_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_clipDstLayer_set( OGR2OGROptions *ogr2ogrOptions, char *pszClipDstLayer ) {
-    ogr2ogrOptions->pszClipDstLayer = pszClipDstLayer;
+    CPLFree( ogr2ogrOptions->pszClipDstLayer );
+    ogr2ogrOptions->pszClipDstLayer = CPLStrdup( pszClipDstLayer );
 }
 
 char *OGR2OGROptions_clipDstWhere_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3574,7 +3597,8 @@ char *OGR2OGROptions_clipDstWhere_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_clipDstWhere_set( OGR2OGROptions *ogr2ogrOptions, char *pszClipDstWhere ) {
-    ogr2ogrOptions->pszClipDstWhere = pszClipDstWhere;
+    CPLFree( ogr2ogrOptions->pszClipDstWhere );
+    ogr2ogrOptions->pszClipDstWhere = CPLStrdup( pszClipDstWhere );
 }
 
 bool OGR2OGROptions_splitListFields_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3606,7 +3630,8 @@ char *OGR2OGROptions_zField_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_zField_set( OGR2OGROptions *ogr2ogrOptions, char *pszZField ) {
-    ogr2ogrOptions->pszZField = pszZField;
+    CPLFree( ogr2ogrOptions->pszZField );
+    ogr2ogrOptions->pszZField = CPLStrdup( pszZField );
 }
 
 char **OGR2OGROptions_fieldMap_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3614,7 +3639,7 @@ char **OGR2OGROptions_fieldMap_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_fieldMap_set( OGR2OGROptions *ogr2ogrOptions, char **papszFieldMap ) {
-    ogr2ogrOptions->papszFieldMap = papszFieldMap;
+    OGR2OGROptionsSetFieldMap( ogr2ogrOptions, papszFieldMap );
 }
 
 int OGR2OGROptions_coordDim_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3630,7 +3655,7 @@ char **OGR2OGROptions_destOpenOptions_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_destOpenOptions_set( OGR2OGROptions *ogr2ogrOptions, char **papszDestOpenOptions ) {
-    ogr2ogrOptions->papszDestOpenOptions = papszDestOpenOptions;
+    OGR2OGROptionsSetDestOpenOptions( ogr2ogrOptions, papszDestOpenOptions );
 }
 
 bool OGR2OGROptions_forceNullable_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3678,7 +3703,7 @@ char **OGR2OGROptions_metadataOptions_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_metadataOptions_set( OGR2OGROptions *ogr2ogrOptions, char **papszMetadataOptions ) {
-    ogr2ogrOptions->papszMetadataOptions = papszMetadataOptions;
+    OGR2OGROptionsSetMetadataOptions( ogr2ogrOptions, papszMetadataOptions );
 }
 
 char *OGR2OGROptions_spatSRSDef_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3686,7 +3711,8 @@ char *OGR2OGROptions_spatSRSDef_get( OGR2OGROptions *ogr2ogrOptions ) {
 }
 
 void OGR2OGROptions_spatSRSDef_set( OGR2OGROptions *ogr2ogrOptions, char *pszSpatSRSDef ) {
-    ogr2ogrOptions->pszSpatSRSDef = pszSpatSRSDef;
+    CPLFree( ogr2ogrOptions->pszSpatSRSDef );
+    ogr2ogrOptions->pszSpatSRSDef = CPLStrdup( pszSpatSRSDef );
 }
 
 int OGR2OGROptions_transformOrder_get( OGR2OGROptions *ogr2ogrOptions ) {
@@ -3702,7 +3728,9 @@ OGRGeometryH OGR2OGROptions_spatialFilter_get( OGR2OGROptions *ogr2ogrOptions ) 
 }
 
 void OGR2OGROptions_spatialFilter_set( OGR2OGROptions *ogr2ogrOptions, OGRGeometryH hSpatialFilter ) {
-    ogr2ogrOptions->hSpatialFilter = hSpatialFilter;
+    OGR_G_DestroyGeometry( ogr2ogrOptions->hSpatialFilter );
+    if( hSpatialFilter != NULL )
+        ogr2ogrOptions->hSpatialFilter = OGR_G_Clone( hSpatialFilter );
 }
 
 %}
@@ -3710,15 +3738,15 @@ void OGR2OGROptions_spatialFilter_set( OGR2OGROptions *ogr2ogrOptions, OGRGeomet
 %clear OGR2OGROptions *ogr2ogrOptions;
 
 #ifdef SWIGPYTHON
-%rename (TranslateOGRInternal) wrapper_TranslateOGR;
+%rename (TranslateInternal) wrapper_Translate;
 #else
-%rename (TranslateOGR) wrapper_TranslateOGR;
+%rename (Translate) wrapper_Translate;
 #endif
 
 %newobject wrapper_GDALWarp;
 
 %inline %{
-GDALDatasetShadow* wrapper_TranslateOGR( const char* dest, GDALDatasetShadow* dstDS, GDALDatasetShadow* srcDS,
+OGRDataSourceShadow* wrapper_Translate( const char* dest, OGRDataSourceShadow* dstDS, OGRDataSourceShadow* srcDS,
                                          OGR2OGROptions *ogr2ogrOptions )
 {
     int usageError; /* ignored */
@@ -3727,5 +3755,7 @@ GDALDatasetShadow* wrapper_TranslateOGR( const char* dest, GDALDatasetShadow* ds
 }
 
 %}
+
+#endif
 
 #endif

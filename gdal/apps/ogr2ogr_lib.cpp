@@ -3400,5 +3400,327 @@ void OGR2OGROptionsFree( OGR2OGROptions *psOptions )
         CPLFree( psOptions->pasGCPs );
     }
 
+    if( psOptions->hClipSrc != NULL )
+        OGR_G_DestroyGeometry( psOptions->hClipSrc );
+    if( psOptions->hClipDst != NULL )
+        OGR_G_DestroyGeometry( psOptions->hClipDst );
+    if( psOptions->hSpatialFilter != NULL )
+        OGR_G_DestroyGeometry( psOptions->hSpatialFilter );
+
     CPLFree(psOptions);
+}
+
+/************************************************************************/
+/*                   OGR2OGROptionsSetLayers()                          */
+/************************************************************************/
+
+/**
+ * Set function for papszLayers.
+ *
+ * @param psOptions the options struct for OGR2OGR().
+ * @param papszLayers.
+ */
+
+void OGR2OGROptionsSetLayers( OGR2OGROptions *psOptions,
+                              char **papszLayers )
+{
+    CSLDestroy( psOptions->papszLayers );
+    psOptions->papszLayers = CSLDuplicate( papszLayers );
+}
+
+/************************************************************************/
+/*                   OGR2OGROptionsAddLayer()                           */
+/************************************************************************/
+
+/**
+ * Specify the particular layer which need to be added.
+ *
+ * @param psOptions the options struct for OGR2OGR().
+ * @param pszLayer the specific layer which need to be added.
+ */
+
+void OGR2OGROptionsAddLayer( OGR2OGROptions *psOptions,
+                             const char *pszLayer )
+{
+    psOptions->papszLayers = CSLAddString( psOptions->papszLayers, pszLayer );
+}
+
+/************************************************************************/
+/*                   OGR2OGROptionsSetDSCO()                            */
+/************************************************************************/
+
+/**
+ * Set function for papszDSCO.
+ *
+ * @param psOptions the options struct for OGR2OGR().
+ * @param papszDSCO.
+ */
+
+void OGR2OGROptionsSetDSCO( OGR2OGROptions *psOptions,
+                            char **papszDSCO )
+{
+    CSLDestroy( psOptions->papszDSCO );
+    psOptions->papszDSCO = CSLDuplicate( papszDSCO );
+}
+
+/************************************************************************/
+/*                   OGR2OGROptionsAddDSCO()                            */
+/************************************************************************/
+
+/**
+ * Specify the dataset creation option which need to be added.
+ *
+ * @param psOptions the options struct for OGR2OGR().
+ * @param pszDSCO the dataset creation option.
+ */
+
+void OGR2OGROptionsAddDSCO( OGR2OGROptions *psOptions,
+                            const char *pszDSCO )
+{
+    psOptions->papszDSCO = CSLAddString( psOptions->papszDSCO, pszDSCO );
+}
+
+/************************************************************************/
+/*                   OGR2OGROptionsSetLCO()                             */
+/************************************************************************/
+
+/**
+ * Set function for papszLCO.
+ *
+ * @param psOptions the options struct for OGR2OGR().
+ * @param papszLCO.
+ */
+
+void OGR2OGROptionsSetLCO( OGR2OGROptions *psOptions,
+                           char **papszLCO )
+{
+    CSLDestroy( psOptions->papszLCO );
+    psOptions->papszLCO = CSLDuplicate( papszLCO );
+}
+
+/************************************************************************/
+/*                   OGR2OGROptionsAddLCO()                             */
+/************************************************************************/
+
+/**
+ * Specify the layer creation option which need to be added.
+ *
+ * @param psOptions the options struct for OGR2OGR().
+ * @param pszLCO the layer creation option.
+ */
+
+void OGR2OGROptionsAddLCO( OGR2OGROptions *psOptions,
+                           const char *pszLCO )
+{
+    psOptions->papszLCO = CSLAddString( psOptions->papszLCO, pszLCO );
+}
+
+/************************************************************************/
+/*                   OGR2OGROptionsSetSelFields()                       */
+/************************************************************************/
+
+/**
+ * Set function for papszSelFields.
+ *
+ * @param psOptions the options struct for OGR2OGR().
+ * @param papszSelFields.
+ */
+
+void OGR2OGROptionsSetSelFields( OGR2OGROptions *psOptions,
+                                 char **papszSelFields )
+{
+    CSLDestroy( psOptions->papszSelFields );
+    psOptions->papszSelFields = CSLDuplicate( papszSelFields );
+}
+
+/************************************************************************/
+/*                   OGR2OGROptionsAddSelFields()                       */
+/************************************************************************/
+
+/**
+ * Specify the fields from input layer which need to be added.
+ *
+ * @param psOptions the options struct for OGR2OGR().
+ * @param pszSelField the field in input layer.
+ */
+
+void OGR2OGROptionsAddSelFields( OGR2OGROptions *psOptions,
+                                 const char *pszSelField )
+{
+    psOptions->papszSelFields = CSLAddString( psOptions->papszSelFields, pszSelField );
+}
+
+/************************************************************************/
+/*                   OGR2OGROptionsSetFieldTypesToString()              */
+/************************************************************************/
+
+/**
+ * Set function for papszFieldTypesToString.
+ *
+ * @param psOptions the options struct for OGR2OGR().
+ * @param papszFieldTypesToString.
+ */
+
+void OGR2OGROptionsSetFieldTypesToString( OGR2OGROptions *psOptions,
+                                          char **papszFieldTypesToString )
+{
+    CSLDestroy( psOptions->papszFieldTypesToString );
+    psOptions->papszFieldTypesToString = CSLDuplicate( papszFieldTypesToString );
+}
+
+/************************************************************************/
+/*                   OGR2OGROptionsAddFieldTypesToString()              */
+/************************************************************************/
+
+/**
+ * Specify the field type which needs to be converted to a field of type string in the destination layer.
+ *
+ * @param psOptions the options struct for OGR2OGR().
+ * @param pszFieldType the field type.
+ */
+
+void OGR2OGROptionsAddFieldTypesToString( OGR2OGROptions *psOptions,
+                                          const char *pszFieldType )
+{
+    psOptions->papszFieldTypesToString = CSLAddString( psOptions->papszFieldTypesToString, pszFieldType );
+}
+
+/************************************************************************/
+/*                   OGR2OGROptionsSetMapFieldType()                    */
+/************************************************************************/
+
+/**
+ * Set function for papszMapFieldType.
+ *
+ * @param psOptions the options struct for OGR2OGR().
+ * @param papszMapFieldType the list of mapping (srctype|All=dsttype,...).
+ */
+
+void OGR2OGROptionsSetMapFieldType( OGR2OGROptions *psOptions,
+                                    char **papszMapFieldType )
+{
+    CSLDestroy( psOptions->papszMapFieldType );
+    psOptions->papszMapFieldType = CSLDuplicate( papszMapFieldType );
+}
+
+/************************************************************************/
+/*                   OGR2OGROptionsAddMapFieldType()                    */
+/************************************************************************/
+
+/**
+ * Specify the field type which needs to be converted to a field of another type in the destination layer.
+ *
+ * @param psOptions the options struct for OGR2OGR().
+ * @param pszMapFieldType the mapping - srctype|All=dsttype.
+ */
+
+void OGR2OGROptionsAddMapFieldType( OGR2OGROptions *psOptions,
+                                    const char *pszFieldType )
+{
+    psOptions->papszFieldTypesToString = CSLAddString( psOptions->papszFieldTypesToString, pszFieldType );
+}
+
+/************************************************************************/
+/*                   OGR2OGROptionsSetFieldMap()                        */
+/************************************************************************/
+
+/**
+ * Set function for papszFieldMap.
+ *
+ * @param psOptions the options struct for OGR2OGR().
+ * @param papszFieldMap the list of field indexes to be copied from the source to the destination.
+ */
+
+void OGR2OGROptionsSetFieldMap( OGR2OGROptions *psOptions,
+                                char **papszFieldMap )
+{
+    CSLDestroy( psOptions->papszFieldMap );
+    psOptions->papszFieldMap = CSLDuplicate( papszFieldMap );
+}
+
+/************************************************************************/
+/*                   OGR2OGROptionsAddFieldMap()                        */
+/************************************************************************/
+
+/**
+ * Specify the field index of field which needs to be copied from the source to the destination.
+ *
+ * @param psOptions the options struct for OGR2OGR().
+ * @param pszField the field index.
+ */
+
+void OGR2OGROptionsAddFieldMap( OGR2OGROptions *psOptions,
+                                const char *pszField )
+{
+    psOptions->papszFieldMap = CSLAddString( psOptions->papszFieldMap, pszField );
+}
+
+/************************************************************************/
+/*                 OGR2OGROptionsSetDestOpenOptions()                   */
+/************************************************************************/
+
+/**
+ * Set the Destination dataset open option (format specific), only valid in update mode.
+ *
+ * @param psOptions the options struct for OGR2OGR().
+ * @param papszDestOpenOptions the Destination dataset open option.
+ */
+
+void OGR2OGROptionsSetDestOpenOptions( OGR2OGROptions *psOptions,
+                                       char **papszDestOpenOptions )
+{
+    CSLDestroy( psOptions->papszDestOpenOptions );
+    psOptions->papszDestOpenOptions = CSLDuplicate( papszDestOpenOptions );
+}
+
+/************************************************************************/
+/*                   OGR2OGROptionsAddDestOpenOptions()                 */
+/************************************************************************/
+
+/**
+ * Add Destination dataset open option (format specific), only valid in update mode.
+ *
+ * @param psOptions the options struct for OGR2OGR().
+ * @param pszDestOpenOption the Destination dataset open option.
+ */
+
+void OGR2OGROptionsAddDestOpenOptions( OGR2OGROptions *psOptions,
+                                       const char *pszDestOpenOption )
+{
+    psOptions->papszDestOpenOptions = CSLAddString( psOptions->papszDestOpenOptions, pszDestOpenOption );
+}
+
+/************************************************************************/
+/*                 OGR2OGROptionsSetMetadataOptions()                   */
+/************************************************************************/
+
+/**
+ * Set metadata key and value on the output dataset, when supported by output driver.
+ *
+ * @param psOptions the options struct for OGR2OGR().
+ * @param papszMetadataOptions the list of metadata key and value ("META-TAG=VALUE").
+ */
+
+void OGR2OGROptionsSetMetadataOptions( OGR2OGROptions *psOptions,
+                                       char **papszMetadataOptions )
+{
+    CSLDestroy( psOptions->papszMetadataOptions );
+    psOptions->papszMetadataOptions = CSLDuplicate( papszMetadataOptions );
+}
+
+/************************************************************************/
+/*                   OGR2OGROptionsAddMetadataOptions()                 */
+/************************************************************************/
+
+/**
+ * Add metadata key and value to set on the output dataset, when supported by output driver.
+ *
+ * @param psOptions the options struct for OGR2OGR().
+ * @param pszMetadataOption the metadata key and value ("META-TAG=VALUE").
+ */
+
+void OGR2OGROptionsAddMetadataOptions( OGR2OGROptions *psOptions,
+                                       const char *pszMetadataOption )
+{
+    psOptions->papszMetadataOptions = CSLAddString( psOptions->papszMetadataOptions, pszMetadataOption );
 }

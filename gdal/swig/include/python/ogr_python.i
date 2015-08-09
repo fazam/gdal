@@ -605,3 +605,117 @@ del _MyHelper
 del _Module
 
 %}
+
+%pythoncode %{
+
+def Translate(dest, srcDS, options = None, dstDS = None, accessMode = _ogr.ACCESS_CREATION,
+              skipFailures = False, layerTransaction = -1, forceTransaction = False,
+              groupTransactions = 20000, FIDToFetch = -1, quiet = False,
+              format = 'ESRI Shapefile', layers = None, DSCO = None, LCO = None, transform = False,
+              addMissingFields = False, outputSRSDef = None, sourceSRSDef = None,
+              nullifyOutputSRS = False, exactFieldNameMatch = True, newLayerName = None,
+              WHERE = None, geomField = None, selFields = None, SQLStatement = None,
+              dialect = None, gType = -2, geomConversion = _ogr.GEOMTYPE_DEFAULT, geomOp = _ogr.GEOMOP_NONE,
+              geomOpParam = 0, fieldTypesToString = None, mapFieldType = None, unsetFieldWidth = False,
+              displayProgress = False, wrapDateline = False, dateLineOffset = 10, clipSrc = None, clipSrcDS = None,
+              clipSrcSQL = None, clipSrcLayer = None, clipSrcWhere = None, clipDst = None,
+              clipDstDS = None, clipDstSQL = None, clipDstLayer = None, clipDstWhere = None,
+              splitListFields = False, maxSplitListSubFields = -1, explodeCollections = False,
+              zField = None, fieldMap = None, coordDim = -1, destOpenOptions = None,
+              forceNullable = False, unsetDefault = False, unsetFid = False, preserveFID = False,
+              copyMD = True, metadataOptions = None, spatSRSDef = None, transformOrder = 0,
+              spatialFilter = None):
+    """ If options is provided as a ogr.TranslateOptions() object, format and other keywords are ignored. """
+    if options is None:
+        options = TranslateOptions()
+        options.accessMode = accessMode
+        options.skipFailures = skipFailures
+        options.layerTransaction = layerTransaction
+        options.forceTransaction = forceTransaction
+        options.groupTransactions = groupTransactions
+        options.FIDToFetch = FIDToFetch
+        options.quiet = quiet
+        options.format = format
+        if layers is not None:
+            options.layers = layers
+        if DSCO is not None:
+            options.DSCO = DSCO
+        if LCO is not None:
+            options.LCO = LCO
+        options.transform = transform
+        options.addMissingFields = addMissingFields
+        if outputSRSDef is not None:
+            options.outputSRSDef = outputSRSDef
+        if sourceSRSDef is not None:
+            options.sourceSRSDef = sourceSRSDef
+        options.nullifyOutputSRS = nullifyOutputSRS
+        options.exactFieldNameMatch = exactFieldNameMatch
+        if newLayerName is not None:
+            options.newLayerName = newLayerName
+        if WHERE is not None:
+            options.WHERE = WHERE
+        if geomField is not None:
+            options.geomField = geomField
+        if selFields is not None:
+            options.selFields = selFields
+        if SQLStatement is not None:
+            options.SQLStatement = SQLStatement
+        if dialect is not None:
+            options.dialect = dialect
+        options.gType = gType
+        options.geomConversion = geomConversion
+        options.geomOp = geomOp
+        options.geomOpParam = geomOpParam
+        if fieldTypesToString is not None:
+            options.fieldTypesToString = fieldTypesToString
+        if mapFieldType is not None:
+            options.mapFieldType = mapFieldType
+        options.unsetFieldWidth = unsetFieldWidth
+        options.displayProgress = displayProgress
+        options.wrapDateline = wrapDateline
+        options.dateLineOffset = dateLineOffset
+        if clipSrc is not None:
+            options.clipSrc = clipSrc
+        if clipSrcDS is not None:
+            options.clipSrcDS = clipSrcDS
+        if clipSrcSQL is not None:
+            options.clipSrcSQL = clipSrcSQL
+        if clipSrcLayer is not None:
+            options.clipSrcLayer = clipSrcLayer
+        if clipSrcWhere is not None:
+            options.clipSrcWhere = clipSrcWhere
+        if clipDst is not None:
+            options.clipDst = clipDst
+        if clipDstDS is not None:
+            options.clipDstDS = clipDstDS
+        if clipDstSQL is not None:
+            options.clipDstSQL = clipDstSQL
+        if clipDstLayer is not None:
+            options.clipDstLayer = clipDstLayer
+        if clipDstWhere is not None:
+            options.clipDstWhere = clipDstWhere
+        options.splitListFields = splitListFields
+        options.maxSplitListSubFields = maxSplitListSubFields
+        options.explodeCollections = explodeCollections
+        if zField is not None:
+            options.zField = zField
+        if fieldMap is not None:
+            options.fieldMap = fieldMap
+        options.coordDim = coordDim
+        if destOpenOptions is not None:
+            options.destOpenOptions = destOpenOptions
+        options.forceNullable = forceNullable
+        options.unsetDefault = unsetDefault
+        options.unsetFid = unsetFid
+        options.preserveFID = preserveFID
+        options.copyMD = copyMD
+        if metadataOptions is not None:
+            options.metadataOptions = metadataOptions
+        if spatSRSDef is not None:
+            options.spatSRSDef = spatSRSDef
+        options.transformOrder = transformOrder
+        if spatialFilter is not None:
+            options.spatialFilter = spatialFilter
+    ret = TranslateInternal(dest, dstDS, srcDS, options)
+    return ret
+%}

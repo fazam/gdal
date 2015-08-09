@@ -338,7 +338,61 @@ OGR2OGROptions CPL_DLL *OGR2OGROptionsNew( void );
 
 void CPL_DLL OGR2OGROptionsFree( OGR2OGROptions *psOptions );
 
+void CPL_DLL OGR2OGROptionsSetLayers( OGR2OGROptions *psOptions,
+                                      char **papszLayers );
+
+void CPL_DLL OGR2OGROptionsAddLayer( OGR2OGROptions *psOptions,
+                                     const char *pszLayer );
+
+void CPL_DLL OGR2OGROptionsSetDSCO( OGR2OGROptions *psOptions,
+                                    char **papszDSCO );
+
+void CPL_DLL OGR2OGROptionsAddDSCO( OGR2OGROptions *psOptions,
+                                    const char *pszDSCO );
+
+void CPL_DLL OGR2OGROptionsSetLCO( OGR2OGROptions *psOptions,
+                                   char **papszLCO );
+
+void CPL_DLL OGR2OGROptionsAddLCO( OGR2OGROptions *psOptions,
+                                   const char *pszLCO );
+
+void CPL_DLL OGR2OGROptionsSetSelFields( OGR2OGROptions *psOptions,
+                                         char **papszSelFields );
+
+void CPL_DLL OGR2OGROptionsAddSelFields( OGR2OGROptions *psOptions,
+                                         const char *pszSelField );
+
+void CPL_DLL OGR2OGROptionsSetFieldTypesToString( OGR2OGROptions *psOptions,
+                                                  char **papszFieldTypesToString );
+
+void CPL_DLL OGR2OGROptionsAddFieldTypesToString( OGR2OGROptions *psOptions,
+                                                  const char *pszFieldType );
+
+void CPL_DLL OGR2OGROptionsSetMapFieldType( OGR2OGROptions *psOptions,
+                                            char **papszMapFieldType );
+
+void CPL_DLL OGR2OGROptionsAddMapFieldType( OGR2OGROptions *psOptions,
+                                            const char *pszFieldType );
+
+void CPL_DLL OGR2OGROptionsSetFieldMap( OGR2OGROptions *psOptions,
+                                        char **papszFieldMap );
+
+void CPL_DLL OGR2OGROptionsAddFieldMap( OGR2OGROptions *psOptions,
+                                        const char *pszField );
+
+void CPL_DLL OGR2OGROptionsSetDestOpenOptions( OGR2OGROptions *psOptions,
+                                               char **papszDestOpenOptions );
+
+void CPL_DLL OGR2OGROptionsAddDestOpenOptions( OGR2OGROptions *psOptions,
+                                               const char *pszDestOpenOption );
+
+void CPL_DLL OGR2OGROptionsSetMetadataOptions( OGR2OGROptions *psOptions,
+                                               char **papszMetadataOptions );
+
+void CPL_DLL OGR2OGROptionsAddMetadataOptions( OGR2OGROptions *psOptions,
+                                               const char *pszMetadataOption );
+
 GDALDatasetH CPL_DLL OGR2OGR( const char *pszDest, GDALDatasetH hDstDS, GDALDatasetH hSrcDS,
-                              OGR2OGROptions *psOptions, int *bUsageError, int *bCloseODS );
+                              OGR2OGROptions *psOptions, int *pbUsageError, int *pbCloseODS );
 
 CPL_C_END
