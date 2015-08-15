@@ -3155,12 +3155,12 @@ struct OGR2OGROptions {
     int displayProgress;
     int wrapDateline;
     int dateLineOffset;
-    OGRGeometryH clipSrc;
+    OGRGeometryShadow* clipSrc;
     char *clipSrcDS;
     char *clipSrcSQL;
     char *clipSrcLayer;
     char *clipSrcWhere;
-    OGRGeometryH clipDst;
+    OGRGeometryShadow* clipDst;
     char *clipDstDS;
     char *clipDstSQL;
     char *clipDstLayer;
@@ -3181,7 +3181,7 @@ struct OGR2OGROptions {
     char *spatSRSDef;
     //GDAL_GCP *GCPs;
     int transformOrder;
-    OGRGeometryH spatialFilter;
+    OGRGeometryShadow* spatialFilter;
 
 %immutable;
     OGR2OGROptions() {
@@ -3509,11 +3509,11 @@ void OGR2OGROptions_dateLineOffset_set( OGR2OGROptions *ogr2ogrOptions, int nDat
     ogr2ogrOptions->nDateLineOffset = nDateLineOffset;
 }
 
-OGRGeometryH OGR2OGROptions_clipSrc_get( OGR2OGROptions *ogr2ogrOptions ) {
+OGRGeometryShadow* OGR2OGROptions_clipSrc_get( OGR2OGROptions *ogr2ogrOptions ) {
     return ogr2ogrOptions->hClipSrc;
 }
 
-void OGR2OGROptions_clipSrc_set( OGR2OGROptions *ogr2ogrOptions, OGRGeometryH hClipSrc ) {
+void OGR2OGROptions_clipSrc_set( OGR2OGROptions *ogr2ogrOptions, OGRGeometryShadow* hClipSrc ) {
     OGR_G_DestroyGeometry( ogr2ogrOptions->hClipSrc );
     if( hClipSrc != NULL )
         ogr2ogrOptions->hClipSrc = OGR_G_Clone( hClipSrc );
@@ -3555,11 +3555,11 @@ void OGR2OGROptions_clipSrcWhere_set( OGR2OGROptions *ogr2ogrOptions, char *pszC
     ogr2ogrOptions->pszClipSrcWhere = CPLStrdup( pszClipSrcWhere );
 }
 
-OGRGeometryH OGR2OGROptions_clipDst_get( OGR2OGROptions *ogr2ogrOptions ) {
+OGRGeometryShadow* OGR2OGROptions_clipDst_get( OGR2OGROptions *ogr2ogrOptions ) {
     return ogr2ogrOptions->hClipDst;
 }
 
-void OGR2OGROptions_clipDst_set( OGR2OGROptions *ogr2ogrOptions, OGRGeometryH hClipDst ) {
+void OGR2OGROptions_clipDst_set( OGR2OGROptions *ogr2ogrOptions, OGRGeometryShadow* hClipDst ) {
     OGR_G_DestroyGeometry( ogr2ogrOptions->hClipDst );
     if( hClipDst != NULL )
         ogr2ogrOptions->hClipDst = OGR_G_Clone( hClipDst );
@@ -3723,11 +3723,11 @@ void OGR2OGROptions_transformOrder_set( OGR2OGROptions *ogr2ogrOptions, int nTra
     ogr2ogrOptions->nTransformOrder = nTransformOrder;
 }
 
-OGRGeometryH OGR2OGROptions_spatialFilter_get( OGR2OGROptions *ogr2ogrOptions ) {
+OGRGeometryShadow* OGR2OGROptions_spatialFilter_get( OGR2OGROptions *ogr2ogrOptions ) {
     return ogr2ogrOptions->hSpatialFilter;
 }
 
-void OGR2OGROptions_spatialFilter_set( OGR2OGROptions *ogr2ogrOptions, OGRGeometryH hSpatialFilter ) {
+void OGR2OGROptions_spatialFilter_set( OGR2OGROptions *ogr2ogrOptions, OGRGeometryShadow* hSpatialFilter ) {
     OGR_G_DestroyGeometry( ogr2ogrOptions->hSpatialFilter );
     if( hSpatialFilter != NULL )
         ogr2ogrOptions->hSpatialFilter = OGR_G_Clone( hSpatialFilter );
