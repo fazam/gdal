@@ -643,7 +643,7 @@ int main( int argc, char ** argv )
             strcpy( pszSubDest, osTemp.c_str() );
             hDataset = GDALOpenEx( pszSource, GDAL_OF_RASTER, NULL,
                            (const char* const* )papszOpenOptions, NULL );
-            if( !psOptions->bQuiet );
+            if( !psOptions->bQuiet )
                 printf("Input file size is %d, %d\n", GDALGetRasterXSize(hDataset), GDALGetRasterYSize(hDataset));
             hOutDS = GDALTranslate(pszDest, hDataset, psOptions, &bUsageError);
             if(bUsageError == TRUE)
@@ -661,7 +661,7 @@ int main( int argc, char ** argv )
 
     }
 
-    if( !psOptions->bQuiet );
+    if( !psOptions->bQuiet )
         printf("Input file size is %d, %d\n", GDALGetRasterXSize(hDataset), GDALGetRasterYSize(hDataset));
 
     hOutDS = GDALTranslate(pszDest, hDataset, psOptions, &bUsageError);

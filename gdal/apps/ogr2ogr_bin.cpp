@@ -44,7 +44,7 @@ CPL_CVSID("$Id$");
 
 static void Usage(int bShort = TRUE);
 static void Usage(const char* pszAdditionalMsg, int bShort = TRUE);
-int GetFieldType(const char* pszArg, int* pnSubFieldType);
+int CPL_DLL GetFieldType(const char* pszArg, int* pnSubFieldType);
 
 /************************************************************************/
 /*                            IsNumber()                               */

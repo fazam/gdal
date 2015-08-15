@@ -134,6 +134,8 @@ static OGRLayer* GetLayerAndOverwriteIfNecessary(GDALDataset *poDstDS,
 
 static void FreeTargetLayerInfo(TargetLayerInfo* psInfo);
 
+int CPL_DLL GetFieldType(const char* pszArg, int* pnSubFieldType);
+
 /* -------------------------------------------------------------------- */
 /*                  CheckDestDataSourceNameConsistency()                */
 /* -------------------------------------------------------------------- */
