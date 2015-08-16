@@ -654,9 +654,12 @@ int main( int nArgc, char ** papszArgv )
 /* -------------------------------------------------------------------- */
 /*      Open data source.                                               */
 /* -------------------------------------------------------------------- */
-
-    hDS = GDALOpenEx( pszDataSource,
-                      GDAL_OF_VECTOR, NULL, papszOpenOptions, NULL );
+    if( strcmp(pszDataSource, pszDestDataSource) == 0 )
+        hDS = GDALOpenEx( pszDataSource,
+                GDAL_OF_UPDATE | GDAL_OF_VECTOR, NULL, papszOpenOptions, NULL );
+    else
+        hDS = GDALOpenEx( pszDataSource,
+                GDAL_OF_VECTOR, NULL, papszOpenOptions, NULL );
 
 /* -------------------------------------------------------------------- */
 /*      Report failure                                                  */

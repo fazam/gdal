@@ -994,13 +994,19 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDstDS, GDALDatasetH hSr
     GDALDataset *poDS = (GDALDataset *) hSrcDS;
     GDALDataset *poODS = NULL;
     GDALDriver *poDriver = NULL;
-    
+    char *pszDestFilename;
+
     if(hDstDS)
+    {
         poODS = (GDALDataset *) hDstDS;
+        pszDestFilename = CPLStrdup( poODS->GetDescription() );
+    }
+    else
+        pszDestFilename = CPLStrdup( pszDest );
 
     /* Avoid opening twice the same datasource if it is both the input and output */
     /* Known to cause problems with at least FGdb and SQlite drivers. See #4270 */
-    if (bUpdate && strcmp(pszDest, poDS->GetDescription()) == 0)
+    if (bUpdate && strcmp(pszDestFilename, poDS->GetDescription()) == 0)
     {
         poODS = poDS;
 
@@ -1012,7 +1018,7 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDstDS, GDALDatasetH hSr
         if (poDS && !(EQUAL(poDriver->GetDescription(), "FileGDB") ||
                       EQUAL(poDriver->GetDescription(), "SQLite") ||
                       EQUAL(poDriver->GetDescription(), "GPKG")))
-            poODS = NULL;
+            ;
         else
             if( pbCloseODS )
                 *pbCloseODS = FALSE;
