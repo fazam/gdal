@@ -40,34 +40,69 @@
 
 CPL_C_START
 
+/*! output format */
 typedef enum {
-    GDALINFO_FORMAT_TEXT = 0,
-    GDALINFO_FORMAT_JSON = 1
+    /*! output in text format */ GDALINFO_FORMAT_TEXT = 0,
+    /*! output in json format */ GDALINFO_FORMAT_JSON = 1
 } GDALInfoFormat;
 
-/** GDALInfoOptions* must be allocated and freed with GDALInfoOptionsNew() and 
+/************************************************************************/
+/*                           GDALInfoOptions                            */
+/************************************************************************/
+
+/** Options for use with GDALInfo(). GDALInfoOptions* must be allocated and freed with GDALInfoOptionsNew() and 
  * GDALInfoOptionsFree() respectively.
  */
 typedef struct
 {
     GDALInfoFormat eFormat;
     int bComputeMinMax;
+
+    /*! report histogram information for all bands */
     int bReportHistograms;
+
+    /*! report a PROJ.4 string corresponding to the file's coordinate system */
     int bReportProj4;
+
+    /*! read and display image statistics. Force computation if no statistics are stored in an image */
     int bStats;
+
+    /*! read and display image statistics. Force computation if no statistics are stored in an image.
+        However, they may be computed based on overviews or a subset of all tiles. Useful if you are
+        in a hurry and don't want precise stats. */
     int bApproxStats;
+
     int bSample;
+
+    /*! force computation of the checksum for each band in the dataset */
     int bComputeChecksum;
+
+    /*! allow or suppress ground control points list printing. It may be useful for datasets with huge amount
+        of GCPs, such as L1B AVHRR or HDF4 MODIS which contain thousands of them. */
     int bShowGCPs;
+
+    /*! allow or suppress metadata printing. Some datasets may contain a lot of metadata strings. */
     int bShowMetadata;
+
+    /*! allow or suppress printing of raster attribute table */
     int bShowRAT;
+
+    /*! allow or suppress printing of color table */
     int bShowColorTable;
+
+    /*! list all metadata domains available for the dataset */
     int bListMDD;
+
+    /*! display the file list or the first file of the file list */
     int bShowFileList;
+
+    /*! display all metadata */
     int bAllMetadata;
-    /** papszExtraMDDomains must not be directly set but through
-     * GDALInfoOptionsAddExtraMDDomains().
-     */
+
+    /*! report metadata for the specified domains. "all" can be used to report metadata
+        in all domains. papszExtraMDDomains must not be directly set but through
+        GDALInfoOptionsAddExtraMDDomains(). 
+        */
     char **papszExtraMDDomains;
 } GDALInfoOptions;
 
@@ -98,23 +133,48 @@ typedef struct
     double  dfScaleDstMin, dfScaleDstMax;
 } GDALTranslateScaleParams;
 
+/************************************************************************/
+/*                         GDALTranslateOptions                         */
+/************************************************************************/
+
+/** Options for use with GDALTranslate(). GDALTranslateOptions* must be allocated
+ * and freed with GDALTranslateOptionsNew() and GDALTranslateOptionsFree() respectively.
+ */
 typedef struct
 {
+
+    /*! output format. The default is GeoTIFF(GTiff). Use the short format name. */
     char *pszFormat;
+
+    /*! allow or suppress progress monitor and other non-error output */
     int bQuiet;
+
     GDALProgressFunc pfnProgress;
     void *pProgressData;
+
+    /*! for the output bands to be of the indicated data type */
     GDALDataType eOutputType;
     MaskMode eMaskMode;
     int nBandCount;
+
+    /*! list of input bands to write to the output file, or to reorder bands */
     int *panBandList; /* negative value of panBandList[i] means mask band of ABS(panBandList[i]) */
     int nOXSizePixel;
     int nOYSizePixel;
     double dfOXSizePct;
     double dfOYSizePct;
+
+    /*! list of creation options to the output format driver */
     char **papszCreateOptions;
+
+    /*! subwindow from the source image for copying based on pixel/line location */
     int anSrcWin[4];
+
+    /*! don't be forgiving of mismatches and lost data when translating to the output format */
     int bStrict;
+
+    /*! apply the scale/offset metadata for the bands to convert scaled values to unscaled values.
+     *  It is also often necessary to reset the output datatype with eOutputType */
     int bUnscale;
     int nScaleRepeat;
     GDALTranslateScaleParams *pasScaleParams;
@@ -169,6 +229,13 @@ void CPL_DLL GDALTranslateOptionsAddBand( GDALTranslateOptions *psOptions, int n
 
 GDALDatasetH CPL_DLL GDALTranslate(const char *pszDest, GDALDatasetH hDataset, GDALTranslateOptions *psOptions, int *pbUsageError);
 
+/************************************************************************/
+/*                        GDALWarpAppOptions                            */
+/************************************************************************/
+
+/** Options for use with GDALWarp(). GDALWarpAppOptions* must be allocated and
+ * freed with GDALWarpAppOptionsNew() and GDALWarpAppOptionsFree() respectively.
+ */
 typedef struct
 {
     double dfMinX;
@@ -257,24 +324,41 @@ typedef enum
     GEOMTYPE_CONVERT_TO_CURVE,
 } GeomType;
 
+/*! Access modes */
 typedef enum
 {
     ACCESS_CREATION,
-    ACCESS_UPDATE,
-    ACCESS_APPEND,
-    ACCESS_OVERWRITE,
+    /*! open existing output datasource in update mode rather than trying
+    to create a new one */ ACCESS_UPDATE,
+    /*! append to existing layer instead of creating new */ ACCESS_APPEND,
+    /*! delete the output layer and recreate it empty */ ACCESS_OVERWRITE,
 } AccessMode;
 
 #define COORD_DIM_LAYER_DIM -2
 
+/************************************************************************/
+/*                           OGR2OGROptions                             */
+/************************************************************************/
+
+/** Options for use with OGR2OGR(). OGR2OGROptions* must be allocated and
+ * freed with OGR2OGROptionsNew() and OGR2OGROptionsFree() respectively.
+ */
 typedef struct
 {
+    /*! continue after a failure, skipping the failured feature */
     int bSkipFailures;
+
     int bLayerTransaction;
     int bForceTransaction;
+
+    /*! group n features per transaction (default 20000 in OGR 1.11, 200 in previous releases).
+    Increase the value for better performance when writing into DBMS drivers that have transaction
+    support. Starting with GDAL 2.0, n can be set to unlimited to load the data into a single transaction */
     int nGroupTransactions;
     GIntBig nFIDToFetch;
     int bQuiet;
+
+    /*! output file format name (default is ESRI Shapefile) */
     char *pszFormat;
     char **papszLayers;
     char **papszDSCO;
@@ -286,6 +370,8 @@ typedef struct
     char *pszSourceSRSDef;
     int bNullifyOutputSRS;
     int bExactFieldNameMatch;
+
+    /*! an alternate name to the new layer */
     char *pszNewLayerName;
     char *pszWHERE;
     char *pszGeomField;
@@ -298,27 +384,57 @@ typedef struct
     double dfGeomOpParam;
     char **papszFieldTypesToString;
     char **papszMapFieldType;
+
+    /*! set field width and precision to 0 */
     int bUnsetFieldWidth;
+
+    /*! display progress on terminal. Only works if input layers have the "fast feature count"
+    capability */
     int bDisplayProgress;
+
+    /*! split geometries crossing the dateline meridian */
     int bWrapDateline;
+
+    /*! offset from dateline in degrees (default long. = +/- 10deg, geometries
+    within 170deg to -170deg will be split) */
     int nDateLineOffset;
+
+
     int bClipSrc;
     OGRGeometryH hClipSrc;
     char *pszClipSrcDS;
+
+    /*! select desired geometries using an SQL query */
     char *pszClipSrcSQL;
+
+    /*! selected named layer from the source clip datasource */
     char *pszClipSrcLayer;
+
+    /*! restrict desired geometries based on attribute query */
     char *pszClipSrcWhere;
+
     OGRGeometryH hClipDst;
+
     char *pszClipDstDS;
+
+    /*! select desired geometries using an SQL query */
     char *pszClipDstSQL;
+
+    /*! selected named layer from the destination clip datasource */
     char *pszClipDstLayer;
+
+    /*! restrict desired geometries based on attribute query */
     char *pszClipDstWhere;
+
+
     int bSplitListFields;
     int nMaxSplitListSubFields;
     int bExplodeCollections;
     char *pszZField;
     char **papszFieldMap;
     int nCoordDim;
+
+    /*! destination dataset open option (format specific), only valid in update mode */
     char **papszDestOpenOptions;
     int bForceNullable;
     int bUnsetDefault;
@@ -393,6 +509,6 @@ void CPL_DLL OGR2OGROptionsAddMetadataOptions( OGR2OGROptions *psOptions,
                                                const char *pszMetadataOption );
 
 GDALDatasetH CPL_DLL OGR2OGR( const char *pszDest, GDALDatasetH hDstDS, GDALDatasetH hSrcDS,
-                              OGR2OGROptions *psOptions, int *pbUsageError, int *pbCloseODS );
+                              OGR2OGROptions *psOptions, int *pbUsageError );
 
 CPL_C_END

@@ -249,6 +249,27 @@ static CPLErr CropToCutline( void* hCutline, char** papszTO, GDALDatasetH *pahSr
 }
 #endif /* OGR_ENABLED */
 
+/************************************************************************/
+/*                             GDALWarp()                               */
+/************************************************************************/
+
+/**
+ * image reprojection and warping function.
+ *
+ * GDALWarpAppOptions* must be allocated and freed with GDALWarpAppOptionsNew()
+ * and GDALWarpAppOptionsFree() respectively.
+ * pszDest and hDstDS cannot be used at the same time.
+ *
+ * @param pszDest the destination dataset path.
+ * @param hDstDS the destination dataset.
+ * @param nSrcCount the number of input datasets.
+ * @param pahSrcDS the list of input datasets.
+ * @param psOptions the options struct for GDALWarp().
+ * @param pbUsageError the pointer to int variable to determine any usage error has occured
+ * @return the converted dataset.
+ * It must be freed using GDALClose().
+ */
+
 GDALDatasetH GDALWarp( const char *pszDest, GDALDatasetH hDstDS, int nSrcCount,
                        GDALDatasetH *pahSrcDS, GDALWarpAppOptions *psOptions, int *pbUsageError )
 {

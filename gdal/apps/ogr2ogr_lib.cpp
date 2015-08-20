@@ -886,8 +886,24 @@ int GetFieldType(const char* pszArg, int* pnSubFieldType)
 /*                             OGR2OGR()                                */
 /************************************************************************/
 
+/**
+ * converts simple features data between file formats.
+ *
+ * OGR2OGROptions* must be allocated and freed with OGR2OGROptionsNew()
+ * and OGR2OGROptionsFree() respectively.
+ * pszDest and hDstDS cannot be used at the same time.
+ *
+ * @param pszDest the destination dataset path.
+ * @param hDstDS the destination dataset.
+ * @param hSrcDS the source dataset.
+ * @param psOptions the options struct for OGR2OGR().
+ * @param pbUsageError the pointer to int variable to determine any usage error has occured
+ * @return the converted dataset.
+ * It must be freed using GDALClose().
+ */
+
 GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDstDS, GDALDatasetH hSrcDS, 
-                      OGR2OGROptions *psOptions, int *pbUsageError, int *pbCloseODS )
+                      OGR2OGROptions *psOptions, int *pbUsageError )
 
 {
     OGRSpatialReference *poOutputSRS = NULL;
@@ -1008,21 +1024,6 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDstDS, GDALDatasetH hSr
     /* Known to cause problems with at least FGdb and SQlite drivers. See #4270 */
     if (bUpdate && strcmp(pszDestFilename, poDS->GetDescription()) == 0)
     {
-        poODS = poDS;
-
-        if( poDS != NULL )
-            poDriver = poDS->GetDriver();
-
-        /* Restrict to those 2 drivers. For example it is known to break with */
-        /* the PG driver due to the way it manages transactions... */
-        if (poDS && !(EQUAL(poDriver->GetDescription(), "FileGDB") ||
-                      EQUAL(poDriver->GetDescription(), "SQLite") ||
-                      EQUAL(poDriver->GetDescription(), "GPKG")))
-            ;
-        else
-            if( pbCloseODS )
-                *pbCloseODS = FALSE;
-        
         if (poDS)
         {
             if (bOverwrite || bAppend)

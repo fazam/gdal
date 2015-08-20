@@ -208,12 +208,12 @@ static int FixSrcDstWindow( int* panSrcWin, int* panDstWin,
  * @param pszDest the destination dataset path.
  * @param hDataset the dataset handle.
  * @param psOptions the options struct for GDALTranslate().
- * @param bUsageError the pointer to int variable to determine any usage error has occured
+ * @param pbUsageError the pointer to int variable to determine any usage error has occured
  * @return the converted dataset.
  * It must be freed using GDALClose().
  */
 
-GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTranslateOptions *psOptions, int *bUsageError )
+GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTranslateOptions *psOptions, int *pbUsageError )
 
 {
     GDALDatasetH hOutDS;
@@ -228,8 +228,8 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
     int bDefBands = TRUE;
     CPLString osProjSRS;
 
-    if(bUsageError)
-        *bUsageError = FALSE;
+    if(pbUsageError)
+        *pbUsageError = FALSE;
 
     if(psOptions->adfULLR[0] != 0.0 || psOptions->adfULLR[1] != 0.0 || psOptions->adfULLR[2] != 0.0 || psOptions->adfULLR[3] != 0.0)
         bGotBounds = TRUE;
@@ -246,8 +246,8 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
     {
         CPLError( CE_Failure, CPLE_AppDefined, "No target dataset specified.");
 
-        if(bUsageError)
-            *bUsageError = TRUE;
+        if(pbUsageError)
+            *pbUsageError = TRUE;
         return NULL;
     }
 
@@ -255,8 +255,8 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
     {
         CPLError( CE_Failure, CPLE_AppDefined, "Source and destination datasets must be different.");
         
-        if(bUsageError)
-            *bUsageError = TRUE;
+        if(pbUsageError)
+            *pbUsageError = TRUE;
         return NULL;
     }
 
@@ -306,15 +306,15 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
          psOptions->dfOYSizePct) && (psOptions->dfXRes != 0 && psOptions->dfYRes != 0) )
     {
         CPLError( CE_Failure, CPLE_IllegalArg, "-outsize and -tr options cannot be used at the same time.");
-        if(bUsageError)
-            *bUsageError = TRUE;
+        if(pbUsageError)
+            *pbUsageError = TRUE;
         return NULL;
     }
     if( bGotBounds &&  (psOptions->dfXRes != 0 && psOptions->dfYRes != 0) )
     {
         CPLError( CE_Failure, CPLE_IllegalArg, "-a_ullr and -tr options cannot be used at the same time.");
-        if(bUsageError)
-            *bUsageError = TRUE;
+        if(pbUsageError)
+            *pbUsageError = TRUE;
         return NULL;
     }
 
@@ -369,8 +369,8 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
             CPLError( CE_Failure, CPLE_IllegalArg, "-scale has been specified more times than the number of output bands");
         else
             CPLError( CE_Failure, CPLE_IllegalArg, "-scale_XX has been specified with XX greater than the number of output bands");
-        if(bUsageError)
-            *bUsageError = TRUE;
+        if(pbUsageError)
+            *pbUsageError = TRUE;
         return NULL;
     }
 
@@ -380,8 +380,8 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
             CPLError( CE_Failure, CPLE_IllegalArg, "-exponent has been specified more times than the number of output bands");
         else
             CPLError( CE_Failure, CPLE_IllegalArg, "-exponent_XX has been specified with XX greater than the number of output bands");
-        if(bUsageError)
-            *bUsageError = TRUE;
+        if(pbUsageError)
+            *pbUsageError = TRUE;
         return NULL;
     }
 /* -------------------------------------------------------------------- */
@@ -526,8 +526,8 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
             }
         }
         CPLError( CE_Failure, CPLE_IllegalArg, "\n" );
-        if(bUsageError)
-            *bUsageError = TRUE;
+        if(pbUsageError)
+            *pbUsageError = TRUE;
         return NULL;
     }
 
@@ -1021,8 +1021,8 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
         if( bExponentScaling && !bScale )
         {
             CPLError( CE_Failure, CPLE_IllegalArg, "For band %d, -scale should be specified when -exponent is specified.", i + 1);
-            if(bUsageError)
-                *bUsageError = TRUE;
+            if(pbUsageError)
+                *pbUsageError = TRUE;
             return NULL;
         }
 

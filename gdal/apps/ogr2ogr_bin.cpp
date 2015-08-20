@@ -83,6 +83,7 @@ int main( int nArgc, char ** papszArgv )
     const char *pszDestDataSource = NULL;
     GDALDatasetH hDS = NULL;
     GDALDatasetH hODS = NULL;
+    GDALDriverH hDriver = NULL;
     const char *pszSelect;
     char **papszOpenOptions = NULL;
     OGR2OGROptions *psOptions = OGR2OGROptionsNew();
@@ -654,12 +655,31 @@ int main( int nArgc, char ** papszArgv )
 /* -------------------------------------------------------------------- */
 /*      Open data source.                                               */
 /* -------------------------------------------------------------------- */
-    if( strcmp(pszDataSource, pszDestDataSource) == 0 )
+
+    /* Avoid opening twice the same datasource if it is both the input and output */
+    /* Known to cause problems with at least FGdb and SQlite drivers. See #4270 */
+    if (psOptions->eAccessMode != ACCESS_CREATION && strcmp(pszDestDataSource, pszDataSource) == 0)
+    {
         hDS = GDALOpenEx( pszDataSource,
                 GDAL_OF_UPDATE | GDAL_OF_VECTOR, NULL, papszOpenOptions, NULL );
+        if( hDS != NULL )
+            hDriver = GDALGetDatasetDriver(hDS);
+
+        /* Restrict to those 2 drivers. For example it is known to break with */
+        /* the PG driver due to the way it manages transactions... */
+        if (hDS && !(EQUAL(GDALGetDescription(hDS), "FileGDB") ||
+                      EQUAL(GDALGetDescription(hDS), "SQLite") ||
+                      EQUAL(GDALGetDescription(hDS), "GPKG")))
+        {
+            hDS = GDALOpenEx( pszDataSource,
+                        GDAL_OF_VECTOR, NULL, papszOpenOptions, NULL );
+        }
+        else
+            bCloseODS = FALSE;
+    }
     else
         hDS = GDALOpenEx( pszDataSource,
-                GDAL_OF_VECTOR, NULL, papszOpenOptions, NULL );
+                        GDAL_OF_VECTOR, NULL, papszOpenOptions, NULL );
 
 /* -------------------------------------------------------------------- */
 /*      Report failure                                                  */
@@ -681,7 +701,7 @@ int main( int nArgc, char ** papszArgv )
     }
 
 
-    hODS = OGR2OGR( pszDestDataSource, NULL, hDS, psOptions, &bUsageError, &bCloseODS );
+    hODS = OGR2OGR( pszDestDataSource, NULL, hDS, psOptions, &bUsageError );
 
     if(bUsageError==TRUE)
         Usage();

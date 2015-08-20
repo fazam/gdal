@@ -3750,8 +3750,7 @@ OGRDataSourceShadow* wrapper_Translate( const char* dest, OGRDataSourceShadow* d
                                          OGR2OGROptions *ogr2ogrOptions )
 {
     int usageError; /* ignored */
-    int closeODS; /* ignores */
-    return OGR2OGR( dest, dstDS, srcDS, ogr2ogrOptions, &usageError, &closeODS);
+    return OGR2OGR( dest, dstDS, srcDS, ogr2ogrOptions, &usageError );
 }
 
 %}
