@@ -227,6 +227,11 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
     int bGotBounds = FALSE;
     int bDefBands = TRUE;
     CPLString osProjSRS;
+    GDALProgressFunc pfnProgress = GDALDummyProgress;
+    void *pProgressData = NULL;
+
+    if(psOptions->bQuiet == FALSE)
+        pfnProgress = GDALTermProgress;
 
     if(pbUsageError)
         *pbUsageError = FALSE;
@@ -558,7 +563,7 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
         
         hOutDS = GDALCreateCopy( hDriver, pszDest, hDataset, 
                                  psOptions->bStrict, psOptions->papszCreateOptions, 
-                                 psOptions->pfnProgress, psOptions->pProgressData );
+                                 pfnProgress, pProgressData );
 
 
         return hOutDS;
@@ -1248,7 +1253,7 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
 /* -------------------------------------------------------------------- */
     hOutDS = GDALCreateCopy( hDriver, pszDest, (GDALDatasetH) poVDS,
                              psOptions->bStrict, psOptions->papszCreateOptions, 
-                             psOptions->pfnProgress, psOptions->pProgressData );
+                             pfnProgress, pProgressData );
     if( hOutDS != NULL )
     {
         int bHasGotErr = FALSE;
@@ -1360,8 +1365,6 @@ GDALTranslateOptions *GDALTranslateOptionsNew()
 
     psOptions->pszFormat = CPLStrdup("GTiff");
     psOptions->bQuiet = TRUE;
-    psOptions->pfnProgress = GDALDummyProgress;
-    psOptions->pProgressData = NULL;
     psOptions->eOutputType = GDT_Unknown;
     psOptions->eMaskMode = MASK_AUTO;
     psOptions->nBandCount = 0;

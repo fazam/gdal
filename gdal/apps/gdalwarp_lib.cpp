@@ -2227,7 +2227,7 @@ void GDALWarpAppOptionsSetRefineGCPs( GDALWarpAppOptions *psOptions, int nTolera
         CPLError( CE_Failure, CPLE_IllegalArg, "The tolerance for -refine_gcps may not be negative." );
     }
 
-    if (nMinimumGCPs != NULL && nMinimumGCPs >= 0)
+    if(nMinimumGCPs >= 0)
     {
         psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "REFINE_MINIMUM_GCPS", CPLOPrintf("%d", nMinimumGCPs) );
     }
@@ -2251,13 +2251,13 @@ void GDALWarpAppOptionsSetRefineGCPs( GDALWarpAppOptions *psOptions, int nTolera
  * @param pszMethod the method to use in transformer option.
  */
 
-void GDALWarpAppOptionsSetMethod( GDALWarpAppOptions *psOptions, const char *pszMethod )
+void GDALWarpAppOptionsSetMethod( GDALWarpAppOptions *psOptions, TransformerMethod eTransformerMethod )
 {
-    if( EQUAL(pszMethod,"tps") )
+    if( eTransformerMethod == GCP_TPS )
         psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "METHOD", "GCP_TPS" );
-    else if( EQUAL(pszMethod,"rpc") )
+    else if( eTransformerMethod == RPC )
         psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "METHOD", "RPC" );
-    else if( EQUAL(pszMethod,"geoloc") )
+    else if( eTransformerMethod == GEOLOC_ARRAY )
         psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "METHOD", "GEOLOC_ARRAY" );
 }
 

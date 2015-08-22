@@ -140,7 +140,6 @@ int main( int argc, char ** argv )
 
     psOptions = GDALTranslateOptionsNew();
 
-    psOptions->pfnProgress = GDALTermProgress;
     psOptions->bQuiet = FALSE;
 
 /* -------------------------------------------------------------------- */
@@ -169,7 +168,6 @@ int main( int argc, char ** argv )
         else if( EQUAL(argv[i],"-q") || EQUAL(argv[i],"-quiet") )
         {
             psOptions->bQuiet = TRUE;
-            psOptions->pfnProgress = GDALDummyProgress;
         }
 
         else if( EQUAL(argv[i],"-ot") )
@@ -567,7 +565,6 @@ int main( int argc, char ** argv )
     if( strcmp(pszDest, "/vsistdout/") == 0)
     {
         psOptions->bQuiet = TRUE;
-        psOptions->pfnProgress = GDALDummyProgress;
     }
 
     if( bOutsideExplicitlySet && psOptions->nOXSizePixel == 0 && psOptions->dfOXSizePct == 0.0 && psOptions->nOYSizePixel == 0 && psOptions->dfOYSizePct == 0.0 )
