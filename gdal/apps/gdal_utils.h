@@ -292,21 +292,27 @@ void CPL_DLL GDALWarpAppOptionsSetSrcSRS( GDALWarpAppOptions *psOptions, const c
 
 void CPL_DLL GDALWarpAppOptionsSetDstSRS( GDALWarpAppOptions *psOptions, const char *pszDstSRS );
 
-void CPL_DLL GDALWarpAppOptionsSetOrder( GDALWarpAppOptions *psOptions, const char *pszN);
+void CPL_DLL GDALWarpAppOptionsSetOrder( GDALWarpAppOptions *psOptions, int nOrder);
 
-void CPL_DLL GDALWarpAppOptionsSetRefineGCPs( GDALWarpAppOptions *psOptions, const char *pszTolerance, const char *pszMinimumGCPs );
+void CPL_DLL GDALWarpAppOptionsSetRefineGCPs( GDALWarpAppOptions *psOptions, int nTolerance, int nMinimumGCPs );
 
 void CPL_DLL GDALWarpAppOptionsSetMethod( GDALWarpAppOptions *psOptions, const char *pszMethod );
 
-void CPL_DLL GDALWarpAppOptionsSetTransformerOption( GDALWarpAppOptions *psOptions, const char *pszTransformerOption );
-
 void CPL_DLL GDALWarpAppOptionsSetWarpOptions( GDALWarpAppOptions *psOptions, char **papszWarpOptions );
+
+void CPL_DLL GDALWarpAppOptionsAddWarpOptions( GDALWarpAppOptions *psOptions, const char *pszWarpOption );
 
 void CPL_DLL GDALWarpAppOptionsSetCreateOptions( GDALWarpAppOptions *psOptions, char **papszCreateOptions );
 
-void CPL_DLL GDALWarpAppOptionsSetTO( GDALWarpAppOptions *psOptions, char **papszTO );
+void CPL_DLL GDALWarpAppOptionsAddCreateOptions( GDALWarpAppOptions *psOptions, const char *pszCreateOption );
+
+void CPL_DLL GDALWarpAppOptionsSetTransformerOptions( GDALWarpAppOptions *psOptions, char **papszTO );
+
+void CPL_DLL GDALWarpAppOptionsAddTransformerOptions( GDALWarpAppOptions *psOptions, const char *pszTransformerOption );
 
 void CPL_DLL GDALWarpAppOptionsSetDestOpenOptions( GDALWarpAppOptions *psOptions, char **papszDestOpenOptions );
+
+void CPL_DLL GDALWarpAppOptionsAddDestOpenOptions( GDALWarpAppOptions *psOptions, const char *pszDestOpenOption );
 
 typedef enum
 {

@@ -1958,7 +1958,7 @@ char **GDALWarpAppOptions_TO_get( GDALWarpAppOptions *warpAppOptions ) {
 }
 
 void GDALWarpAppOptions_TO_set( GDALWarpAppOptions *warpAppOptions, char **papszTO ) {
-    GDALWarpAppOptionsSetTO( warpAppOptions, papszTO );
+    GDALWarpAppOptionsSetTransformerOptions( warpAppOptions, papszTO );
 }
 
 char *GDALWarpAppOptions_cutlineDSName_get( GDALWarpAppOptions *warpAppOptions ) {
@@ -2101,15 +2101,12 @@ void GDALWarpAppOptionsSetSrcSRS( GDALWarpAppOptions *psOptions, const char *psz
 void GDALWarpAppOptionsSetDstSRS( GDALWarpAppOptions *psOptions, const char *pszDstSRS );
 
 %rename (WarpOptionsSetOrder) GDALWarpAppOptionsSetOrder;
-void GDALWarpAppOptionsSetOrder( GDALWarpAppOptions *psOptions, const char *pszN);
+void GDALWarpAppOptionsSetOrder( GDALWarpAppOptions *psOptions, int nOrder);
 
 %rename (WarpOptionsSetRefineGCPs) GDALWarpAppOptionsSetRefineGCPs;
-void GDALWarpAppOptionsSetRefineGCPs( GDALWarpAppOptions *psOptions, const char *pszTolerance, const char *pszMinimumGCPs );
+void GDALWarpAppOptionsSetRefineGCPs( GDALWarpAppOptions *psOptions, int nTolerance, int nMinimumGCPs );
 
 %rename (WarpOptionsSetMethod) GDALWarpAppOptionsSetMethod;
 void GDALWarpAppOptionsSetMethod( GDALWarpAppOptions *psOptions, const char *pszMethod );
-
-%rename (WarpOptionsSetTransformerOptions) GDALWarpAppOptionsSetTransformerOption;
-void GDALWarpAppOptionsSetTransformerOption( GDALWarpAppOptions *psOptions, const char *pszTransformerOption );
 
 #endif

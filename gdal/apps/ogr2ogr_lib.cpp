@@ -3303,6 +3303,17 @@ end_loop:
     return TRUE;
 }
 
+
+/************************************************************************/
+/*                           OGR2OGROptionsNew()                        */
+/************************************************************************/
+
+/**
+ * allocates a OGR2OGROptions struct.
+ *
+ * @return pointer to the allocated OGR2OGROptions struct.
+ */
+
 OGR2OGROptions *OGR2OGROptionsNew()
 {
     OGR2OGROptions *psOptions = (OGR2OGROptions *) CPLCalloc( 1, sizeof(OGR2OGROptions) );
@@ -3372,6 +3383,16 @@ OGR2OGROptions *OGR2OGROptionsNew()
 
     return psOptions;
 }
+
+/************************************************************************/
+/*                        OGR2OGROptionsFree()                          */
+/************************************************************************/
+
+/**
+ * frees the OGR2OGROptions struct.
+ *
+ * @param psOptions the options struct for OGR2OGR().
+ */
 
 void OGR2OGROptionsFree( OGR2OGROptions *psOptions )
 {

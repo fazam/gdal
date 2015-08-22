@@ -2057,6 +2057,15 @@ char *SanitizeSRS( const char *pszUserInput )
     return pszResult;
 }
 
+/************************************************************************/
+/*                             GDALWarpAppOptionsNew()                  */
+/************************************************************************/
+
+/**
+ * allocates a GDALWarpAppOptions struct.
+ *
+ * @return pointer to the allocated GDALWarpAppOptions struct.
+ */
 
 GDALWarpAppOptions *GDALWarpAppOptionsNew()
 {
@@ -2103,6 +2112,16 @@ GDALWarpAppOptions *GDALWarpAppOptionsNew()
     return psOptions;
 }
 
+/************************************************************************/
+/*                        GDALWarpAppOptionsFree()                    */
+/************************************************************************/
+
+/**
+ * frees the GDALWarpAppOptions struct.
+ *
+ * @param psOptions the options struct for GDALWarp().
+ */
+
 void GDALWarpAppOptionsFree( GDALWarpAppOptions *psOptions )
 {
     CPLFree(psOptions->pszFormat);
@@ -2122,12 +2141,40 @@ void GDALWarpAppOptionsFree( GDALWarpAppOptions *psOptions )
     CPLFree(psOptions);
 }
 
+/************************************************************************/
+/*                     GDALWarpAppOptionsSetSrcSRS()                    */
+/************************************************************************/
+
+/**
+ * set source spatial reference. The coordinate systems that can be passed are anything
+ * supported by the OGRSpatialReference.SetFromUserInput() call, which includes EPSG PCS
+ * and GCSes (ie. EPSG:4296), PROJ.4 declarations (as above), or the name of a .prf file
+ * containing well known text.
+ *
+ * @param psOptions the options struct GDALWarpAppOptions.
+ * @param pszSrcSRS the coordinate system or the name of the .prf file containing well known text.
+ */
+
 void GDALWarpAppOptionsSetSrcSRS( GDALWarpAppOptions *psOptions, const char *pszSrcSRS )
 {
     char *pszSRS = SanitizeSRS( pszSrcSRS );
     psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "SRC_SRS", pszSRS );
     CPLFree( pszSRS );
 }
+
+/************************************************************************/
+/*                     GDALWarpAppOptionsSetDstSRS()                    */
+/************************************************************************/
+
+/**
+ * set source spatial reference. The coordinate systems that can be passed are anything
+ * supported by the OGRSpatialReference.SetFromUserInput() call, which includes EPSG PCS
+ * and GCSes (ie. EPSG:4296), PROJ.4 declarations (as above), or the name of a .prf file
+ * containing well known text.
+ *
+ * @param psOptions the options struct GDALWarpAppOptions.
+ * @param pszSrcSRS the coordinate system or the name of the .prf file containing well known text.
+ */
 
 void GDALWarpAppOptionsSetDstSRS( GDALWarpAppOptions *psOptions, const char *pszDstSRS )
 {
@@ -2136,27 +2183,73 @@ void GDALWarpAppOptionsSetDstSRS( GDALWarpAppOptions *psOptions, const char *psz
     CPLFree( pszSRS );
 }
 
-void GDALWarpAppOptionsSetOrder( GDALWarpAppOptions *psOptions, const char *pszN)
+/************************************************************************/
+/*                      GDALWarpAppOptionsSetOrder()                    */
+/************************************************************************/
+
+/**
+ * set order of polynomial used for warping (1 to 3). The default is to select a polynomial order
+ * based on the number of GCPs.
+ *
+ * @param psOptions the options struct GDALWarpAppOptions.
+ * @param nOrder the order of polynomial.
+ */
+
+void GDALWarpAppOptionsSetOrder( GDALWarpAppOptions *psOptions, int nOrder)
 {
-    psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "MAX_GCP_ORDER", pszN );
+    psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "MAX_GCP_ORDER", CPLOPrintf("%d", nOrder) );
 }
 
-void GDALWarpAppOptionsSetRefineGCPs( GDALWarpAppOptions *psOptions, const char *pszTolerance, const char *pszMinimumGCPs )
+/************************************************************************/
+/*                    GDALWarpAppOptionsSetRefineGCPs()                 */
+/************************************************************************/
+
+/**
+ * set tolerance and minimum GCPs for refining the GCPs by automatically
+ * eliminating outliers. Outliers will be eliminated until nMinimumGCPs
+ * are left or when no outliers can be detected.
+ * The tolerance is passed to adjust when a GCP will be eliminated. Note that
+ * GCP refinement only works with polynomial interpolation. The tolerance is
+ * in pixel units if no projection is available, otherwise it is in SRS units.
+ * If nMinimumGCPs is not provided, the minimum GCPs according to the polynomial
+ * model is used.
+ *
+ * @param psOptions the options struct GDALWarpAppOptions.
+ * @param nTolerance the tolerance value.
+ * @param nMinimumGCPs the minimum GCPs
+ */
+
+void GDALWarpAppOptionsSetRefineGCPs( GDALWarpAppOptions *psOptions, int nTolerance, int nMinimumGCPs )
 {
-    psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "REFINE_TOLERANCE", pszTolerance );
-    if(CPLAtof(pszTolerance) < 0)
+    psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "REFINE_TOLERANCE", CPLOPrintf("%d", nTolerance) );
+    if(nTolerance < 0)
     {
         CPLError( CE_Failure, CPLE_IllegalArg, "The tolerance for -refine_gcps may not be negative." );
     }
-    if (atoi(pszTolerance) >= 0 && isdigit(pszTolerance[0]))
+
+    if (nMinimumGCPs != NULL && nMinimumGCPs >= 0)
     {
-        psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "REFINE_MINIMUM_GCPS", pszTolerance );
+        psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "REFINE_MINIMUM_GCPS", CPLOPrintf("%d", nMinimumGCPs) );
     }
     else
     {
         psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "REFINE_MINIMUM_GCPS", "-1" );
     }
 }
+
+/************************************************************************/
+/*                     GDALWarpAppOptionsSetMethod()                    */
+/************************************************************************/
+
+/**
+ * set the method.
+ * "tps" for force use of thin plate spline transformer based on available GCPs.
+ * "rpc" for force use of RPCs.
+ * "geoloc" for force use of Geolocation Arrays.
+ *
+ * @param psOptions the options struct GDALWarpAppOptions.
+ * @param pszMethod the method to use in transformer option.
+ */
 
 void GDALWarpAppOptionsSetMethod( GDALWarpAppOptions *psOptions, const char *pszMethod )
 {
@@ -2168,10 +2261,16 @@ void GDALWarpAppOptionsSetMethod( GDALWarpAppOptions *psOptions, const char *psz
         psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "METHOD", "GEOLOC_ARRAY" );
 }
 
-void GDALWarpAppOptionsSetTransformerOption( GDALWarpAppOptions *psOptions, const char *pszTransformerOption )
-{
-    psOptions->papszTO = CSLAddString( psOptions->papszTO, pszTransformerOption );
-}
+/************************************************************************/
+/*                GDALWarpAppOptionsSetWarpOptions()                    */
+/************************************************************************/
+
+/**
+ * set warp options. The GDALWarpOptions::papszWarpOptions docs show all options.
+ *
+ * @param psOptions the options struct GDALWarpAppOptions.
+ * @param papszWarpOptions the warp options ("NAME1=VALUE1","NAME2=VALUE2",...).
+ */
 
 void  GDALWarpAppOptionsSetWarpOptions( GDALWarpAppOptions *psOptions, char **papszWarpOptions )
 {
@@ -2179,20 +2278,119 @@ void  GDALWarpAppOptionsSetWarpOptions( GDALWarpAppOptions *psOptions, char **pa
     psOptions->papszWarpOptions = CSLDuplicate( papszWarpOptions );
 }
 
+/************************************************************************/
+/*                GDALWarpAppOptionsAddWarpOptions()                    */
+/************************************************************************/
+
+/**
+ * add warp option. The GDALWarpOptions::papszWarpOptions docs show all options.
+ *
+ * @param psOptions the options struct GDALWarpAppOptions.
+ * @param pszWarpOption the warp option for output format driver ("NAME=VALUE").
+ */
+
+void GDALWarpAppOptionsAddWarpOptions( GDALWarpAppOptions *psOptions, const char *pszWarpOption )
+{
+    psOptions->papszWarpOptions = CSLAddString( psOptions->papszWarpOptions, pszWarpOption );
+}
+
+/************************************************************************/
+/*                GDALWarpAppOptionsSetCreateOptions()                    */
+/************************************************************************/
+
+/**
+ * passes creation options to the output format driver. See format specific documentation
+ * for legal creation options for each format.
+ *
+ * @param psOptions the options struct GDALWarpAppOptions.
+ * @param papszCreateOptions the create options for output format driver ("NAME1=VALUE1","NAME2=VALUE2",...).
+ */
+
 void GDALWarpAppOptionsSetCreateOptions( GDALWarpAppOptions *psOptions, char **papszCreateOptions )
 {
     CSLDestroy( psOptions->papszCreateOptions );
     psOptions->papszCreateOptions = CSLDuplicate( papszCreateOptions );
 }
 
-void GDALWarpAppOptionsSetTO( GDALWarpAppOptions *psOptions, char **papszTO )
+/************************************************************************/
+/*                GDALWarpAppOptionsAddCreateOptions()                  */
+/************************************************************************/
+
+/**
+ * passes creation option to the output format driver. See format specific documentation
+ * for legal creation options for each format.
+ *
+ * @param psOptions the options struct GDALWarpAppOptions.
+ * @param pszCreateOption the create option for output format driver ("NAME=VALUE").
+ */
+
+void GDALWarpAppOptionsAddCreateOptions( GDALWarpAppOptions *psOptions, const char *pszCreateOption )
+{
+    psOptions->papszCreateOptions = CSLAddString( psOptions->papszCreateOptions, pszCreateOption );
+}
+
+/************************************************************************/
+/*                GDALWarpAppOptionsSetTransformerOptions()             */
+/************************************************************************/
+
+/**
+ * set transformer options suitable to pass to GDALCreateGenImgProjTransformer2().
+ *
+ * @param psOptions the options struct GDALWarpAppOptions.
+ * @param papszTO the transformer options ("NAME1=VALUE1","NAME2=VALUE2",...).
+ */
+
+void GDALWarpAppOptionsSetTransformerOptions( GDALWarpAppOptions *psOptions, char **papszTO )
 {
     CSLDestroy( psOptions->papszTO );
     psOptions->papszTO = CSLDuplicate( papszTO );
 }
+
+/************************************************************************/
+/*                GDALWarpAppOptionsAddTransformerOptions()             */
+/************************************************************************/
+
+/**
+ * add transformer option suitable to pass to GDALCreateGenImgProjTransformer2().
+ *
+ * @param psOptions the options struct GDALWarpAppOptions.
+ * @param pszTransformerOption the transformer option ("NAME=VALUE").
+ */
+
+void GDALWarpAppOptionsAddTransformerOptions( GDALWarpAppOptions *psOptions, const char *pszTransformerOption )
+{
+    psOptions->papszTO = CSLAddString( psOptions->papszTO, pszTransformerOption );
+}
+
+/************************************************************************/
+/*                GDALWarpAppOptionsSetDestOpenOptions()                */
+/************************************************************************/
+
+/**
+ * set output dataset open options (format specific).
+ *
+ * @param psOptions the options struct GDALWarpAppOptions.
+ * @param papszDestOpenOptions the output dataset open options ("NAME1=VALUE1","NAME2=VALUE2",...).
+ */
 
 void GDALWarpAppOptionsSetDestOpenOptions( GDALWarpAppOptions *psOptions, char **papszDestOpenOptions )
 {
     CSLDestroy( psOptions->papszDestOpenOptions );
     psOptions->papszDestOpenOptions = CSLDuplicate( papszDestOpenOptions );
 }
+
+/************************************************************************/
+/*                GDALWarpAppOptionsAddDestOpenOptions()                */
+/************************************************************************/
+
+/**
+ * add output dataset open option (format specific).
+ *
+ * @param psOptions the options struct GDALWarpAppOptions.
+ * @param pszDestOpenOption the output dataset open option ("NAME=VALUE").
+ */
+
+ void GDALWarpAppOptionsAddDestOpenOptions( GDALWarpAppOptions *psOptions, const char *pszDestOpenOption )
+ {
+    psOptions->papszDestOpenOptions = CSLAddString(psOptions->papszDestOpenOptions, pszDestOpenOption);
+ }
