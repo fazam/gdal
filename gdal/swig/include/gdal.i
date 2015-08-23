@@ -1691,10 +1691,10 @@ GDALDatasetShadow* wrapper_GDALTranslate( const char* dest, GDALDatasetShadow* d
 
 typedef enum
 {
-    /*! thin plate spline transformer based on available GCPs */ GCP_TPS,
-    /*! RPCs */ RPC,
-    /*! Geolocation Arrays */ GEOLOC_ARRAY
-} TransformerMethod;
+    /*! thin plate spline transformer based on available GCPs */ GWTM_GCP_TPS,
+    /*! RPCs */ GWTM_RPC,
+    /*! Geolocation Arrays */ GWTM_GEOLOC_ARRAY
+} GDALWarpTransformerMethod;
 
 %rename (WarpOptions) GDALWarpAppOptions;
 
@@ -2114,6 +2114,6 @@ void GDALWarpAppOptionsSetOrder( GDALWarpAppOptions *psOptions, int nOrder);
 void GDALWarpAppOptionsSetRefineGCPs( GDALWarpAppOptions *psOptions, int nTolerance, int nMinimumGCPs );
 
 %rename (WarpOptionsSetMethod) GDALWarpAppOptionsSetMethod;
-void GDALWarpAppOptionsSetMethod( GDALWarpAppOptions *psOptions, TransformerMethod eTransformerMethod );
+void GDALWarpAppOptionsSetMethod( GDALWarpAppOptions *psOptions, GDALWarpTransformerMethod eTransformerMethod );
 
 #endif

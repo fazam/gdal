@@ -168,6 +168,12 @@ typedef struct
     /*! allow or suppress progress monitor and other non-error output */
     int bQuiet;
 
+    /*! the progress function to use */
+    GDALProgressFunc pfnProgress;
+    
+    /*! pointer to the progress data variable */
+    void *pProgressData;
+
     /*! for the output bands to be of the indicated data type */
     GDALDataType eOutputType;
 
@@ -176,7 +182,8 @@ typedef struct
     /*! number of input bands to write to the output file, or to reorder bands */
     int nBandCount;
 
-    /*! list of input bands to write to the output file, or to reorder bands */
+    /*! list of input bands to write to the output file, or to reorder bands. The
+        value 1 corresponds to the 1st band. */
     int *panBandList; /* negative value of panBandList[i] means mask band of ABS(panBandList[i]) */
     
     /*! size of the output file. GDALTranslateOptions::nOXSizePixel is in pixels and
@@ -187,8 +194,9 @@ typedef struct
     int nOYSizePixel;
 
     /*! size of the output file. GDALTranslateOptions::dfOXSizePct and GDALTranslateOptions::dfOYSizePct
-        are fraction of the input image size. If one of the two values is set to 0, its value will be
-        determined from the other one, while maintaining the aspect ratio of the source dataset */
+        are fraction of the input image size. The value 100 means 100%. If one of the two values is set
+        to 0, its value will be determined from the other one, while maintaining the aspect ratio of the
+        source dataset */
     double dfOXSizePct;
     double dfOYSizePct;
 
@@ -337,10 +345,10 @@ GDALDatasetH CPL_DLL GDALTranslate(const char *pszDest, GDALDatasetH hDataset, G
 
 typedef enum
 {
-    /*! thin plate spline transformer based on available GCPs */ GCP_TPS,
-    /*! RPCs */ RPC,
-    /*! Geolocation Arrays */ GEOLOC_ARRAY
-} TransformerMethod;
+    /*! thin plate spline transformer based on available GCPs */ GWTM_GCP_TPS,
+    /*! RPCs */ GWTM_RPC,
+    /*! Geolocation Arrays */ GWTM_GEOLOC_ARRAY
+} GDALWarpTransformerMethod;
 
 /************************************************************************/
 /*                        GDALWarpAppOptions                            */
@@ -505,7 +513,7 @@ void CPL_DLL GDALWarpAppOptionsSetOrder( GDALWarpAppOptions *psOptions, int nOrd
 
 void CPL_DLL GDALWarpAppOptionsSetRefineGCPs( GDALWarpAppOptions *psOptions, int nTolerance, int nMinimumGCPs );
 
-void CPL_DLL GDALWarpAppOptionsSetMethod( GDALWarpAppOptions *psOptions, TransformerMethod eTransformerMethod );
+void CPL_DLL GDALWarpAppOptionsSetMethod( GDALWarpAppOptions *psOptions, GDALWarpTransformerMethod eTransformerMethod );
 
 void CPL_DLL GDALWarpAppOptionsSetWarpOptions( GDALWarpAppOptions *psOptions, char **papszWarpOptions );
 
@@ -569,9 +577,9 @@ typedef struct
     /*! force the use of particular transaction type based on OGR2OGR::bLayerTransaction */
     int bForceTransaction;
 
-    /*! group n features per transaction (default 20000 in OGR 1.11, 200 in previous releases).
-    Increase the value for better performance when writing into DBMS drivers that have transaction
-    support. Starting with GDAL 2.0, n can be set to unlimited to load the data into a single transaction */
+    /*! group nGroupTransactions features per transaction (default 20000). Increase the value for better
+        performance when writing into DBMS drivers that have transaction support. nGroupTransactions can
+        be set to -1 to load the data into a single transaction */
     int nGroupTransactions;
 
     /*! If provided, only the feature with this feature id will be reported. Operates exclusive of

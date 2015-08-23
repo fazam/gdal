@@ -2251,13 +2251,13 @@ void GDALWarpAppOptionsSetRefineGCPs( GDALWarpAppOptions *psOptions, int nTolera
  * @param pszMethod the method to use in transformer option.
  */
 
-void GDALWarpAppOptionsSetMethod( GDALWarpAppOptions *psOptions, TransformerMethod eTransformerMethod )
+void GDALWarpAppOptionsSetMethod( GDALWarpAppOptions *psOptions, GDALWarpTransformerMethod eTransformerMethod )
 {
-    if( eTransformerMethod == GCP_TPS )
+    if( eTransformerMethod == GWTM_GCP_TPS )
         psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "METHOD", "GCP_TPS" );
-    else if( eTransformerMethod == RPC )
+    else if( eTransformerMethod == GWTM_RPC )
         psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "METHOD", "RPC" );
-    else if( eTransformerMethod == GEOLOC_ARRAY )
+    else if( eTransformerMethod == GWTM_GEOLOC_ARRAY )
         psOptions->papszTO = CSLSetNameValue( psOptions->papszTO, "METHOD", "GEOLOC_ARRAY" );
 }
 
