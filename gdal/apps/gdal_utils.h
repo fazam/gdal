@@ -146,8 +146,9 @@ typedef struct
     /*! the range of input pixel values which need to be scaled */
     double  dfScaleSrcMin, dfScaleSrcMax;
 
-    /*! the range of output pixel values. If dfScaleDstMin and dfScaleDstMax are not set,
-        then the output range is 0 to 255. */
+    /*! the range of output pixel values. If GDALTranslateScaleParams::dfScaleDstMin
+        and GDALTranslateScaleParams::dfScaleDstMax are not set, then the output
+        range is 0 to 255. */
     double  dfScaleDstMin, dfScaleDstMax;
 } GDALTranslateScaleParams;
 
@@ -178,15 +179,16 @@ typedef struct
     /*! list of input bands to write to the output file, or to reorder bands */
     int *panBandList; /* negative value of panBandList[i] means mask band of ABS(panBandList[i]) */
     
-    /*! size of the output file. nOXSizePixel is in pixels and nOYSizePixel is in lines.
-        If one of the two values is set to 0, its value will be determined from the other one
-        , while maintaining the aspect ratio of the source dataset */
+    /*! size of the output file. GDALTranslateOptions::nOXSizePixel is in pixels and
+        GDALTranslateOptions::nOYSizePixel is in lines. If one of the two values is
+        set to 0, its value will be determined from the other one, while maintaining
+        the aspect ratio of the source dataset */
     int nOXSizePixel;
     int nOYSizePixel;
 
-    /*! size of the output file. dfOXSizePct and dfOYSizePct are fraction of the input image size.
-        If one of the two values is set to 0, its value will be determined from the other one,
-        while maintaining the aspect ratio of the source dataset */
+    /*! size of the output file. GDALTranslateOptions::dfOXSizePct and GDALTranslateOptions::dfOYSizePct
+        are fraction of the input image size. If one of the two values is set to 0, its value will be
+        determined from the other one, while maintaining the aspect ratio of the source dataset */
     double dfOXSizePct;
     double dfOYSizePct;
 
@@ -200,7 +202,7 @@ typedef struct
     int bStrict;
 
     /*! apply the scale/offset metadata for the bands to convert scaled values to unscaled values.
-     *  It is also often necessary to reset the output datatype with eOutputType */
+     *  It is also often necessary to reset the output datatype with GDALTranslateOptions::eOutputType */
     int bUnscale;
 
     /*! the size of pasScaleParams */
@@ -216,8 +218,8 @@ typedef struct
     int nExponentRepeat;
 
     /*! to apply non-linear scaling with a power function. It is the list of exponents of the power
-        function (must be positive). This option must be used with pasScaleParams. If
-        nExponentRepeat is 1, it is applied to all bands of the output image. */
+        function (must be positive). This option must be used with GDALTranslateOptions::pasScaleParams. If
+        GDALTranslateOptions::nExponentRepeat is 1, it is applied to all bands of the output image. */
     double *padfExponent;
 
     int bHasUsedExplicitExponentBand;
@@ -243,15 +245,15 @@ typedef struct
         specified SRS. */
     double adfULLR[4];
 
-    /*! set a nodata value specified in dfNoDataReal to the output bands */
+    /*! set a nodata value specified in GDALTranslateOptions::dfNoDataReal to the output bands */
     int bSetNoData;
 
     /*! avoid setting a nodata value to the output file if one exists for the source file */
     int bUnsetNoData;
 
-    /*! Assign a specified nodata value to output bands ( bSetNoData option should be set). Note that if the input
-        dataset has a nodata value, this does not cause pixel values that are
-        equal to that nodata value to be changed to the value specified. */
+    /*! Assign a specified nodata value to output bands ( GDALTranslateOptions::bSetNoData option
+        should be set). Note that if the input dataset has a nodata value, this does not cause
+        pixel values that are equal to that nodata value to be changed to the value specified. */
     double dfNoDataReal;
 
     /*! to expose a dataset with 1 band with a color table as a dataset with
@@ -268,8 +270,9 @@ typedef struct
 
     int bApproxStats;
 
-    /*! If this option is set, anSrcWin or (dfULX, dfULY, dfLRX, dfLRY) values
-        that falls partially outside the source raster extent will be considered
+    /*! If this option is set, GDALTranslateOptions::anSrcWin or (GDALTranslateOptions::dfULX,
+        GDALTranslateOptions::dfULY, GDALTranslateOptions::dfLRX, GDALTranslateOptions::dfLRY)
+        values that falls partially outside the source raster extent will be considered
         as an error. The default behaviour is to accept such requests. */
     int bErrorOnPartiallyOutside;
 
@@ -286,13 +289,14 @@ typedef struct
     char *pszResampling;
     
     /*! target resolution. The values must be expressed in georeferenced units.
-        Both must be positive values. This is exclusive with nOXSizePixel (or dfOXSizePct),
-        nOYSizePixel (or dfOYSizePct) and adfULLR */
+        Both must be positive values. This is exclusive with GDALTranslateOptions::nOXSizePixel
+        (or GDALTranslateOptions::dfOXSizePct), GDALTranslateOptions::nOYSizePixel
+        (or GDALTranslateOptions::dfOYSizePct) and GDALTranslateOptions::adfULLR */
     double dfXRes;
     double dfYRes;
 
-    /*! subwindow from the source image for copying (like anSrcWin) but
-        with the corners given in georeferenced coordinates (by default
+    /*! subwindow from the source image for copying (like GDALTranslateOptions::anSrcWin)
+        but with the corners given in georeferenced coordinates (by default
         expressed in the SRS of the dataset. Can be changed with
         pszProjSRS) */
     double dfULX;
@@ -300,7 +304,8 @@ typedef struct
     double dfLRX;
     double dfLRY;
 
-    /*! SRS in which to interpret the coordinates given with dfULX, dfULY, dfLRX, dfLRY.
+    /*! SRS in which to interpret the coordinates given with GDALTranslateOptions::dfULX,
+        GDALTranslateOptions::dfULY, GDALTranslateOptions::dfLRX, GDALTranslateOptions::dfLRY.
         The SRS may be any of the usual GDAL/OGR forms, complete WKT, PROJ.4, EPSG:n or
         a file containing the WKT. Note that this does not cause reprojection of the
         dataset to the specified SRS. */
@@ -346,44 +351,140 @@ typedef enum
  */
 typedef struct
 {
+    /*! set georeferenced extents of output file to be created (in target SRS by default,
+        or in the SRS specified with pszTE_SRS) */
     double dfMinX;
     double dfMinY;
     double dfMaxX;
     double dfMaxY;
+
+    /*! the SRS in which to interpret the coordinates given in GDALWarpAppOptions::dfMinX,
+        GDALWarpAppOptions::dfMinY, GDALWarpAppOptions::dfMaxX and GDALWarpAppOptions::dfMaxY.
+        The SRS may be any of the usual GDAL/OGR forms,
+        complete WKT, PROJ.4, EPSG:n or a file containing the WKT. It is a
+        conveniency e.g. when knowing the output coordinates in a
+        geodetic long/lat SRS, but still wanting a result in a projected
+        coordinate system. */
+    char *pszTE_SRS;
+
+    /*! set output file resolution (in target georeferenced units) */
     double dfXRes;
     double dfYRes;
+
+    /*! align the coordinates of the extent of the output file to the values of the
+        GDALWarpAppOptions::dfXRes and GDALWarpAppOptions::dfYRes, such that the
+        aligned extent includes the minimum extent. */
     int bTargetAlignedPixels;
+    
+    /*! set output file size in pixels and lines. If GDALWarpAppOptions::nForcePixels
+        or GDALWarpAppOptions::nForceLines is set to 0, the other dimension will be
+        guessed from the computed resolution. Note that GDALWarpAppOptions::nForcePixels and
+        GDALWarpAppOptions::nForceLines cannot be used with GDALWarpAppOptions::dfXRes and
+        GDALWarpAppOptions::dfYRes. */
     int nForcePixels;
     int nForceLines;
+    
+    /*! allow or suppress progress monitor and other non-error output */
     int bQuiet;
+
+    /*! creates an output alpha band to identify nodata (unset/transparent) pixels
+        when set to TRUE */
     int bEnableDstAlpha;
+
     int bEnableSrcAlpha;
+
+    /*! output format. The default is GeoTIFF (GTiff). Use the short format name. */
     char *pszFormat;
+
     int bCreateOutput;
+
+    /*! list of warp options. ("NAME1=VALUE1","NAME2=VALUE2",...). The
+        GDALWarpOptions::papszWarpOptions docs show all options. */
     char **papszWarpOptions;
+
     double dfErrorThreshold;
+
+    /*! the amount of memory (in megabytes) that the warp API is allowed
+        to use for caching. */
     double dfWarpMemoryLimit;
+
+    /*! list of create options for the output format driver. See format
+        specific documentation for legal creation options for each format. */
     char **papszCreateOptions;
+
+    /*! the data type of the output bands */
     GDALDataType eOutputType;
+
+    /*! working pixel data type. The data type of pixels in the source
+        image and destination image buffers. */
     GDALDataType eWorkingType;
+
+    /*! the resampling method. Available methods are: near, bilinear,
+        cubic, cubicspline, lanczos, average, mode, max, min, med,
+        q1, q3 */
     GDALResampleAlg eResampleAlg;
+    
+    /*! nodata masking values for input bands (different values can be supplied
+        for each band). ("value1 value2 ..."). Masked values will not be used
+        in interpolation. Use a value of "None" to ignore intrinsic nodata
+        settings on the source dataset. */
     char *pszSrcNodata;
+
+    /*! nodata values for output bands (different values can be supplied for
+        each band). ("value1 value2 ..."). New files will be initialized to
+        this value and if possible the nodata value will be recorded in the
+        output file. Use a value of "None" to ensure that nodata is not defined.
+        If this argument is not used then nodata values will be copied from
+        the source dataset. */
     char *pszDstNodata;
+
+    /*! use multithreaded warping implementation. Multiple threads will be used
+        to process chunks of image and perform input/output operation simultaneously. */
     int bMulti;
+
+    /*! list of transformer options suitable to pass to GDALCreateGenImgProjTransformer2().
+        ("NAME1=VALUE1","NAME2=VALUE2",...) */
     char **papszTO;
+
+    /*! enable use of a blend cutline from the name OGR support pszCutlineDSName */
     char *pszCutlineDSName;
+
+    /*! the named layer to be selected from the cutline datasource */
     char *pszCLayer;
+
+    /*! restrict desired cutline features based on attribute query */
     char *pszCWHERE;
+
+    /*! SQL query to select the cutline features instead of from a layer
+        with pszCLayer */
     char *pszCSQL;
+
+    /*! crop the extent of the target dataset to the extent of the cutline */
     int bCropToCutline;
+
+    /*! overwrite the target dataset if it already exists */
     int bOverwrite;
+
+    /*! copy dataset and band metadata will be copied from the first source dataset. Items that differ between
+        source datasets will be set "*" (see GDALWarpAppOptions::pszMDConflictValue) */
     int bCopyMetadata;
+
+    /*! copy band information from the first source dataset */
     int bCopyBandInfo;
+
+    /*! value to set metadata items that conflict between source datasets (default is "*").
+        Use "" to remove conflicting items. */
     char *pszMDConflictValue;
+
+    /*! set the color interpretation of the bands of the target dataset from the source dataset */
     int bSetColorInterpretation;
+
+    /*! output dataset open option (format specific) */
     char **papszDestOpenOptions;
+
+    /*! overview level of source files to be used */
     int nOvLevel;
-    char *pszTE_SRS;
+    
 
 } GDALWarpAppOptions;
 
@@ -462,41 +563,114 @@ typedef struct
     /*! continue after a failure, skipping the failured feature */
     int bSkipFailures;
 
+    /*! use layer level transaction. If set to FALSE, then it is interpreted as dataset level transaction. */
     int bLayerTransaction;
+
+    /*! force the use of particular transaction type based on OGR2OGR::bLayerTransaction */
     int bForceTransaction;
 
     /*! group n features per transaction (default 20000 in OGR 1.11, 200 in previous releases).
     Increase the value for better performance when writing into DBMS drivers that have transaction
     support. Starting with GDAL 2.0, n can be set to unlimited to load the data into a single transaction */
     int nGroupTransactions;
+
+    /*! If provided, only the feature with this feature id will be reported. Operates exclusive of
+        the spatial or attribute queries. Note: if you want to select several features based on their
+        feature id, you can also use the fact the 'fid' is a special field recognized by OGR SQL.
+        So OGR2OGROptions::pszWHERE = "fid in (1,3,5)" would select features 1, 3 and 5. */
     GIntBig nFIDToFetch;
+    
+    /*! allow or suppress progress monitor and other non-error output */
     int bQuiet;
 
     /*! output file format name (default is ESRI Shapefile) */
     char *pszFormat;
+
+    /*! list of layers of the source dataset which needs to be selected */
     char **papszLayers;
+
+    /*! dataset creation option (format specific) */
     char **papszDSCO;
+
+    /*! layer creation option (format specific) */
     char **papszLCO;
+
+    /*! access modes */
     AccessMode eAccessMode;
+
+    /*! It has the effect of adding, to existing target layers, the new fields found in source layers.
+        This option is useful when merging files that have non-strictly identical structures. This might
+        not work for output formats that don't support adding fields to existing non-empty layers. */
     int bAddMissingFields;
-    int bTransform; //bTransform must be set to TRUE to trigger reprojection, otherwise only SRS assignment is done.
+
+    /*! It must be set to TRUE to trigger reprojection, otherwise only SRS assignment is done. */
+    int bTransform;
+
+    /*! output SRS. OGR2OGROptions::bTransform must be set to TRUE to trigger reprojection,
+        otherwise only SRS assignment is done. */
     char *pszOutputSRSDef;
+
+    /*! override source SRS */
     char *pszSourceSRSDef;
+
     int bNullifyOutputSRS;
+
+    /*! If set to FALSE, then field name matching between source and existing target layer is done
+        in a more relaxed way if the target driver has an implementation for it. */
     int bExactFieldNameMatch;
 
     /*! an alternate name to the new layer */
     char *pszNewLayerName;
+
+    /*! attribute query (like SQL WHERE) */
     char *pszWHERE;
+
+    /*! name of the geometry field on which the spatial filter operates on. */
     char *pszGeomField;
+
+    /*! list of fields from input layer to copy to the new layer. A field is skipped if
+        mentioned previously in the list even if the input layer has duplicate field names.
+        (Defaults to all; any field is skipped if a subsequent field with same name is
+        found.) Geometry fields can also be specified in the list. */
     char **papszSelFields;
+
+    /*! SQL statement to execute. The resulting table/layer will be saved to the output. */
     char *pszSQLStatement;
+
+    /*! SQL dialect. In some cases can be used to use (unoptimized) OGR SQL instead of the
+        native SQL of an RDBMS by using "OGRSQL". The "SQLITE" dialect can also be used with
+        any datasource. */
     char *pszDialect;
+
+    /*! the geometry type for the created layer */
     int eGType;
+
     GeomType eGeomConversion;
+
+    /*! Geomertric operation to perform */
     GeomOperation eGeomOp;
+
+    /*! the parameter to geometric operation */
     double dfGeomOpParam;
+
+    /*! list of field types to convert to a field of type string in the destination layer.
+        Valid types are: Integer, Integer64, Real, String, Date, Time, DateTime, Binary,
+        IntegerList, Integer64List, RealList, StringList. Special value "All" can be
+        used to convert all fields to strings. This is an alternate way to using the CAST
+        operator of OGR SQL, that may avoid typing a long SQL query. Note that this does
+        not influence the field types used by the source driver, and is only an afterwards
+        conversion. */
     char **papszFieldTypesToString;
+
+    /*! list of field types and the field type after conversion in the destination layer.
+        ("srctype1=dsttype1","srctype2=dsttype2",...).
+        Valid types are : Integer, Integer64, Real, String, Date, Time, DateTime, Binary,
+        IntegerList, Integer64List, RealList, StringList. Types can also include subtype
+        between parenthesis, such as Integer(Boolean), Real(Float32), ... Special value 
+        "All" can be used to convert all fields to another type. This is an alternate way to
+        using the CAST operator of OGR SQL, that may avoid typing a long SQL query.
+        This is a generalization of OGR2OGROptions::papszFieldTypeToString. Note that this does not influence
+        the field types used by the source driver, and is only an afterwards conversion. */
     char **papszMapFieldType;
 
     /*! set field width and precision to 0 */
@@ -513,9 +687,12 @@ typedef struct
     within 170deg to -170deg will be split) */
     int nDateLineOffset;
 
-
+    /*! clip geometries when it is set to TRUE */
     int bClipSrc;
+
     OGRGeometryH hClipSrc;
+    
+    /*! clip datasource */
     char *pszClipSrcDS;
 
     /*! select desired geometries using an SQL query */
@@ -529,6 +706,7 @@ typedef struct
 
     OGRGeometryH hClipDst;
 
+    /*! destination clip datasource */
     char *pszClipDstDS;
 
     /*! select desired geometries using an SQL query */
@@ -540,26 +718,81 @@ typedef struct
     /*! restrict desired geometries based on attribute query */
     char *pszClipDstWhere;
 
-
+    /*! split fields of type StringList, RealList or IntegerList into as many fields
+        of type String, Real or Integer as necessary. */
     int bSplitListFields;
+
+    /*! limit the number of subfields created for each split field. */
     int nMaxSplitListSubFields;
+
+    /*! produce one feature for each geometry in any kind of geometry collection in the
+        source file */
     int bExplodeCollections;
+
+    /*! uses the specified field to fill the Z coordinates of geometries */
     char *pszZField;
+
+    /*! the list of field indexes to be copied from the source to the destination. The (n)th value
+        specified in the list is the index of the field in the target layer definition in which the
+        n(th) field of the source layer must be copied. Index count starts at zero. There must be
+        exactly as many values in the list as the count of the fields in the source layer. 
+        We can use the "identity" option to specify that the fields should be transferred by using
+        the same order. This option should be used along with the
+        OGR2OGROptions::eAccessMode = ACCESS_APPEND option. */
     char **papszFieldMap;
+
+    /*! force the coordinate dimension to nCoordDim (valid values are 2 or 3). This affects both
+        the layer geometry type, and feature geometries. */
     int nCoordDim;
 
     /*! destination dataset open option (format specific), only valid in update mode */
     char **papszDestOpenOptions;
+
+    /*! If set to TRUE, does not propagate not-nullable constraints to target layer if they exist
+        in source layer */
     int bForceNullable;
+
+    /*! If set to TRUE, does not propagate default field values to target layer if they exist in
+        source layer */
     int bUnsetDefault;
+
+    /*! to prevent the new default behaviour that consists in, if the output driver has a FID layer
+        creation option and we are not in append mode, to preserve the name of the source FID column
+        and source feature IDs */
     int bUnsetFid;
+
+    /*! use the FID of the source features instead of letting the output driver to automatically
+        assign a new one. If not in append mode, this behaviour becomes the default if the output
+        driver has a FID layer creation option. In which case the name of the source FID column will
+        be used and source feature IDs will be attempted to be preserved. This behaviour can be
+        disabled by option OGR2OGROptions::bUnsetFid */
     int bPreserveFID;
+
+    /*! set it to FALSE to disable copying of metadata from source dataset and layers into target dataset and
+        layers, when supported by output driver. */
     int bCopyMD;
+
+    /*! list of metadata key and value to set on the output dataset, when supported by output driver.
+        ("META-TAG1=VALUE1","META-TAG2=VALUE2") */
     char **papszMetadataOptions;
+
+    /*! override spatial filter SRS */
     char *pszSpatSRSDef;
+
+    /*! size of the list OGR2OGROptions::pasGCPs */
     int nGCPCount;
+
+    /*! list of ground control points to be added */
     GDAL_GCP *pasGCPs;
+
+    /*! order of polynomial used for warping (1 to 3). The default is to select a polynomial
+        order based on the number of GCPs */
     int nTransformOrder;
+
+    /*! spatial query extents, in the SRS of the source layer(s) (or the one specified with
+        OGR2OGROptions::pszSpatSRSDef). Only features whose geometry intersects the extents
+        will be selected. The geometries will not be clipped unless OGR2OGROptions::bClipSrc
+        is specified. */
     OGRGeometryH hSpatialFilter;
 
 } OGR2OGROptions;
