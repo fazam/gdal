@@ -206,14 +206,14 @@ static int FixSrcDstWindow( int* panSrcWin, int* panDstWin,
  * and GDALTranslateOptionsFree() respectively.
  *
  * @param pszDest the destination dataset path.
- * @param hDataset the dataset handle.
+ * @param hSrcDataset the dataset handle.
  * @param psOptions the options struct for GDALTranslate().
  * @param pbUsageError the pointer to int variable to determine any usage error has occured
  * @return the converted dataset.
  * It must be freed using GDALClose().
  */
 
-GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTranslateOptions *psOptions, int *pbUsageError )
+GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hSrcDataset, GDALTranslateOptions *psOptions, int *pbUsageError )
 
 {
     GDALDatasetH hOutDS;
@@ -240,7 +240,7 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
                 bDefBands = FALSE;
     }
 
-    pszSource = GDALGetDescription(hDataset);
+    pszSource = GDALGetDescription(hSrcDataset);
 
     if( pszDest == NULL )
     {
@@ -321,8 +321,8 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
 /* -------------------------------------------------------------------- */
 /*      Collect some information from the source file.                  */
 /* -------------------------------------------------------------------- */
-    nRasterXSize = GDALGetRasterXSize( hDataset );
-    nRasterYSize = GDALGetRasterYSize( hDataset );
+    nRasterXSize = GDALGetRasterXSize( hSrcDataset );
+    nRasterYSize = GDALGetRasterYSize( hSrcDataset );
 
     if( psOptions->anSrcWin[2] == 0 && psOptions->anSrcWin[3] == 0 )
     {
@@ -335,7 +335,7 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
 /* -------------------------------------------------------------------- */
     if( psOptions->nBandCount == 0 )
     {
-        psOptions->nBandCount = GDALGetRasterCount( hDataset );
+        psOptions->nBandCount = GDALGetRasterCount( hSrcDataset );
         if( psOptions->nBandCount == 0 )
         {
             CPLError( CE_Failure, CPLE_AppDefined, "Input file has no bands, and so cannot be translated.\n" );
@@ -350,16 +350,16 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
     {
         for( i = 0; i < psOptions->nBandCount; i++ )
         {
-            if( ABS(psOptions->panBandList[i]) > GDALGetRasterCount(hDataset) )
+            if( ABS(psOptions->panBandList[i]) > GDALGetRasterCount(hSrcDataset) )
             {
                 CPLError( CE_Failure, CPLE_AppDefined,
                          "Band %d requested, but only bands 1 to %d available.\n",
-                         ABS(psOptions->panBandList[i]), GDALGetRasterCount(hDataset) );
+                         ABS(psOptions->panBandList[i]), GDALGetRasterCount(hSrcDataset) );
                 return NULL;
             }
         }
 
-        if( psOptions->nBandCount != GDALGetRasterCount( hDataset ) )
+        if( psOptions->nBandCount != GDALGetRasterCount( hSrcDataset ) )
             bDefBands = FALSE;
     }
 
@@ -396,7 +396,7 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
     {
         double	adfGeoTransform[6];
 
-        GDALGetGeoTransform( hDataset, adfGeoTransform );
+        GDALGetGeoTransform( hSrcDataset, adfGeoTransform );
 
         if( adfGeoTransform[2] != 0.0 || adfGeoTransform[4] != 0.0 )
         {
@@ -408,7 +408,7 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
 
         if( osProjSRS.size() )
         {
-            pszProjection = GDALGetProjectionRef( hDataset );
+            pszProjection = GDALGetProjectionRef( hSrcDataset );
             if( pszProjection != NULL && strlen(pszProjection) > 0 )
             {
                 OGRSpatialReference oSRSIn;
@@ -473,13 +473,13 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
 /*      Verify source window dimensions.                                */
 /* -------------------------------------------------------------------- */
     else if( psOptions->anSrcWin[0] < 0 || psOptions->anSrcWin[1] < 0 
-        || psOptions->anSrcWin[0] + psOptions->anSrcWin[2] > GDALGetRasterXSize(hDataset)
-        || psOptions->anSrcWin[1] + psOptions->anSrcWin[3] > GDALGetRasterYSize(hDataset) )
+        || psOptions->anSrcWin[0] + psOptions->anSrcWin[2] > GDALGetRasterXSize(hSrcDataset)
+        || psOptions->anSrcWin[1] + psOptions->anSrcWin[3] > GDALGetRasterYSize(hSrcDataset) )
     {
         int bCompletelyOutside = psOptions->anSrcWin[0] + psOptions->anSrcWin[2] <= 0 ||
                                     psOptions->anSrcWin[1] + psOptions->anSrcWin[3] <= 0 ||
-                                    psOptions->anSrcWin[0] >= GDALGetRasterXSize(hDataset) ||
-                                    psOptions->anSrcWin[1] >= GDALGetRasterYSize(hDataset);
+                                    psOptions->anSrcWin[0] >= GDALGetRasterXSize(hSrcDataset) ||
+                                    psOptions->anSrcWin[1] >= GDALGetRasterYSize(hSrcDataset);
         int bIsError = psOptions->bErrorOnPartiallyOutside || (bCompletelyOutside && psOptions->bErrorOnCompletelyOutside);
         if( !psOptions->bQuiet || bIsError )
         {
@@ -541,8 +541,8 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
 
     int bSpatialArrangementPreserved = (
            psOptions->anSrcWin[0] == 0 && psOptions->anSrcWin[1] == 0
-        && psOptions->anSrcWin[2] == GDALGetRasterXSize(hDataset)
-        && psOptions->anSrcWin[3] == GDALGetRasterYSize(hDataset)
+        && psOptions->anSrcWin[2] == GDALGetRasterXSize(hSrcDataset)
+        && psOptions->anSrcWin[3] == GDALGetRasterYSize(hSrcDataset)
         && psOptions->nOXSizePixel == 0 && psOptions->dfOXSizePct == 0.0
         && psOptions->nOYSizePixel == 0 && psOptions->dfOYSizePct == 0.0 && psOptions->dfXRes == 0.0 );
 
@@ -556,7 +556,7 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
         && psOptions->nRGBExpand == 0 && !psOptions->bStats && !psOptions->bNoRAT )
     {
         
-        hOutDS = GDALCreateCopy( hDriver, pszDest, hDataset, 
+        hOutDS = GDALCreateCopy( hDriver, pszDest, hSrcDataset, 
                                  psOptions->bStrict, psOptions->papszCreateOptions, 
                                  psOptions->pfnProgress, psOptions->pProgressData );
 
@@ -569,7 +569,7 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
 /* -------------------------------------------------------------------- */
     if( psOptions->dfXRes != 0.0 )
     {
-        if( !(GDALGetGeoTransform( hDataset, adfGeoTransform ) == CE_None &&
+        if( !(GDALGetGeoTransform( hSrcDataset, adfGeoTransform ) == CE_None &&
               psOptions->nGCPCount == 0 &&
               adfGeoTransform[2] == 0.0 && adfGeoTransform[4] == 0.0) )
         {
@@ -634,7 +634,7 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
         }
         else
         {
-            pszProjection = GDALGetProjectionRef( hDataset );
+            pszProjection = GDALGetProjectionRef( hSrcDataset );
             if( pszProjection != NULL && strlen(pszProjection) > 0 )
                 poVDS->SetProjection( pszProjection );
         }
@@ -652,7 +652,7 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
         poVDS->SetGeoTransform( adfGeoTransform );
     }
 
-    else if( GDALGetGeoTransform( hDataset, adfGeoTransform ) == CE_None 
+    else if( GDALGetGeoTransform( hSrcDataset, adfGeoTransform ) == CE_None 
         && psOptions->nGCPCount == 0 )
     {
         adfGeoTransform[0] += psOptions->anSrcWin[0] * adfGeoTransform[1]
@@ -679,7 +679,7 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
         const char *pszGCPProjection = psOptions->pszOutputSRS;
 
         if( pszGCPProjection == NULL )
-            pszGCPProjection = GDALGetGCPProjection( hDataset );
+            pszGCPProjection = GDALGetGCPProjection( hSrcDataset );
         if( pszGCPProjection == NULL )
             pszGCPProjection = "";
 
@@ -688,12 +688,12 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
         GDALDeinitGCPs( psOptions->nGCPCount, psOptions->pasGCPs );
     }
 
-    else if( GDALGetGCPCount( hDataset ) > 0 )
+    else if( GDALGetGCPCount( hSrcDataset ) > 0 )
     {
         GDAL_GCP *pasGCPs;
-        int       nGCPs = GDALGetGCPCount( hDataset );
+        int       nGCPs = GDALGetGCPCount( hSrcDataset );
 
-        pasGCPs = GDALDuplicateGCPs( nGCPs, GDALGetGCPs( hDataset ) );
+        pasGCPs = GDALDuplicateGCPs( nGCPs, GDALGetGCPs( hSrcDataset ) );
 
         for( i = 0; i < nGCPs; i++ )
         {
@@ -704,7 +704,7 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
         }
             
         poVDS->SetGCPs( nGCPs, pasGCPs,
-                        GDALGetGCPProjection( hDataset ) );
+                        GDALGetGCPProjection( hSrcDataset ) );
 
         GDALDeinitGCPs( nGCPs, pasGCPs );
         CPLFree( pasGCPs );
@@ -721,13 +721,13 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
     anDstWin[3] = nOYSize;
 
     FixSrcDstWindow( psOptions->anSrcWin, anDstWin,
-                     GDALGetRasterXSize(hDataset),
-                     GDALGetRasterYSize(hDataset) );
+                     GDALGetRasterXSize(hSrcDataset),
+                     GDALGetRasterYSize(hSrcDataset) );
 
 /* -------------------------------------------------------------------- */
 /*      Transfer generally applicable metadata.                         */
 /* -------------------------------------------------------------------- */
-    char** papszMetadata = CSLDuplicate(((GDALDataset*)hDataset)->GetMetadata());
+    char** papszMetadata = CSLDuplicate(((GDALDataset*)hSrcDataset)->GetMetadata());
     if ( psOptions->nScaleRepeat > 0 || psOptions->bUnscale || psOptions->eOutputType != GDT_Unknown )
     {
         /* Remove TIFFTAG_MINSAMPLEVALUE and TIFFTAG_MAXSAMPLEVALUE */
@@ -749,7 +749,7 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
     CSLDestroy( papszMetadata );
     AttachMetadata( (GDALDatasetH) poVDS, psOptions->papszMetadataOptions );
 
-    const char* pszInterleave = GDALGetMetadataItem(hDataset, "INTERLEAVE", "IMAGE_STRUCTURE");
+    const char* pszInterleave = GDALGetMetadataItem(hSrcDataset, "INTERLEAVE", "IMAGE_STRUCTURE");
     if (pszInterleave)
         poVDS->SetMetadataItem("INTERLEAVE", pszInterleave, "IMAGE_STRUCTURE");
 
@@ -761,11 +761,11 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
     {
         char **papszMD;
 
-        papszMD = ((GDALDataset*)hDataset)->GetMetadata("RPC");
+        papszMD = ((GDALDataset*)hSrcDataset)->GetMetadata("RPC");
         if( papszMD != NULL )
             poVDS->SetMetadata( papszMD, "RPC" );
 
-        papszMD = ((GDALDataset*)hDataset)->GetMetadata("GEOLOCATION");
+        papszMD = ((GDALDataset*)hSrcDataset)->GetMetadata("GEOLOCATION");
         if( papszMD != NULL )
             poVDS->SetMetadata( papszMD, "GEOLOCATION" );
     }
@@ -773,7 +773,7 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
     {
         char **papszMD;
 
-        papszMD = ((GDALDataset*)hDataset)->GetMetadata("RPC");
+        papszMD = ((GDALDataset*)hSrcDataset)->GetMetadata("RPC");
         if( papszMD != NULL )
         {
             papszMD = CSLDuplicate(papszMD);
@@ -814,7 +814,7 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
     {
         GDALRasterBand  *poSrcBand;
         poSrcBand = ((GDALDataset *) 
-                     hDataset)->GetRasterBand(ABS(psOptions->panBandList[0]));
+                     hSrcDataset)->GetRasterBand(ABS(psOptions->panBandList[0]));
         if (psOptions->panBandList[0] < 0)
             poSrcBand = poSrcBand->GetMaskBand();
         GDALColorTable* poColorTable = poSrcBand->GetColorTable();
@@ -882,7 +882,7 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
         else
             nSrcBand = psOptions->panBandList[i];
 
-        poSrcBand = ((GDALDataset *) hDataset)->GetRasterBand(ABS(nSrcBand));
+        poSrcBand = ((GDALDataset *) hSrcDataset)->GetRasterBand(ABS(nSrcBand));
 
 /* -------------------------------------------------------------------- */
 /*      Select output data type to match source.                        */
@@ -1176,7 +1176,7 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
         }
 
         if (psOptions->eMaskMode == MASK_AUTO &&
-            (GDALGetMaskFlags(GDALGetRasterBand(hDataset, 1)) & GMF_PER_DATASET) == 0 &&
+            (GDALGetMaskFlags(GDALGetRasterBand(hSrcDataset, 1)) & GMF_PER_DATASET) == 0 &&
             (poSrcBand->GetMaskFlags() & (GMF_ALL_VALID | GMF_NODATA)) == 0)
         {
             if (poVRTBand->CreateMaskBand(poSrcBand->GetMaskFlags()) == CE_None)
@@ -1195,7 +1195,7 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
     if (psOptions->eMaskMode == MASK_USER)
     {
         GDALRasterBand *poSrcBand =
-            (GDALRasterBand*)GDALGetRasterBand(hDataset, ABS(psOptions->nMaskBand));
+            (GDALRasterBand*)GDALGetRasterBand(hSrcDataset, ABS(psOptions->nMaskBand));
         if (poSrcBand && poVDS->CreateMaskBand(GMF_PER_DATASET) == CE_None)
         {
             VRTSourcedRasterBand* hMaskVRTBand = (VRTSourcedRasterBand*)
@@ -1216,13 +1216,13 @@ GDALDatasetH GDALTranslate( const char *pszDest, GDALDatasetH hDataset, GDALTran
     }
     else
     if (psOptions->eMaskMode == MASK_AUTO && nSrcBandCount > 0 &&
-        GDALGetMaskFlags(GDALGetRasterBand(hDataset, 1)) == GMF_PER_DATASET)
+        GDALGetMaskFlags(GDALGetRasterBand(hSrcDataset, 1)) == GMF_PER_DATASET)
     {
         if (poVDS->CreateMaskBand(GMF_PER_DATASET) == CE_None)
         {
             VRTSourcedRasterBand* hMaskVRTBand = (VRTSourcedRasterBand*)
                 GDALGetMaskBand(GDALGetRasterBand((GDALDatasetH)poVDS, 1));
-            hMaskVRTBand->AddMaskBandSource((GDALRasterBand*)GDALGetRasterBand(hDataset, 1),
+            hMaskVRTBand->AddMaskBandSource((GDALRasterBand*)GDALGetRasterBand(hSrcDataset, 1),
                                         psOptions->anSrcWin[0], psOptions->anSrcWin[1],
                                         psOptions->anSrcWin[2], psOptions->anSrcWin[3],
                                         anDstWin[0], anDstWin[1],

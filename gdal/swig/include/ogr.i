@@ -3755,6 +3755,10 @@ OGRDataSourceShadow* wrapper_Translate( const char* dest, OGRDataSourceShadow* d
 
 %}
 
+%rename (TranslateOptionsSetSpatialFilter) OGR2OGROptionsSetSpatialFilter;
+void OGR2OGROptionsSetSpatialFilter( OGR2OGROptions *psOptions,
+                                     double dfXMin, double dfYMin, double dfXMax, double dfYMax );
+
 #endif
 
 #endif

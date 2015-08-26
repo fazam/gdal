@@ -3754,3 +3754,41 @@ void OGR2OGROptionsAddMetadataOptions( OGR2OGROptions *psOptions,
 {
     psOptions->papszMetadataOptions = CSLAddString( psOptions->papszMetadataOptions, pszMetadataOption );
 }
+
+/************************************************************************/
+/*                   OGR2OGROptionsSetSpatialFilter()                   */
+/************************************************************************/
+
+/**
+ * Set spatial query extents, in the SRS of the source layer(s) (or the one specified with
+   OGR2OGROptions::pszSpatSRSDef). Only features whose geometry intersects the extents
+   will be selected. The geometries will not be clipped unless OGR2OGROptions::bClipSrc
+   is TRUE.
+ *
+ * @param psOptions the options struct OGR2OGROptions.
+ * @param dfXMin .
+ * @param dfYMin .
+ * @param dfXMax .
+ * @param dfYMax .
+ */
+
+void OGR2OGROptionsSetSpatialFilter( OGR2OGROptions *psOptions,
+                                     double dfXMin, double dfYMin, double dfXMax, double dfYMax )
+{
+    OGRLinearRing  oRing;
+    OGRGeometryH hSpatialFilter;
+
+    oRing.addPoint( dfXMin, dfYMin );
+    oRing.addPoint( dfXMin, dfYMax );
+    oRing.addPoint( dfXMax, dfYMax );
+    oRing.addPoint( dfXMax, dfYMin );
+    oRing.addPoint( dfXMin, dfYMin );
+
+    hSpatialFilter = (OGRGeometryH) OGRGeometryFactory::createGeometry(wkbPolygon);
+    ((OGRPolygon *) hSpatialFilter)->addRing( &oRing );
+
+    OGR_G_DestroyGeometry( psOptions->hSpatialFilter );
+    if( hSpatialFilter != NULL )
+        psOptions->hSpatialFilter = OGR_G_Clone( hSpatialFilter );
+
+}

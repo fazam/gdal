@@ -345,6 +345,34 @@ def test_ogr2ogr_lib_12():
     ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/poly.shp')
     return 'success'
 
+###############################################################################
+# Test TranslateOptionsSetSpatialFilter()
+
+def test_ogr2ogr_lib_13():
+
+    try:
+        os.stat('tmp/poly.shp')
+        ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/poly.shp')
+    except:
+        pass
+
+    srcDS = ogr.Open('../ogr/data/poly.shp')
+    options = ogr.TranslateOptions()
+    ogr.TranslateOptionsSetSpatialFilter(options,479609,4764629,479764,4764817)
+    ds = ogr.Translate('tmp/poly.shp',srcDS,options)
+    if ogrtest.have_geos():
+        if ds is None or ds.GetLayer(0).GetFeatureCount() != 4:
+            return 'fail'
+    else:
+        if ds is None or ds.GetLayer(0).GetFeatureCount() != 5:
+            return 'fail'
+    ds.Destroy()
+    srcDS.Destroy()
+
+    ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/poly.shp')
+
+    return 'success'
+
 
 gdaltest_list = [
     test_ogr2ogr_lib_1,
@@ -359,6 +387,7 @@ gdaltest_list = [
     test_ogr2ogr_lib_10,
     test_ogr2ogr_lib_11,
     test_ogr2ogr_lib_12,
+    test_ogr2ogr_lib_13,
     ]
 
 if __name__ == '__main__':

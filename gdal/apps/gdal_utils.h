@@ -340,7 +340,7 @@ void  CPL_DLL GDALTranslateOptionsAddMetadataOptions( GDALTranslateOptions *psOp
 void CPL_DLL GDALTranslateOptionsAddBand( GDALTranslateOptions *psOptions, int nBand,
                                           int bIsMask );
 
-GDALDatasetH CPL_DLL GDALTranslate(const char *pszDest, GDALDatasetH hDataset, GDALTranslateOptions *psOptions, int *pbUsageError);
+GDALDatasetH CPL_DLL GDALTranslate(const char *pszDest, GDALDatasetH hSrcDataset, GDALTranslateOptions *psOptions, int *pbUsageError);
 
 
 typedef enum
@@ -800,7 +800,7 @@ typedef struct
     /*! spatial query extents, in the SRS of the source layer(s) (or the one specified with
         OGR2OGROptions::pszSpatSRSDef). Only features whose geometry intersects the extents
         will be selected. The geometries will not be clipped unless OGR2OGROptions::bClipSrc
-        is specified. */
+        is TRUE. */
     OGRGeometryH hSpatialFilter;
 
 } OGR2OGROptions;
@@ -862,6 +862,9 @@ void CPL_DLL OGR2OGROptionsSetMetadataOptions( OGR2OGROptions *psOptions,
 
 void CPL_DLL OGR2OGROptionsAddMetadataOptions( OGR2OGROptions *psOptions,
                                                const char *pszMetadataOption );
+
+void CPL_DLL OGR2OGROptionsSetSpatialFilter( OGR2OGROptions *psOptions,
+                                             double dfXMin, double dfYMin, double dfXMax, double dfYMax );
 
 GDALDatasetH CPL_DLL OGR2OGR( const char *pszDest, GDALDatasetH hDstDS, GDALDatasetH hSrcDS,
                               OGR2OGROptions *psOptions, int *pbUsageError );
