@@ -761,7 +761,7 @@ def Info(ds, options = None, format = _gdal.INFO_FORMAT_TEXT, deserialize = True
         ret = json.loads(ret)
     return ret
 
-def Translate(path, ds, options = None, format = 'GTiff', quiet = True,
+def Translate(destName, srcDS, options = None, format = 'GTiff', quiet = True,
               outputType = GDT_Unknown, maskMode = _gdal.MASK_AUTO, bandList = None,
               oXSizePixel = 0, oYSizePixel = 0, oXSizePct = 0.0, oYSizePct = 0.0,
               createOptions = None, srcWin = [0,0,0,0],strict = False,
@@ -821,12 +821,12 @@ def Translate(path, ds, options = None, format = 'GTiff', quiet = True,
         options.yRes = yRes
         if projSRS is not None:  
             options.projSRS = projSRS
-    ret = TranslateInternal(path, ds, options)
+    ret = TranslateInternal(destName, srcDS, options)
     return ret
 
-def Warp(dest, dstDS, srcDS, options = None, minX = 0.0, minY = 0.0, maxX = 0.0,
+def Warp(destNameOrDestDS, srcDSOrSrcDSTab, options = None, minX = 0.0, minY = 0.0, maxX = 0.0,
          maxY = 0.0, xRes = 0.0, yRes = 0.0, targetAlignedPixels = False, forcePixels = 0,
-         forceLines = 0, quiet = False, enableDstAlpha = False, enableSrcAlpha = False,
+         forceLines = 0, quiet = True, enableDstAlpha = False, enableSrcAlpha = False,
          format = 'GTiff', createOutput = False, warpOptions = None, errorThreshold = -1,
          warpMemoryLimit = 0.0, createOptions = None, outputType = GDT_Unknown,
          workingType = GDT_Unknown, resampleAlg = GRA_NearestNeighbour,
@@ -884,7 +884,19 @@ def Warp(dest, dstDS, srcDS, options = None, minX = 0.0, minY = 0.0, maxX = 0.0,
         if destOpenOptions is not None:
             options.destOpenOptions = destOpenOptions
         options.OvLevel = OvLevel
-    ret = WarpInternal(dest, dstDS, srcDS, options)
+
+    if type(srcDSOrSrcDSTab) != type([]):
+        srcDSOrSrcDSTab = [ srcDSOrSrcDSTab ]
+
+    if isinstance(destNameOrDestDS,str):
+        ret = wrapper_GDALWarpDestName(destNameOrDestDS, srcDSOrSrcDSTab, options)
+    else:
+        ret = wrapper_GDALWarpDestDS(destNameOrDestDS, srcDSOrSrcDSTab, options)
+        if ret == 1:
+            ret = destNameOrDestDS
+        else:
+            ret = None
+
     return ret
 
 %}

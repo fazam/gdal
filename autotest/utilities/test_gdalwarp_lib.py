@@ -31,13 +31,11 @@
 
 import sys
 import os
-import stat
 
 sys.path.append( '../pymod' )
 
 from osgeo import gdal
 import gdaltest
-import test_cli_utilities
 
 ###############################################################################
 # Simple test
@@ -45,8 +43,7 @@ import test_cli_utilities
 def test_gdalwarp_lib_1():
 
     ds1 = gdal.Open('../gcore/data/byte.tif')
-    ds = [ds1]
-    dstDS = gdal.Warp(dest = 'tmp/testgdalwarp1.tif',dstDS = None,srcDS = ds)
+    dstDS = gdal.Warp('tmp/testgdalwarp1.tif', ds1)
 
     if dstDS.GetRasterBand(1).Checksum() != 4672:
         gdaltest.post_reason('Bad checksum')
@@ -63,8 +60,7 @@ def test_gdalwarp_lib_1():
 def test_gdalwarp_lib_2():
 
     ds1 = gdal.Open('../gcore/data/byte.tif')
-    ds = [ds1]
-    dstDS = gdal.Warp(dest = 'tmp/testgdalwarp2.tif',dstDS = None,srcDS = ds, format = 'GTiff')
+    dstDS = gdal.Warp('tmp/testgdalwarp2.tif',[ds1], format = 'GTiff')
 
     if dstDS.GetRasterBand(1).Checksum() != 4672:
         gdaltest.post_reason('Bad checksum')
@@ -81,8 +77,7 @@ def test_gdalwarp_lib_2():
 def test_gdalwarp_lib_3():
 
     ds1 = gdal.Open('../gcore/data/byte.tif')
-    ds = [ds1]
-    dstDS = gdal.Warp(dest = 'tmp/testgdalwarp3.tif',dstDS = None,srcDS = ds, outputType = gdal.GDT_Int16)
+    dstDS = gdal.Warp('tmp/testgdalwarp3.tif', ds1, outputType = gdal.GDT_Int16)
     
     if dstDS.GetRasterBand(1).DataType != gdal.GDT_Int16:
         gdaltest.post_reason('Bad data type')
@@ -102,10 +97,9 @@ def test_gdalwarp_lib_3():
 def test_gdalwarp_lib_4():
     
     ds1 = gdal.Open('../gcore/data/byte.tif')
-    ds = [ds1]
     options = gdal.WarpOptions()
     gdal.WarpOptionsSetDstSRS(options,'EPSG:32611')
-    dstDS = gdal.Warp(dest = 'tmp/testgdalwarp4.tif',dstDS = None,srcDS = ds)
+    dstDS = gdal.Warp('tmp/testgdalwarp4.tif', ds1)
 
     if dstDS.GetRasterBand(1).Checksum() != 4672:
         gdaltest.post_reason('Bad checksum')
@@ -123,8 +117,7 @@ def test_gdalwarp_lib_5():
     ds = gdal.Open('../gcore/data/byte.tif')
     gcpList = [gdal.GCP(440720.000,3751320.000,0,0,0),gdal.GCP(441920.000,3751320.000,0,20,0),gdal.GCP(441920.000,3750120.000,0,20,20),gdal.GCP(440720.000,3750120.000,0,0,20)]
     ds1 = gdal.Translate('tmp/testgdalwarp_gcp.tif',ds,outputSRS = 'EPSG:26711',GCPs = gcpList)
-    srcDS = [ds1]
-    dstDS = gdal.Warp('tmp/testgdalwarp5.tif',dstDS = None,srcDS = srcDS)
+    dstDS = gdal.Warp('tmp/testgdalwarp5.tif', ds1)
 
     if dstDS.GetRasterBand(1).Checksum() != 4672:
         gdaltest.post_reason('Bad checksum')
@@ -145,10 +138,9 @@ def test_gdalwarp_lib_5():
 def test_gdalwarp_lib_6():
     
     ds1 = gdal.Open('tmp/testgdalwarp_gcp.tif')
-    srcDS = [ds1]
     options = gdal.WarpOptions()
-    gdal.WarpOptionsSetMethod(options,'tps')
-    dstDS = gdal.Warp('tmp/testgdalwarp6.tif',None,srcDS,options)
+    gdal.WarpOptionsSetMethod(options, gdal.GWTM_GCP_TPS)
+    dstDS = gdal.Warp('tmp/testgdalwarp6.tif',ds1,options)
 
     if dstDS.GetRasterBand(1).Checksum() != 4672:
         gdaltest.post_reason('Bad checksum')
@@ -169,8 +161,7 @@ def test_gdalwarp_lib_6():
 def test_gdalwarp_lib_7():
     
     ds1 = gdal.Open('tmp/testgdalwarp_gcp.tif')
-    srcDS = [ds1]
-    dstDS = gdal.Warp('tmp/testgdalwarp7.tif',None,srcDS,xRes = 120,yRes = 120)
+    dstDS = gdal.Warp('tmp/testgdalwarp7.tif',[ds1],xRes = 120,yRes = 120)
     if dstDS is None:
         return 'fail'
 
@@ -189,8 +180,7 @@ def test_gdalwarp_lib_7():
 def test_gdalwarp_lib_8():
     
     ds1 = gdal.Open('tmp/testgdalwarp_gcp.tif')
-    srcDS = [ds1]
-    dstDS = gdal.Warp('tmp/testgdalwarp8.tif',None,srcDS,forcePixels = 10,forceLines = 10)
+    dstDS = gdal.Warp('tmp/testgdalwarp8.tif',[ds1],forcePixels = 10,forceLines = 10)
     if dstDS is None:
         return 'fail'
 

@@ -1055,16 +1055,14 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDstDS, GDALDatasetH hSr
 
     if( bUpdate && poODS == NULL )
     {
-        poODS = (GDALDataset*) GDALOpenEx( pszDest,
+        poODS = (GDALDataset*) GDALOpenEx( pszDestFilename,
                 GDAL_OF_UPDATE | GDAL_OF_VECTOR, NULL, psOptions->papszDestOpenOptions, NULL );
-        if( poODS != NULL )
-            poDriver = poODS->GetDriver();
 
         if( poODS == NULL )
         {
             if (bOverwrite || bAppend)
             {
-                poODS = (GDALDataset*) GDALOpenEx( pszDest,
+                poODS = (GDALDataset*) GDALOpenEx( pszDestFilename,
                             GDAL_OF_VECTOR, NULL, psOptions->papszDestOpenOptions, NULL );
                 if (poODS == NULL)
                 {
@@ -1084,7 +1082,7 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDstDS, GDALDatasetH hSr
             {
                 CPLError( CE_Failure, CPLE_AppDefined,
                         "Unable to open existing output datasource `%s'.\n",
-                        pszDest );
+                        pszDestFilename );
                 return NULL;
             }
         }
@@ -1095,13 +1093,16 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDstDS, GDALDatasetH hSr
         }
     }
 
+    if( poODS )
+        poDriver = poODS->GetDriver();
+
 /* -------------------------------------------------------------------- */
 /*      Find the output driver.                                         */
 /* -------------------------------------------------------------------- */
     if( !bUpdate )
     {
         if (!psOptions->bQuiet && EQUAL(psOptions->pszFormat,"ESRI Shapefile"))
-            CheckDestDataSourceNameConsistency(pszDest, psOptions->pszFormat);
+            CheckDestDataSourceNameConsistency(pszDestFilename, psOptions->pszFormat);
 
         OGRSFDriverRegistrar *poR = OGRSFDriverRegistrar::GetRegistrar();
         int                  iDriver;
@@ -1145,15 +1146,15 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDstDS, GDALDatasetH hSr
             (CSLCount(psOptions->papszLayers) > 1 ||
              (CSLCount(psOptions->papszLayers) == 0 && poDS->GetLayerCount() > 1)) &&
             psOptions->pszNewLayerName == NULL &&
-            EQUAL(CPLGetExtension(pszDest), "SHP") &&
-            VSIStatL(pszDest, &sStat) != 0)
+            EQUAL(CPLGetExtension(pszDestFilename), "SHP") &&
+            VSIStatL(pszDestFilename, &sStat) != 0)
         {
-            if (VSIMkdir(pszDest, 0755) != 0)
+            if (VSIMkdir(pszDestFilename, 0755) != 0)
             {
                 CPLError( CE_Failure, CPLE_AppDefined,
                       "Failed to create directory %s\n"
                       "for shapefile datastore.\n",
-                      pszDest );
+                      pszDestFilename );
                 return NULL;
             }
         }
@@ -1161,11 +1162,11 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDstDS, GDALDatasetH hSr
 /* -------------------------------------------------------------------- */
 /*      Create the output data source.                                  */
 /* -------------------------------------------------------------------- */
-        poODS = poDriver->Create( pszDest, 0, 0, 0, GDT_Unknown, psOptions->papszDSCO );
+        poODS = poDriver->Create( pszDestFilename, 0, 0, 0, GDT_Unknown, psOptions->papszDSCO );
         if( poODS == NULL )
         {
             CPLError( CE_Failure, CPLE_AppDefined, "%s driver failed to create %s\n", 
-                    psOptions->pszFormat, pszDest );
+                    psOptions->pszFormat, pszDestFilename );
             return NULL;
         }
         
@@ -1402,9 +1403,9 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDstDS, GDALDatasetH hSr
             VSIStatBufL  sStat;
             if (EQUAL(poDriver->GetDescription(), "ESRI Shapefile") &&
                 psOptions->pszNewLayerName == NULL &&
-                VSIStatL(pszDest, &sStat) == 0 && VSI_ISREG(sStat.st_mode))
+                VSIStatL(pszDestFilename, &sStat) == 0 && VSI_ISREG(sStat.st_mode))
             {
-                psOptions->pszNewLayerName = CPLStrdup(CPLGetBasename(pszDest));
+                psOptions->pszNewLayerName = CPLStrdup(CPLGetBasename(pszDestFilename));
             }
 
             TargetLayerInfo* psInfo = oSetup.Setup(poPassedLayer,
@@ -1465,9 +1466,9 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDstDS, GDALDatasetH hSr
         VSIStatBufL  sStat;
         if (EQUAL(poDriver->GetDescription(), "ESRI Shapefile") &&
             (CSLCount(psOptions->papszLayers) == 1 || nSrcLayerCount == 1) && psOptions->pszNewLayerName == NULL &&
-            VSIStatL(pszDest, &sStat) == 0 && VSI_ISREG(sStat.st_mode))
+            VSIStatL(pszDestFilename, &sStat) == 0 && VSI_ISREG(sStat.st_mode))
         {
-            psOptions->pszNewLayerName = CPLStrdup(CPLGetBasename(pszDest));
+            psOptions->pszNewLayerName = CPLStrdup(CPLGetBasename(pszDestFilename));
         }
 
         if ( psOptions->bDisplayProgress && bSrcIsOSM )
@@ -1681,9 +1682,9 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDstDS, GDALDatasetH hSr
         VSIStatBufL  sStat;
         if (EQUAL(poDriver->GetDescription(), "ESRI Shapefile") &&
             nLayerCount == 1 && psOptions->pszNewLayerName == NULL &&
-            VSIStatL(pszDest, &sStat) == 0 && VSI_ISREG(sStat.st_mode))
+            VSIStatL(pszDestFilename, &sStat) == 0 && VSI_ISREG(sStat.st_mode))
         {
-            psOptions->pszNewLayerName = CPLStrdup(CPLGetBasename(pszDest));
+            psOptions->pszNewLayerName = CPLStrdup(CPLGetBasename(pszDestFilename));
         }
 
         GIntBig* panLayerCountFeatures = (GIntBig*) CPLCalloc(sizeof(GIntBig), nLayerCount);
@@ -1838,10 +1839,6 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDstDS, GDALDatasetH hSr
                 poODS->CommitTransaction();
         }
     }
-    
-    OGRGeometryFactory::destroyGeometry((OGRGeometry *)psOptions->hSpatialFilter);
-    OGRGeometryFactory::destroyGeometry((OGRGeometry *)psOptions->hClipSrc);
-    OGRGeometryFactory::destroyGeometry((OGRGeometry *)psOptions->hClipDst);
 
     delete poGCPCoordTrans;
 
@@ -1849,6 +1846,8 @@ GDALDatasetH OGR2OGR( const char *pszDest, GDALDatasetH hDstDS, GDALDatasetH hSr
     OGRSpatialReference::DestroySpatialReference(poOutputSRS);
     OGRSpatialReference::DestroySpatialReference(poSourceSRS);
     OGRSpatialReference::DestroySpatialReference(poSpatSRS);
+
+    CPLFree(pszDestFilename);
 
     if(nRetCode == 0)
         return (GDALDatasetH) poODS;
@@ -3756,7 +3755,7 @@ void OGR2OGROptionsAddMetadataOptions( OGR2OGROptions *psOptions,
 }
 
 /************************************************************************/
-/*                   OGR2OGROptionsSetSpatialFilter()                   */
+/*                  OGR2OGROptionsSetSpatialFilterRect()                */
 /************************************************************************/
 
 /**
@@ -3772,8 +3771,8 @@ void OGR2OGROptionsAddMetadataOptions( OGR2OGROptions *psOptions,
  * @param dfYMax .
  */
 
-void OGR2OGROptionsSetSpatialFilter( OGR2OGROptions *psOptions,
-                                     double dfXMin, double dfYMin, double dfXMax, double dfYMax )
+void OGR2OGROptionsSetSpatialFilterRect( OGR2OGROptions *psOptions,
+                        double dfXMin, double dfYMin, double dfXMax, double dfYMax )
 {
     OGRLinearRing  oRing;
     OGRGeometryH hSpatialFilter;
@@ -3786,9 +3785,33 @@ void OGR2OGROptionsSetSpatialFilter( OGR2OGROptions *psOptions,
 
     hSpatialFilter = (OGRGeometryH) OGRGeometryFactory::createGeometry(wkbPolygon);
     ((OGRPolygon *) hSpatialFilter)->addRing( &oRing );
+    
+    OGR2OGROptionsSetSpatialFilter(psOptions, hSpatialFilter);
+    
+    OGR_G_DestroyGeometry(hSpatialFilter);
 
+}
+
+/************************************************************************/
+/*                   OGR2OGROptionsSetSpatialFilter()                   */
+/************************************************************************/
+
+/**
+ * Set spatial query extents, in the SRS of the source layer(s) (or the one specified with
+   OGR2OGROptions::pszSpatSRSDef). Only features whose geometry intersects the extents
+   will be selected. The geometries will not be clipped unless OGR2OGROptions::bClipSrc
+   is TRUE.
+ *
+ * @param psOptions the options struct OGR2OGROptions.
+ * @param hSpatialFilter new spatial filter to install, or NULL
+ */
+
+void OGR2OGROptionsSetSpatialFilter( OGR2OGROptions *psOptions,
+                                     OGRGeometryH hSpatialFilter )
+{
     OGR_G_DestroyGeometry( psOptions->hSpatialFilter );
-    if( hSpatialFilter != NULL )
-        psOptions->hSpatialFilter = OGR_G_Clone( hSpatialFilter );
-
+    if( hSpatialFilter )
+        psOptions->hSpatialFilter = OGR_G_Clone(hSpatialFilter);
+    else
+        psOptions->hSpatialFilter = NULL;
 }

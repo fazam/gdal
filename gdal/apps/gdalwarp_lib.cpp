@@ -834,8 +834,8 @@ GDALDatasetH GDALWarp( const char *pszDest, GDALDatasetH hDstDS, int nSrcCount,
         psWO->pfnTransformer = pfnTransformer;
         psWO->pTransformerArg = hTransformArg;
 
-        if( !psOptions->bQuiet )
-            psWO->pfnProgress = GDALTermProgress;
+        psWO->pfnProgress = psOptions->pfnProgress;
+        psWO->pProgressArg = psOptions->pProgressData;
 
         if( psOptions->dfWarpMemoryLimit != 0.0 )
             psWO->dfWarpMemoryLimit = psOptions->dfWarpMemoryLimit;
@@ -2081,6 +2081,8 @@ GDALWarpAppOptions *GDALWarpAppOptionsNew()
     psOptions->nForcePixels = 0;
     psOptions->nForceLines = 0;
     psOptions->bQuiet = TRUE;
+    psOptions->pfnProgress = GDALDummyProgress;
+    psOptions->pProgressData = NULL;
     psOptions->bEnableDstAlpha = FALSE;
     psOptions->bEnableSrcAlpha = FALSE;
     psOptions->pszFormat = CPLStrdup("GTiff");

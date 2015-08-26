@@ -48,7 +48,6 @@ def test_gdal_translate_lib_1():
     ds = gdal.Translate('tmp/test1.tif', ds, options)
     if ds is None:
         gdaltest.post_reason('got error/warning')
-        print(err)
         return 'fail'
 
     if ds.GetRasterBand(1).Checksum() != 4672:
@@ -121,7 +120,6 @@ def test_gdal_translate_lib_4():
     ds = gdal.Translate('tmp/test4.tif', ds, options)
     if ds is None:
         gdaltest.post_reason('got error/warning')
-        print(err)
         return 'fail'
 
     if ds.GetRasterBand(1).Checksum() != 21349:

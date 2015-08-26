@@ -608,7 +608,7 @@ del _Module
 
 %pythoncode %{
 
-def Translate(dest, srcDS, options = None, dstDS = None, accessMode = _ogr.ACCESS_CREATION,
+def Translate(destNameOrDestDS, srcDS, options = None, accessMode = _ogr.ACCESS_CREATION,
               skipFailures = False, layerTransaction = -1, forceTransaction = False,
               groupTransactions = 20000, FIDToFetch = -1, quiet = False,
               format = 'ESRI Shapefile', layers = None, DSCO = None, LCO = None, transform = False,
@@ -716,6 +716,14 @@ def Translate(dest, srcDS, options = None, dstDS = None, accessMode = _ogr.ACCES
         options.transformOrder = transformOrder
         if spatialFilter is not None:
             options.spatialFilter = spatialFilter
-    ret = TranslateInternal(dest, dstDS, srcDS, options)
+
+    if isinstance(destNameOrDestDS,str):
+        ret = TranslateInternal(destNameOrDestDS, srcDS, options)
+    else:
+        ret = TranslateInternal(destNameOrDestDS, srcDS, options)
+        if ret == 1:
+            ret = destNameOrDestDS
+        else:
+            ret = None
     return ret
 %}

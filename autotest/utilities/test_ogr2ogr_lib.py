@@ -31,13 +31,11 @@
 
 import sys
 import os
-import shutil
 
 sys.path.append( '../pymod' )
 sys.path.append( '../ogr' )
 
 from osgeo import ogr
-from osgeo import osr
 import gdaltest
 import ogrtest
 
@@ -67,8 +65,8 @@ def test_ogr2ogr_lib_1():
         gdaltest.post_reason('Did not get expected value for field PRFEDEA')
         return 'fail'
     
-    srcDS.Destroy()
-    ds.Destroy()
+    srcDS= None
+    ds= None
     
     ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/poly.shp')
 
@@ -90,8 +88,8 @@ def test_ogr2ogr_lib_2():
     if ds is None or ds.GetLayer(0).GetFeatureCount() != 10:
         return 'fail'
     
-    srcDS.Destroy()
-    ds.Destroy()
+    srcDS= None
+    ds= None
 
     ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/poly.shp')
 
@@ -112,7 +110,7 @@ def test_ogr2ogr_lib_3():
     ds = ogr.Translate('tmp/poly.shp', srcDS, WHERE='EAS_ID=171')
     if ds is None or ds.GetLayer(0).GetFeatureCount() != 1:
         return 'fail'
-    ds.Destroy()
+    ds= None
 
     ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/poly.shp')
 
@@ -131,9 +129,28 @@ def test_ogr2ogr_lib_4():
 
     srcDS = ogr.Open('../ogr/data/poly.shp')
     ds = ogr.Translate('tmp/poly.shp', srcDS)
-    ds.Destroy()
+    if ds.GetLayer(0).GetFeatureCount() != 10:
+        gdaltest.post_reason('wrong feature count')
+        print(ds.GetLayer(0).GetFeatureCount())
+        return 'fail'
+    ds= None
+
     ds = ogr.Translate('tmp/poly.shp', srcDS, accessMode=ogr.ACCESS_APPEND)
-    if ds is None or ds.GetLayer(0).GetFeatureCount() != 20:
+    if ds is None:
+        gdaltest.post_reason('ds is None')
+        return 'fail'
+    if ds.GetLayer(0).GetFeatureCount() != 20:
+        gdaltest.post_reason('wrong feature count')
+        print(ds.GetLayer(0).GetFeatureCount())
+        return 'fail'
+
+    ds = ogr.Translate(ds, srcDS, accessMode=ogr.ACCESS_APPEND)
+    if ds is None:
+        gdaltest.post_reason('ds is None')
+        return 'fail'
+    if ds.GetLayer(0).GetFeatureCount() != 30:
+        gdaltest.post_reason('wrong feature count')
+        print(ds.GetLayer(0).GetFeatureCount())
         return 'fail'
         
     feat10 = ds.GetLayer(0).GetFeature(10)
@@ -146,7 +163,7 @@ def test_ogr2ogr_lib_4():
         gdaltest.post_reason('Did not get expected value for field PRFEDEA')
         return 'fail'
         
-    ds.Destroy()
+    ds= None
 
     ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/poly.shp')
 
@@ -167,7 +184,7 @@ def test_ogr2ogr_lib_5():
     ds = ogr.Translate('tmp/poly.shp', srcDS, outputSRSDef='EPSG:4326', transform=True)
     if str(ds.GetLayer(0).GetSpatialRef()).find('1984') == -1:
         return 'fail'
-    ds.Destroy()
+    ds= None
 
     ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/poly.shp')
 
@@ -188,7 +205,7 @@ def test_ogr2ogr_lib_6():
     ds = ogr.Translate('tmp/poly.shp', srcDS, outputSRSDef='EPSG:4326')
     if str(ds.GetLayer(0).GetSpatialRef()).find('1984') == -1:
         return 'fail'
-    ds.Destroy()
+    ds= None
 
     ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/poly.shp')
 
@@ -243,7 +260,7 @@ def test_ogr2ogr_lib_8():
     ds = ogr.Translate('tmp/poly.shp', srcDS, LCO=['SHPT=POLYGONZ'])
     if ds.GetLayer(0).GetLayerDefn().GetGeomType() != ogr.wkbPolygon25D:
         return 'fail'
-    ds.Destroy()
+    ds= None
 
     ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/poly.shp')
 
@@ -264,7 +281,7 @@ def test_ogr2ogr_lib_9():
     ds = ogr.Translate('tmp/poly.shp', srcDS, layers=['poly'])
     if ds is None or ds.GetLayer(0).GetFeatureCount() != 10:
         return 'fail'
-    ds.Destroy()
+    ds= None
 
     ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/poly.shp')
 
@@ -288,7 +305,7 @@ def test_ogr2ogr_lib_10():
     feat = ds.GetLayer(0).GetNextFeature()
     if feat.GetGeometryRef().GetGeometryRef(0).GetPointCount() != 36:
         return 'fail'
-    ds.Destroy()
+    ds= None
 
     ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/poly.shp')
 
@@ -309,13 +326,13 @@ def test_ogr2ogr_lib_11():
     ds = ogr.Translate('tmp/poly.shp',srcDS)
     if ds is None or ds.GetLayer(0).GetFeatureCount() != 10:
         return 'fail'
-    ds.Destroy()
+    ds= None
 
     # Overwrite
     ds = ogr.Translate('tmp',srcDS,accessMode=ogr.ACCESS_OVERWRITE)
     if ds is None or ds.GetLayer(0).GetFeatureCount() != 10:
         return 'fail'
-    ds.Destroy()
+    ds= None
 
     ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/poly.shp')
     return 'success'
@@ -339,8 +356,8 @@ def test_ogr2ogr_lib_12():
     feat = ds.GetLayer(0).GetNextFeature()
     if feat.GetField("EAS_ID") != src_feat.GetField("EAS_ID"):
         return 'fail'
-    ds.Destroy()
-    src_ds.Destroy()
+    ds= None
+    src_ds= None
 
     ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/poly.shp')
     return 'success'
@@ -358,7 +375,7 @@ def test_ogr2ogr_lib_13():
 
     srcDS = ogr.Open('../ogr/data/poly.shp')
     options = ogr.TranslateOptions()
-    ogr.TranslateOptionsSetSpatialFilter(options,479609,4764629,479764,4764817)
+    ogr.TranslateOptionsSetSpatialFilterRect(options,479609,4764629,479764,4764817)
     ds = ogr.Translate('tmp/poly.shp',srcDS,options)
     if ogrtest.have_geos():
         if ds is None or ds.GetLayer(0).GetFeatureCount() != 4:
@@ -366,8 +383,8 @@ def test_ogr2ogr_lib_13():
     else:
         if ds is None or ds.GetLayer(0).GetFeatureCount() != 5:
             return 'fail'
-    ds.Destroy()
-    srcDS.Destroy()
+    ds= None
+    srcDS= None
 
     ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource('tmp/poly.shp')
 

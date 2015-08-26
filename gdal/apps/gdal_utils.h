@@ -395,6 +395,12 @@ typedef struct
     /*! allow or suppress progress monitor and other non-error output */
     int bQuiet;
 
+    /*! the progress function to use */
+    GDALProgressFunc pfnProgress;
+    
+    /*! pointer to the progress data variable */
+    void *pProgressData;
+
     /*! creates an output alpha band to identify nodata (unset/transparent) pixels
         when set to TRUE */
     int bEnableDstAlpha;
@@ -863,8 +869,11 @@ void CPL_DLL OGR2OGROptionsSetMetadataOptions( OGR2OGROptions *psOptions,
 void CPL_DLL OGR2OGROptionsAddMetadataOptions( OGR2OGROptions *psOptions,
                                                const char *pszMetadataOption );
 
-void CPL_DLL OGR2OGROptionsSetSpatialFilter( OGR2OGROptions *psOptions,
+void CPL_DLL OGR2OGROptionsSetSpatialFilterRect( OGR2OGROptions *psOptions,
                                              double dfXMin, double dfYMin, double dfXMax, double dfYMax );
+
+void CPL_DLL OGR2OGROptionsSetSpatialFilter( OGR2OGROptions *psOptions,
+                                             OGRGeometryH hSpatialFilter );
 
 GDALDatasetH CPL_DLL OGR2OGR( const char *pszDest, GDALDatasetH hDstDS, GDALDatasetH hSrcDS,
                               OGR2OGROptions *psOptions, int *pbUsageError );

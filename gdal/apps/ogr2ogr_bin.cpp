@@ -307,16 +307,13 @@ int main( int nArgc, char ** papszArgv )
         else if( EQUAL(papszArgv[iArg],"-spat") )
         {
             CHECK_HAS_ENOUGH_ADDITIONAL_ARGS(4);
-            OGRLinearRing  oRing;
+            
+            OGR2OGROptionsSetSpatialFilterRect(psOptions,
+                                               CPLAtof(papszArgv[iArg+1]),
+                                               CPLAtof(papszArgv[iArg+2]),
+                                               CPLAtof(papszArgv[iArg+3]),
+                                               CPLAtof(papszArgv[iArg+4]));
 
-            oRing.addPoint( CPLAtof(papszArgv[iArg+1]), CPLAtof(papszArgv[iArg+2]) );
-            oRing.addPoint( CPLAtof(papszArgv[iArg+1]), CPLAtof(papszArgv[iArg+4]) );
-            oRing.addPoint( CPLAtof(papszArgv[iArg+3]), CPLAtof(papszArgv[iArg+4]) );
-            oRing.addPoint( CPLAtof(papszArgv[iArg+3]), CPLAtof(papszArgv[iArg+2]) );
-            oRing.addPoint( CPLAtof(papszArgv[iArg+1]), CPLAtof(papszArgv[iArg+2]) );
-
-            psOptions->hSpatialFilter = (OGRGeometryH) OGRGeometryFactory::createGeometry(wkbPolygon);
-            ((OGRPolygon *) psOptions->hSpatialFilter)->addRing( &oRing );
             iArg += 4;
         }
         else if( EQUAL(papszArgv[iArg],"-spat_srs") )

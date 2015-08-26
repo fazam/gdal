@@ -2082,21 +2082,25 @@ void GDALWarpAppOptions_TE_SRS_set( GDALWarpAppOptions *warpAppOptions, char *ps
 
 %clear GDALWarpAppOptions *warpAppOptions;
 
-#ifdef SWIGPYTHON
-%rename (WarpInternal) wrapper_GDALWarp;
-#else
-%rename (Warp) wrapper_GDALWarp;
-#endif
-
-%newobject wrapper_GDALWarp;
+/* Note: we must use 2 distinct names since there's a bug/feature in swig */
+/* that doesn't play nicely with the (int object_list_count, GDALDatasetShadow** poObjects) input typemap */
 
 %inline %{
-GDALDatasetShadow* wrapper_GDALWarp( const char* dest, GDALDatasetShadow* dstDS, int object_list_count, GDALDatasetShadow** poObjects, GDALWarpAppOptions* warpAppOptions )
+int wrapper_GDALWarpDestDS( GDALDatasetShadow* dstDS, int object_list_count, GDALDatasetShadow** poObjects, GDALWarpAppOptions* warpAppOptions )
 {
     int usageError; /* ignored */
-    GDALDatasetShadow **srcDS = (GDALDatasetShadow**) CPLMalloc( sizeof(GDALDatasetShadow*) * object_list_count );
-    memcpy( srcDS, poObjects, sizeof(GDALDatasetShadow*) * object_list_count );
-    return GDALWarp(dest, dstDS, object_list_count, srcDS, warpAppOptions, &usageError);
+    return GDALWarp(NULL, dstDS, object_list_count, poObjects, warpAppOptions, &usageError) != NULL;
+}
+
+%}
+
+%newobject wrapper_GDALWarpDestName;
+
+%inline %{
+GDALDatasetShadow* wrapper_GDALWarpDestName( const char* dest, int object_list_count, GDALDatasetShadow** poObjects, GDALWarpAppOptions* warpAppOptions )
+{
+    int usageError; /* ignored */
+    return GDALWarp(dest, NULL, object_list_count, poObjects, warpAppOptions, &usageError);
 }
 
 %}

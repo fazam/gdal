@@ -3117,8 +3117,6 @@ typedef enum
 %apply (char** options) {char** destOpenOptions};
 %apply (char** options) {char** metadataOptions};
 
-%feature("python:nondynamic") GDALTranslateOptions;
-
 struct OGR2OGROptions {
 %extend {
 %mutable;
@@ -3728,9 +3726,7 @@ OGRGeometryShadow* OGR2OGROptions_spatialFilter_get( OGR2OGROptions *ogr2ogrOpti
 }
 
 void OGR2OGROptions_spatialFilter_set( OGR2OGROptions *ogr2ogrOptions, OGRGeometryShadow* hSpatialFilter ) {
-    OGR_G_DestroyGeometry( ogr2ogrOptions->hSpatialFilter );
-    if( hSpatialFilter != NULL )
-        ogr2ogrOptions->hSpatialFilter = OGR_G_Clone( hSpatialFilter );
+    OGR2OGROptionsSetSpatialFilter(ogr2ogrOptions, hSpatialFilter);
 }
 
 %}
@@ -3743,20 +3739,31 @@ void OGR2OGROptions_spatialFilter_set( OGR2OGROptions *ogr2ogrOptions, OGRGeomet
 %rename (Translate) wrapper_Translate;
 #endif
 
-%newobject wrapper_GDALWarp;
-
+/* We don't return a new object */
 %inline %{
-OGRDataSourceShadow* wrapper_Translate( const char* dest, OGRDataSourceShadow* dstDS, OGRDataSourceShadow* srcDS,
+int wrapper_Translate( OGRDataSourceShadow* dstDS, OGRDataSourceShadow* srcDS,
                                          OGR2OGROptions *ogr2ogrOptions )
 {
     int usageError; /* ignored */
-    return OGR2OGR( dest, dstDS, srcDS, ogr2ogrOptions, &usageError );
+    return OGR2OGR( NULL, dstDS, srcDS, ogr2ogrOptions, &usageError ) != NULL;
 }
 
 %}
 
-%rename (TranslateOptionsSetSpatialFilter) OGR2OGROptionsSetSpatialFilter;
-void OGR2OGROptionsSetSpatialFilter( OGR2OGROptions *psOptions,
+%newobject wrapper_Translate;
+%inline %{
+OGRDataSourceShadow* wrapper_Translate( const char* dest, OGRDataSourceShadow* srcDS,
+                                         OGR2OGROptions *ogr2ogrOptions )
+{
+    int usageError; /* ignored */
+    return OGR2OGR( dest, NULL, srcDS, ogr2ogrOptions, &usageError );
+}
+
+%}
+
+
+%rename (TranslateOptionsSetSpatialFilterRect) OGR2OGROptionsSetSpatialFilterRect;
+void OGR2OGROptionsSetSpatialFilterRect( OGR2OGROptions *psOptions,
                                      double dfXMin, double dfYMin, double dfXMax, double dfYMax );
 
 #endif
